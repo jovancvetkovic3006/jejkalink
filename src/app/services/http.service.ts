@@ -12,41 +12,40 @@ export class HttpService {
   constructor() {}
 
   getDiscoverInfo() {
-    return this.get(this.discoverUrl).subscribe({
-      next: (discoverInfo) => {
-        console.log(discoverInfo);
-      },
-      error: (error) => {
-        console.error(error);
+    return this.get(this.discoverUrl).pipe();
+  }
+
+  getCarePartner() {
+    this.get(
+      'https://carelink.minimed.eu/configs/v1/oauth20_sso_carepartner_eu_v6.json'
+    ).subscribe({
+      next: (res) => {
+        console.log(res);
       },
     });
   }
 
-  post(url: string) {
+  post(url: string, body: any = {}, headers: any = {}) {
     const options: HttpOptions = {
       url,
       headers: {
-        Authorization: 'Basic writekey:password',
+        ...headers,
         'Content-Type': 'application/json',
       },
       data: {
-        userId: '019mr8mf4r',
-        event: 'API Called',
-        context: {
-          ip: '24.5.68.47',
-        },
+        ...body,
       },
     };
     return from(CapacitorHttp.post(options));
   }
 
-  get(url: string) {
+  get(url: string, headers: any = {}) {
     const options: HttpOptions = {
       url,
-      // headers: {
-      //   Authorization: 'Basic writekey:password',
-      //   'Content-Type': 'application/json',
-      // },
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
     };
     return from(CapacitorHttp.get(options));
   }

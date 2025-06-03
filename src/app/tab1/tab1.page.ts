@@ -8,6 +8,7 @@ import {
 } from '@ionic/angular/standalone';
 import { ExploreContainerComponent } from '../explore-container/explore-container.component';
 import { HttpService } from '../services/http.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-tab1',
@@ -16,10 +17,15 @@ import { HttpService } from '../services/http.service';
   imports: [IonButton, IonHeader, IonToolbar, IonTitle, IonContent],
 })
 export class Tab1Page {
-  constructor(private readonly http: HttpService) {}
+  constructor(
+    private readonly http: HttpService,
+    public authService: AuthService
+  ) {}
 
   test() {
-    this.http.getDiscoverInfo();
+    console.log('DDSADSADASDASD');
+    this.authService.login();
+    // this.http.getCarePartner();
     // console.log('XXXXXXXXXXXXXXXXXXXX TESTER');
   }
 }
