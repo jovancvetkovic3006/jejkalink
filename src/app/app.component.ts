@@ -7,6 +7,7 @@ import {
   IonHeader,
   IonTitle,
   IonButtons,
+  IonIcon,
 } from '@ionic/angular/standalone';
 
 import { App } from '@capacitor/app';
@@ -25,6 +26,7 @@ import { Log } from './utils/log';
     IonToolbar,
     IonApp,
     IonRouterOutlet,
+    IonIcon,
   ],
 })
 export class AppComponent {

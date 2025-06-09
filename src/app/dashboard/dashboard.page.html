@@ -4,14 +4,14 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content fullscreen>
+<ion-content fullscreen *ngIf="data$ | async as data">
   <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
   <div class="glucose-display">
-    <div class="glucose-number">115</div>
-    <div class="glucose-unit">mg/dL</div>
+    <div class="glucose-number">{{data.current}}</div>
+    <div class="glucose-unit">mmol/dL</div>
   </div>
 
   <div class="data-groups">
@@ -20,7 +20,7 @@
         <ion-item-divider color="light">
           <ion-label>Glikemija</ion-label>
         </ion-item-divider>
-        <ion-item *ngFor="let item of todayItems">
+        <ion-item *ngFor="let item of data.glicemia">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
       </ion-item-group>
@@ -29,7 +29,7 @@
         <ion-item-divider color="light">
           <ion-label>Insulin</ion-label>
         </ion-item-divider>
-        <ion-item *ngFor="let item of yesterdayItems">
+        <ion-item *ngFor="let item of data.insulin">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
       </ion-item-group>
@@ -38,7 +38,7 @@
         <ion-item-divider color="light">
           <ion-label>Senzor</ion-label>
         </ion-item-divider>
-        <ion-item *ngFor="let item of yesterdayItems">
+        <ion-item *ngFor="let item of data.senzor">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
       </ion-item-group>
@@ -47,7 +47,7 @@
         <ion-item-divider color="light">
           <ion-label>Pumpica</ion-label>
         </ion-item-divider>
-        <ion-item *ngFor="let item of yesterdayItems">
+        <ion-item *ngFor="let item of data.pump">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
       </ion-item-group>

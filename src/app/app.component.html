@@ -1,11 +1,11 @@
 <ion-app>
   <ion-header>
     <ion-toolbar color="primary">
-      <ion-title
-        >{{ userName ? `Welcome, ${userName}` : 'No user' }}
-      </ion-title>
+      <ion-title>{{ userName ? `${userName}` : 'No user' }} </ion-title>
       <ion-buttons slot="end">
-        <ion-button (click)="logout()"> Logout </ion-button>
+        <ion-button (click)="logout()">
+          <ion-icon name="log-out"></ion-icon>
+        </ion-button>
       </ion-buttons>
     </ion-toolbar>
   </ion-header>

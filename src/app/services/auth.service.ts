@@ -154,6 +154,15 @@ export class AuthService {
   }
 
   processPatientData(recentData: any) {
+    const data = {
+      current: 0,
+      trend: '',
+      glicemia: [] as string[],
+      insulin: [] as string[],
+      pump: [] as string[],
+      senzor: [] as string[],
+    };
+
     const patientData = recentData.patientData || {};
 
     const unitsLeft = patientData.reservoirRemainingUnits || 0;
@@ -177,12 +186,11 @@ export class AuthService {
     });
 
     const lastTime = `${datePart} u ${timePart}`;
-    console.log(lastTime); // "June 06, 2025 u 12:40"
 
     const isSensorConnected = patientData.conduitSensorInRange || false;
     const activeInsulin = patientData.activeInsulin
       ? +patientData.activeInsulin.amount.toFixed(1)
-      : -1.0;
+      : 0;
 
     const sensorBattery = patientData.gstBatteryLevel || 0;
     const pumpBattery = patientData.conduitBatteryLevel || 0;
@@ -201,82 +209,80 @@ export class AuthService {
     const belowHypoLimit = `${patientData.belowHypoLimit || 0}%`;
     const aboveHyperLimit = `${patientData.aboveHyperLimit || 0}%`;
 
-    const messages = [];
-
     if (deviceIsInRange && isSensorConnected && glicemia) {
-      messages.push(`Glikemija ${glicemia}`);
-      messages.push(`Trend ${trend}`);
+      data.current = glicemia;
+      data.trend = trend;
 
       const durationMinutes = patientData.sensorDurationMinutes || 0;
       const days = Math.floor(durationMinutes / 1440);
       const hours = Math.floor((durationMinutes % 1440) / 60);
       const minutes = durationMinutes % 60;
-      messages.push(`Serzor traje jos ${days}d ${hours}h ${minutes}m`);
+      data.senzor.push(`Serzor traje jos ${days}d ${hours}h ${minutes}m`);
 
       const calibrationMinutes = patientData.timeToNextCalibrationMinutes || 0;
-      messages.push(
+      data.senzor.push(
         `Sledeca kalibracija za ${Math.floor(calibrationMinutes / 60)}h ${
           calibrationMinutes % 60
         }m`
       );
 
       if (sensorState === 'CHANGE_SENSOR') {
-        messages.push('⚠️ Zamenite senzor');
+        data.senzor.push('⚠️ Zamenite senzor');
       }
 
       const banner = patientData.pumpBannerState || [];
       if (banner.length > 0 && banner[0].type === 'TEMP_BASAL') {
         const temporalni = banner[0].timeRemaining || 0;
-        messages.push(`Temporalni tece jos ${temporalni} min`);
+        data.insulin.push(`Temporalni tece jos ${temporalni} min`);
       }
 
       if (activeInsulin !== -1.0) {
-        messages.push(`Aktivni insulin ${activeInsulin}`);
+        data.insulin.push(`Aktivni insulin ${activeInsulin}`);
       }
     } else {
-      messages.push('⚠️ Senzor nije povezan');
+      data.senzor.push('⚠️ Senzor nije povezan');
       for (const sg of patientData.sgs || []) {
         if (sg) {
           const lastGlicemia = +(sg.sg / 18).toFixed(1);
-          messages.push(`Poslednja glikemija ${lastGlicemia}`);
-          messages.push(`Poslednja sinhronizacija ${lastTime}`);
+          data.glicemia.push(`Poslednja glikemija ${lastGlicemia}`);
+          data.senzor.push(`Poslednja sinhronizacija ${lastTime}`);
           break;
         }
       }
     }
 
     if (patientData.pumpSuspended) {
-      messages.push('⚠️ Pumpica je suspendovana');
+      data.pump.push('⚠️ Pumpica je suspendovana');
     }
 
-    messages.push(`HbA1c ${averageSG}`);
+    data.glicemia.push(`HbA1c ${averageSG}`);
 
     if ('timeInRange' in patientData) {
-      messages.push(`U normali je ${timeInRange}`);
-      messages.push(`Niska ${belowHypoLimit}`);
-      messages.push(`Visoka ${aboveHyperLimit}`);
+      data.glicemia.push(`U normali je ${timeInRange}`);
+      data.glicemia.push(`Niska ${belowHypoLimit}`);
+      data.glicemia.push(`Visoka ${aboveHyperLimit}`);
     }
 
     if (unitsLeft < 20) {
-      messages.push(`⚠️ Preostalo jedinica ${unitsLeft}`);
+      data.insulin.push(`⚠️ Preostalo jedinica ${unitsLeft}`);
     } else {
-      messages.push(`Preostalo jedinica ${unitsLeft}`);
+      data.insulin.push(`Preostalo jedinica ${unitsLeft}`);
     }
 
     if (sensorBattery < 10) {
-      messages.push(`⚠️ Baterija senzora ${sensorBattery}%`);
+      data.senzor.push(`⚠️ Baterija senzora ${sensorBattery}%`);
     } else {
-      messages.push(`Baterija senzora ${sensorBattery}%`);
+      data.senzor.push(`Baterija senzora ${sensorBattery}%`);
     }
 
     if (pumpBattery < 10) {
-      messages.push(`⚠️ Baterija pumpice ${pumpBattery}%`);
+      data.pump.push(`⚠️ Baterija pumpice ${pumpBattery}%`);
     } else {
-      messages.push(`Baterija pumpice ${pumpBattery}%`);
+      data.pump.push(`Baterija pumpice ${pumpBattery}%`);
     }
 
-    Log().info('MESAGES: ', messages);
-    return messages;
+    Log().info('MESAGES: ', data);
+    return data;
   }
 
   data$: BehaviorSubject<any> = new BehaviorSubject({});
