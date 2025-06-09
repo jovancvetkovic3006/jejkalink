@@ -23,24 +23,10 @@ import { AuthService } from '../services/auth.service';
     IonRefresherContent,
   ],
 })
-export class Tab2Page {
+export class ChartPage {
   constructor(public authService: AuthService) {}
 
   doRefresh(event: CustomEvent) {
-    this.authService
-      .getData()
-      .pipe(take(1))
-      .subscribe({
-        next: (data: any) => {
-          this.authService.data$.next(
-            this.authService.processPatientData(data.data)
-          );
-          (event.target as HTMLIonRefresherElement).complete();
-        },
-        error: (err: any) => {
-          console.error('Refresh failed', err);
-          (event.target as HTMLIonRefresherElement).complete();
-        },
-      });
+    this.authService.doRefresh(event);
   }
 }

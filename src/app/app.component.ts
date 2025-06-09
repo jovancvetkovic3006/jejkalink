@@ -33,6 +33,10 @@ export class AppComponent {
   userName: any;
 
   constructor(public authService: AuthService) {
+    if (this.authService.isTokenExpired()) {
+      this.authService.login();
+    }
+
     // Optionally, load the username from a user service
     const storedUser = localStorage.getItem('userInfo');
     if (storedUser) {

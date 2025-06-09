@@ -15,7 +15,7 @@ import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { routes } from './app/app.routes';
 import { AppComponent } from './app/app.component';
 import { importProvidersFrom } from '@angular/core';
-import { TokenInterceptor } from './app/utils/token.interceptor.ts';
+import { TokenInterceptor } from './app/utils/token.interceptor';
 
 bootstrapApplication(AppComponent, {
   providers: [

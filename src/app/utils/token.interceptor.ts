@@ -8,7 +8,7 @@ import {
 import { Observable, from, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
-import { isTokenExpired } from './token.util.ts';
+import { isTokenExpired } from './token.util';
 import { Log } from './log';
 
 @Injectable()

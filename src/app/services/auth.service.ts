@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { BehaviorSubject, from, Observable, of, take, tap } from 'rxjs';
-import { getTokenMag, isTokenExpired } from '../utils/token.util.ts';
+import { getTokenMag, isTokenExpired } from '../utils/token.util';
 import { Log } from '../utils/log.js';
 import { CapacitorHttp, HttpResponse } from '@capacitor/core';
 
@@ -45,6 +45,14 @@ export class AuthService {
   public refreshToken$ = new BehaviorSubject<any | null>(null);
   public idToken$ = new BehaviorSubject<any | null>(null);
   public user$ = new BehaviorSubject<any | null>(null);
+  data$: BehaviorSubject<any> = new BehaviorSubject({
+    current: 0,
+    trend: '',
+    glicemia: [] as string[],
+    insulin: [] as string[],
+    pump: [] as string[],
+    senzor: [] as string[],
+  });
 
   constructor(private readonly http: HttpClient) {
     this.setupDeepLinkListener();
@@ -94,6 +102,21 @@ export class AuthService {
     });
   }
 
+  doRefresh(event: CustomEvent) {
+    this.getData()
+      .pipe(take(1))
+      .subscribe({
+        next: (data: any) => {
+          this.data$.next(this.processPatientData(data.data));
+          (event.target as HTMLIonRefresherElement).complete();
+        },
+        error: (err: any) => {
+          console.error('Refresh failed', err);
+          (event.target as HTMLIonRefresherElement).complete();
+        },
+      });
+  }
+
   getData(): Observable<HttpResponse> {
     const userName = 'jejka3006';
 
@@ -119,38 +142,6 @@ export class AuthService {
         },
       })
     );
-  }
-
-  private setupDeepLinkListener() {
-    App.addListener('appUrlOpen', async (data) => {
-      Log().info('App URL Open:', data.url);
-
-      if (data.url && data.url.startsWith(this.redirectUri)) {
-        try {
-          await Browser.close();
-
-          const url = new URL(data.url);
-          const code = url.searchParams.get('code');
-          Log().info('All query params:', url.searchParams);
-
-          if (code) {
-            Log().info('Authorization code received:', code);
-            this.authCode$.next(code);
-
-            // Exchange code for tokens here
-            this.exchangeCodeForToken(code);
-          } else {
-            Log().warn('No authorization code found in redirect URL');
-            this.authCode$.next(null);
-          }
-        } catch (e) {
-          Log().error('Error parsing URL:', e);
-          this.authCode$.next(null);
-        }
-      } else {
-        Log().info('URL does not match redirectUri');
-      }
-    });
   }
 
   processPatientData(recentData: any) {
@@ -285,7 +276,47 @@ export class AuthService {
     return data;
   }
 
-  data$: BehaviorSubject<any> = new BehaviorSubject({});
+  logout() {
+    this.cleanUp();
+    this.login();
+  }
+
+  cleanUp() {
+    this.setTokens({});
+  }
+
+  private setupDeepLinkListener() {
+    App.addListener('appUrlOpen', async (data) => {
+      Log().info('App URL Open:', data.url);
+
+      if (data.url && data.url.startsWith(this.redirectUri)) {
+        try {
+          await Browser.close();
+
+          const url = new URL(data.url);
+          const code = url.searchParams.get('code');
+          Log().info('All query params:', url.searchParams);
+
+          if (code) {
+            Log().info('Authorization code received:', code);
+            this.authCode$.next(code);
+
+            // Exchange code for tokens here
+            this.exchangeCodeForToken(code);
+          } else {
+            Log().warn('No authorization code found in redirect URL');
+            this.authCode$.next(null);
+          }
+        } catch (e) {
+          Log().error('Error parsing URL:', e);
+          this.authCode$.next(null);
+        }
+      } else {
+        Log().info('URL does not match redirectUri');
+      }
+    });
+  }
+
   private exchangeCodeForToken(code: string) {
     const body = new HttpParams()
       .set('grant_type', 'authorization_code')
@@ -344,14 +375,5 @@ export class AuthService {
     )}&scope=${encodeURIComponent(this.scope)}`;
 
     await Browser.open({ url: authUrl });
-  }
-
-  logout() {
-    this.cleanUp();
-    this.login();
-  }
-
-  cleanUp() {
-    this.setTokens({});
   }
 }
