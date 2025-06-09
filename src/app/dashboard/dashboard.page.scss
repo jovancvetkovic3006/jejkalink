@@ -1,0 +1,23 @@
+.glucose-display {
+  height: 50vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #f3f4f6;
+
+  .glucose-number {
+    font-size: 5rem;
+    font-weight: bold;
+    color: #3880ff;
+  }
+
+  .glucose-unit {
+    font-size: 1.2rem;
+    color: #666;
+  }
+}
+
+.data-groups {
+  padding: 0 10px;
+}

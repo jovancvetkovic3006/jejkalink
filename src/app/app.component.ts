@@ -1,26 +1,62 @@
 import { Component } from '@angular/core';
-import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
+import {
+  IonApp,
+  IonRouterOutlet,
+  IonToolbar,
+  IonButton,
+  IonHeader,
+  IonTitle,
+  IonButtons,
+} from '@ionic/angular/standalone';
 
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { AuthService } from './auth.service';
+import { AuthService } from './services/auth.service';
+import { Log } from './utils/log';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet],
+  imports: [
+    IonButtons,
+    IonTitle,
+    IonHeader,
+    IonButton,
+    IonToolbar,
+    IonApp,
+    IonRouterOutlet,
+  ],
 })
 export class AppComponent {
-  clientId = '4fb211b8-f130-4398-b51e-28900bf68527';
-  redirectUri = 'com.medtronic.carepartner:/sso';
-  scope = 'openid profile roles country';
+  userName: any;
 
   constructor(public authService: AuthService) {
-    this.authService.authCode$.subscribe((code) => {
-      if (code) {
-        // Here you can call your backend with the code
-        console.log('Received auth code in component:', code);
-      }
+    // Optionally, load the username from a user service
+    const storedUser = localStorage.getItem('userInfo');
+    if (storedUser) {
+      this.userName = JSON.parse(storedUser).name;
+    } else {
+      this.authService.user$.subscribe({
+        next: (user) => {
+          this.userName = user.name;
+        },
+      });
+    }
+
+    this.authService.getData().subscribe({
+      next: (data: any) => {
+        Log().info('Data data: ', data.data);
+        this.authService.data$.next(
+          this.authService.processPatientData(data.data)
+        );
+      },
+      error: (err: any) => {
+        Log().error('Data request failed: ', err);
+      },
     });
+  }
+
+  logout() {
+    this.authService.logout();
   }
 }
