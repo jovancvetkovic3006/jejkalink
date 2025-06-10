@@ -147,7 +147,7 @@ export class AuthService {
   processPatientData(recentData: any) {
     const data = {
       current: 0,
-      trend: '',
+      trend: 0,
       glicemia: [] as string[],
       insulin: [] as string[],
       pump: [] as string[],
@@ -189,7 +189,7 @@ export class AuthService {
     const deviceIsInRange = patientData.conduitSensorInRange || false;
     const trend_raw = patientData.lastSGTrend || '';
     const trend =
-      trend_raw === 'DOWN' ? '⚠️ pada' : trend_raw === 'UP' ? 'raste' : 'miran';
+      trend_raw === 'DOWN' ? -1 : trend_raw === 'UP' ? 1 : 0;
     const averageSG = +((patientData.averageSG || 0) / 18).toFixed(1);
 
     let timeInRange = '-';
@@ -218,7 +218,7 @@ export class AuthService {
       );
 
       if (sensorState === 'CHANGE_SENSOR') {
-        data.senzor.push('⚠️ Zamenite senzor');
+        data.senzor.push('Zamenite senzor');
       }
 
       const banner = patientData.pumpBannerState || [];
@@ -231,7 +231,7 @@ export class AuthService {
         data.insulin.push(`Aktivni insulin ${activeInsulin}`);
       }
     } else {
-      data.senzor.push('⚠️ Senzor nije povezan');
+      data.senzor.push('Senzor nije povezan');
       for (const sg of patientData.sgs || []) {
         if (sg) {
           const lastGlicemia = +(sg.sg / 18).toFixed(1);
@@ -243,31 +243,27 @@ export class AuthService {
     }
 
     if (patientData.pumpSuspended) {
-      data.pump.push('⚠️ Pumpica je suspendovana');
+      data.pump.push('Pumpica je suspendovana');
     }
 
     data.glicemia.push(`HbA1c ${averageSG}`);
 
     if ('timeInRange' in patientData) {
-      data.glicemia.push(`U normali je ${timeInRange}`);
+      timeInRange && data.glicemia.push(`U normali je ${timeInRange}`);
       data.glicemia.push(`Niska ${belowHypoLimit}`);
       data.glicemia.push(`Visoka ${aboveHyperLimit}`);
     }
 
-    if (unitsLeft < 20) {
-      data.insulin.push(`⚠️ Preostalo jedinica ${unitsLeft}`);
-    } else {
       data.insulin.push(`Preostalo jedinica ${unitsLeft}`);
-    }
 
     if (sensorBattery < 10) {
-      data.senzor.push(`⚠️ Baterija senzora ${sensorBattery}%`);
+      data.senzor.push(`Baterija senzora ${sensorBattery}%`);
     } else {
       data.senzor.push(`Baterija senzora ${sensorBattery}%`);
     }
 
     if (pumpBattery < 10) {
-      data.pump.push(`⚠️ Baterija pumpice ${pumpBattery}%`);
+      data.pump.push(`Baterija pumpice ${pumpBattery}%`);
     } else {
       data.pump.push(`Baterija pumpice ${pumpBattery}%`);
     }

@@ -12,6 +12,11 @@
   <div class="glucose-display">
     <div class="glucose-number">{{data.current}}</div>
     <div class="glucose-unit">mmol/dL</div>
+
+     <div class="trend-indicator" [ngClass]="getTrendClass(data.trend)">
+      <ion-icon [name]="getTrendIcon(data.trend)"></ion-icon>
+      <span>{{ trendText(data.trend) }}</span>
+    </div>
   </div>
 
   <div class="data-groups">

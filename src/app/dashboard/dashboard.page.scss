@@ -13,11 +13,47 @@
   }
 
   .glucose-unit {
-    font-size: 1.2rem;
+    font-size: 1rem;
     color: #666;
   }
+
+
+  .trend-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+
+    ion-icon {
+      margin-right: 0.3rem;
+    }
+
+    &.trend-up {
+      color: green;
+    }
+
+    &.trend-down {
+      color: red;
+    }
+
+    &.trend-stable {
+      color: gray;
+    }
+  }
+
 }
 
 .data-groups {
-  padding: 0 10px;
+  padding: 0;
+
+  ion-item-divider {
+    font-size: 1.5rem;
+  }
+}
+
+.glycemia-value {
+  font-size: 5rem;
+  text-align: center;
+  font-weight: bold;
 }

@@ -10,6 +10,8 @@
   </ion-refresher>
 
   <div class="chart-wrapper">
-    <canvas id="glucoseChart"></canvas>
+    <canvas baseChart [datasets]="lineChartData.datasets" [labels]="lineChartData.labels" [options]="lineChartOptions"
+      [legend]="true" chartType="line">
+    </canvas>
   </div>
 </ion-content>

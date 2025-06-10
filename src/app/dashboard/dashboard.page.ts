@@ -11,6 +11,7 @@ import {
   IonItemDivider,
   IonLabel,
   IonItem,
+  IonIcon
 } from '@ionic/angular/standalone';
 import { AuthService } from '../services/auth.service';
 import { take } from 'rxjs';
@@ -34,16 +35,42 @@ import { CommonModule } from '@angular/common';
     IonList,
     IonItemGroup,
     IonItemDivider,
+    IonIcon
   ],
 })
 export class DashboardPage {
   user$ = this.authService.user$;
   data$ = this.authService.data$;
 
-  constructor(public authService: AuthService) {}
+  constructor(public authService: AuthService) { }
 
   doRefresh(event: CustomEvent) {
     this.authService.doRefresh(event);
+  }
+
+
+  getTrendIcon(trend: number): string {
+    switch (trend) {
+      case -1: return 'arrow-down';
+      case 1: return 'arrow-up';
+      default: return 'remove'; // horizontal line
+    }
+  }
+
+  trendText(trend: number): string {
+    switch (trend) {
+      case -1: return 'Pada';
+      case 1: return 'Raste';
+      default: return 'Miran';
+    }
+  }
+
+  getTrendClass(trend: number): string {
+    switch (trend) {
+      case -1: return 'trend-down';
+      case 1: return 'trend-up';
+      default: return 'trend-stable';
+    }
   }
 
   refreshData() {

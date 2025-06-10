@@ -3,5 +3,14 @@
     "@ionic/angular/common",
     "@ionic/angular"
   ],
-  "java.configuration.updateBuildConfiguration": "automatic"
-}
+  
+    "eslint.options": {
+      "configFile": "./eslint.config.js"
+    },
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "editor.formatOnSave": true,
+    "eslint.validate": ["typescript", "html"]
+  }
+  

@@ -1,14 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'ionic.jejkalinkui',
-  appName: 'jejkalinkui',
-  webDir: 'www',
-  plugins: {
-    CapacitorHttp: {
-      enabled: true,
-    },
-  },
+  appId: 'io.ionic.starter',
+  appName: 'ionic-app-base',
+  webDir: 'www'
 };
 
 export default config;
