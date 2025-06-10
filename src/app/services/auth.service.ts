@@ -152,9 +152,12 @@ export class AuthService {
       insulin: [] as string[],
       pump: [] as string[],
       senzor: [] as string[],
+      sgs: [] as string[],
     };
 
     const patientData = recentData.patientData || {};
+
+    data.sgs = patientData.sgs || [];
 
     const unitsLeft = patientData.reservoirRemainingUnits || 0;
     const glicemia = patientData.lastSG
@@ -212,8 +215,7 @@ export class AuthService {
 
       const calibrationMinutes = patientData.timeToNextCalibrationMinutes || 0;
       data.senzor.push(
-        `Sledeca kalibracija za ${Math.floor(calibrationMinutes / 60)}h ${
-          calibrationMinutes % 60
+        `Sledeca kalibracija za ${Math.floor(calibrationMinutes / 60)}h ${calibrationMinutes % 60
         }m`
       );
 
@@ -254,7 +256,7 @@ export class AuthService {
       data.glicemia.push(`Visoka ${aboveHyperLimit}`);
     }
 
-      data.insulin.push(`Preostalo jedinica ${unitsLeft}`);
+    data.insulin.push(`Preostalo jedinica ${unitsLeft}`);
 
     if (sensorBattery < 10) {
       data.senzor.push(`Baterija senzora ${sensorBattery}%`);
@@ -364,11 +366,10 @@ export class AuthService {
   }
 
   async login() {
-    const authUrl = `${this.loginEndpoint}?response_type=code&client_id=${
-      this.clientId
-    }&redirect_uri=${encodeURIComponent(
-      this.redirectUri
-    )}&scope=${encodeURIComponent(this.scope)}`;
+    const authUrl = `${this.loginEndpoint}?response_type=code&client_id=${this.clientId
+      }&redirect_uri=${encodeURIComponent(
+        this.redirectUri
+      )}&scope=${encodeURIComponent(this.scope)}`;
 
     await Browser.open({ url: authUrl });
   }

@@ -9,7 +9,9 @@ import {
 } from '@ionic/angular/standalone';
 import { AuthService } from '../services/auth.service';
 import { NgChartsModule } from 'ng2-charts';
-import { ChartData, ChartOptions } from 'chart.js';
+import { Chart, ChartConfiguration, ChartData, ChartOptions, ChartType } from "chart.js";
+import annotationPlugin from 'chartjs-plugin-annotation';
+Chart.register(annotationPlugin);
 
 @Component({
   selector: 'app-chart-tab',
@@ -26,27 +28,65 @@ import { ChartData, ChartOptions } from 'chart.js';
   ],
 })
 export class ChartPage {
+  data$ = this.authService.data$;
+  public lineChartLegend = true;
   constructor(public authService: AuthService) { }
 
   doRefresh(event: CustomEvent) {
     this.authService.doRefresh(event);
   }
 
+  options = {
+    plugins: {
+      annotation: {
+        annotations: {
+          line1: {
+            type: 'line',
+            yMin: 60,
+            yMax: 60,
+            borderColor: 'rgb(255, 99, 132)',
+            borderWidth: 2,
+          }
+        }
+      }
+    }
+  };
+
   lineChartData: ChartData<'line'> = {
     labels: [],
     datasets: [
       {
         label: 'Glucose (mg/dL)',
-        data: [],
-        fill: false,
-        borderColor: 'blue',
-        tension: 0.3,
+        data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+        fill: false, borderColor: 'black',
+        backgroundColor: 'rgb(49, 53, 127)',
+        tension: 0.5,
       },
     ],
   };
 
   lineChartOptions: ChartOptions = {
     responsive: true,
+    plugins: {
+      annotation: {
+        annotations: {
+          line1: {
+            type: 'line',
+            yMin: 4.5,
+            yMax: 4.5,
+            borderColor: 'rgb(255, 99, 132)',
+            borderWidth: 2,
+          }
+          , line2: {
+            type: 'line',
+            yMin: 7.5,
+            yMax: 7.5,
+            borderColor: 'rgb(255, 99, 132)',
+            borderWidth: 2,
+          }
+        }
+      }
+    },
     scales: {
       x: {
         display: true,
@@ -61,8 +101,8 @@ export class ChartPage {
           display: true,
           text: 'Glucose (mg/dL)',
         },
-        suggestedMin: 50,
-        suggestedMax: 200,
+        suggestedMin: 0,
+        suggestedMax: 30,
       },
     },
   };
@@ -72,21 +112,21 @@ export class ChartPage {
     {
       kind: 'SG',
       version: 1,
-      sg: 120,
+      sg: 7,
       sensorState: 'OK',
       timestamp: '2025-05-21T16:40:31',
     },
     {
       kind: 'SG',
       version: 1,
-      sg: 125,
+      sg: 12,
       sensorState: 'OK',
       timestamp: '2025-05-21T17:00:31',
     },
     {
       kind: 'SG',
       version: 1,
-      sg: 115,
+      sg: 5,
       sensorState: 'OK',
       timestamp: '2025-05-21T17:20:31',
     },
@@ -94,12 +134,14 @@ export class ChartPage {
   ];
 
   ngOnInit() {
-    this.loadChartData();
+    this.data$.subscribe((data) => {
+      this.loadChartData(data.sgs || []);
+    });
   }
 
-  loadChartData() {
+  loadChartData(sgs: any[]) {
     // Filter out invalid data points (sg=0 or no data)
-    const filtered = this.rawData.filter(
+    const filtered = sgs.filter(
       (d) => d.sg > 0 && d.sensorState === 'OK'
     );
 
