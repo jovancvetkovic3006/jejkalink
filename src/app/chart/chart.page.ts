@@ -36,6 +36,43 @@ export class ChartPage {
     this.authService.doRefresh(event);
   }
 
+  customTooltipHandler(context: any) {
+    const { chart, tooltip } = context;
+
+    // Create custom tooltip element if not exists
+    let tooltipEl = document.getElementById('custom-tooltip');
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.id = 'custom-tooltip';
+      tooltipEl.style.position = 'absolute';
+      tooltipEl.style.background = '#333';
+      tooltipEl.style.color = '#fff';
+      tooltipEl.style.padding = '6px 10px';
+      tooltipEl.style.borderRadius = '4px';
+      tooltipEl.style.pointerEvents = 'none';
+      tooltipEl.style.transition = '0.2s ease';
+      document.body.appendChild(tooltipEl);
+    }
+
+    // Hide if no tooltip
+    if (tooltip.opacity === 0) {
+      tooltipEl.style.opacity = '0';
+      return;
+    }
+
+    // Set text content
+    if (tooltip.body) {
+      const bodyLines = tooltip.body.map((b: any) => b.lines).flat();
+      tooltipEl.innerHTML = bodyLines.join('<br>');
+    }
+
+    // Position horizontally only
+    const canvasRect = chart.canvas.getBoundingClientRect();
+    tooltipEl.style.left = canvasRect.left + window.pageXOffset + tooltip.caretX + 'px';
+    tooltipEl.style.top = canvasRect.top + window.pageYOffset + 'px'; // fixed to top
+    tooltipEl.style.opacity = '1';
+  }
+
   options = {
     plugins: {
       annotation: {
@@ -59,14 +96,19 @@ export class ChartPage {
         label: 'Glucose (mg/dL)',
         data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
         fill: false, borderColor: 'black',
-        backgroundColor: 'rgb(49, 53, 127)',
-        tension: 0.5,
+        backgroundColor: 'black',
+        tension: 0.3,
       },
     ],
   };
 
   lineChartOptions: ChartOptions = {
     responsive: true,
+    maintainAspectRatio: true,
+    interaction: {
+      mode: 'index', // or 'nearest'
+      intersect: false, // important: allow trigger when not directly on a point
+    },
     plugins: {
       annotation: {
         annotations: {
@@ -107,32 +149,6 @@ export class ChartPage {
     },
   };
 
-  // Example raw data - replace with your actual data input
-  rawData = [
-    {
-      kind: 'SG',
-      version: 1,
-      sg: 7,
-      sensorState: 'OK',
-      timestamp: '2025-05-21T16:40:31',
-    },
-    {
-      kind: 'SG',
-      version: 1,
-      sg: 12,
-      sensorState: 'OK',
-      timestamp: '2025-05-21T17:00:31',
-    },
-    {
-      kind: 'SG',
-      version: 1,
-      sg: 5,
-      sensorState: 'OK',
-      timestamp: '2025-05-21T17:20:31',
-    },
-    // Add more valid data points here...
-  ];
-
   ngOnInit() {
     this.data$.subscribe((data) => {
       this.loadChartData(data.sgs || []);
@@ -140,17 +156,17 @@ export class ChartPage {
   }
 
   loadChartData(sgs: any[]) {
-    // Filter out invalid data points (sg=0 or no data)
-    const filtered = sgs.filter(
-      (d) => d.sg > 0 && d.sensorState === 'OK'
-    );
-
+    const now = new Date();
+    sgs.reverse()
     // Map timestamps for labels
-    this.lineChartData.labels = filtered.map((d) =>
+    this.lineChartData.labels = sgs.map((d) =>
       new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     );
 
+    debugger;
     // Map glucose values
-    this.lineChartData.datasets[0].data = filtered.map((d) => d.sg);
+    this.lineChartData.datasets[0].data = sgs.map((d) => {
+      return parseFloat(((d.sg) / 18).toFixed(1));
+    });
   }
 }
