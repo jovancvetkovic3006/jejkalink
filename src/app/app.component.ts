@@ -36,8 +36,8 @@ import { BackgroundService } from './background.service';
 export class AppComponent implements OnInit, OnDestroy {
   userName: any;
 
-  constructor(public authService: AuthService,
-    public notifyService: NotificationsService,
+  constructor(private readonly authService: AuthService,
+    private readonly notifyService: NotificationsService,
     private readonly ngZone: NgZone,
     private readonly bckgService: BackgroundService) {
     if (this.authService.isTokenExpired()) {
@@ -68,6 +68,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.refreshPatientData().subscribe({
       next: async () => {
         await this.notifyService.startForegroundService();
+        await this.notifyService.startForegroundListener();
         Log().info('Foreground service started successfully');
       },
       error: (err: any) => {

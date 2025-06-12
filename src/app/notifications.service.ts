@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 
 import { ForegroundService, Importance } from '@capawesome-team/capacitor-android-foreground-service';
 import { Log } from './utils/log';
@@ -7,6 +7,8 @@ import { Log } from './utils/log';
   providedIn: 'root'
 })
 export class NotificationsService {
+  constructor(private readonly ngZone: NgZone) { }
+
   startForegroundService = async () => {
     Log().info('Starting foreground service');
     await ForegroundService.startForegroundService({
@@ -15,9 +17,19 @@ export class NotificationsService {
       body: 'Body',
       smallIcon: 'splash',
       silent: false,
-      notificationChannelId: 'default',
+      notificationChannelId: 'Default',
     });
   };
+
+  async startForegroundListener(): Promise<void> {
+    await ForegroundService.removeAllListeners();
+    await ForegroundService.addListener('buttonClicked', event => {
+      this.ngZone.run(async () => {
+        await ForegroundService.stopForegroundService();
+        await ForegroundService.moveToForeground();
+      });
+    });
+  }
 
   updateForegroundService = async () => {
     Log().info('Updating foreground service');
@@ -35,7 +47,7 @@ export class NotificationsService {
 
   createNotificationChannel = async () => {
     await ForegroundService.createNotificationChannel({
-      id: 'default',
+      id: 'Default',
       name: 'Default',
       description: 'Default channel',
       importance: Importance.Max,
@@ -44,7 +56,7 @@ export class NotificationsService {
 
   deleteNotificationChannel = async () => {
     await ForegroundService.deleteNotificationChannel({
-      id: 'default',
+      id: 'Default',
     });
   };
 
