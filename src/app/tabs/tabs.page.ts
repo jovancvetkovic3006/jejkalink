@@ -15,7 +15,9 @@ import {
   statsChartOutline,
   remove,
   arrowDown,
-  arrowUp
+  arrowUp,
+  logOut,
+  logOutOutline
 } from 'ionicons/icons';
 
 @Component({
@@ -28,8 +30,10 @@ export class TabsPage {
   public environmentInjector = inject(EnvironmentInjector);
 
   constructor() {
-    addIcons({ triangle, ellipse, square, pulseOutline, statsChartOutline, remove,
+    addIcons({
+      triangle, ellipse, square, pulseOutline, statsChartOutline, remove,
       arrowDown,
-      arrowUp });
+      arrowUp, logOutOutline
+    });
   }
 }

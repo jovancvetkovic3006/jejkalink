@@ -13,7 +13,8 @@
     "ionic:build": "npm run build",
     "ionic:serve": "npm run start -- --open",
     "ionic:serve:device": "ionic cap run android -l --external --target=adb-AF2SVB3922006565-8aiCMp._adb-tls-connect._tcp",
-    "devices:list": " ionic cap run android --list"
+    "devices:list": " ionic cap run android --list",
+    "ionic:sync": "npx cap copy && npx cap sync"
   },
   "private": true,
   "dependencies": {
@@ -33,6 +34,7 @@
     "@capacitor/haptics": "7.0.1",
     "@capacitor/keyboard": "7.0.1",
     "@capacitor/status-bar": "7.0.1",
+    "@capawesome-team/capacitor-android-foreground-service": "7.0.1",
     "@ionic/angular": "^8.0.0",
     "chart.js": "^3.8.0",
     "chartjs-plugin-annotation": "^1.2.2",
