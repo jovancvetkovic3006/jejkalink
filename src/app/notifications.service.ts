@@ -1,20 +1,15 @@
 import { Injectable } from '@angular/core';
 
-import { Capacitor } from '@capacitor/core';
-import { ForegroundService, Importance, ServiceType } from '@capawesome-team/capacitor-android-foreground-service';
+import { ForegroundService, Importance } from '@capawesome-team/capacitor-android-foreground-service';
 import { Log } from './utils/log';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NotificationsService {
-
-  constructor() { }
-
-
   startForegroundService = async () => {
     Log().info('Starting foreground service');
-    return ForegroundService.startForegroundService({
+    await ForegroundService.startForegroundService({
       id: 1,
       title: 'Title',
       body: 'Body',
@@ -53,15 +48,15 @@ export class NotificationsService {
     });
   };
 
-  requestPermissions(): Promise<any> {
-    return ForegroundService.requestPermissions();
+  async requestPermissions(): Promise<any> {
+    await ForegroundService.requestPermissions();
   }
 
-  requestManageOverlayPermission(): Promise<any> {
-    return ForegroundService.requestManageOverlayPermission();
+  async requestManageOverlayPermission(): Promise<any> {
+    await ForegroundService.requestManageOverlayPermission();
   }
 
-  checkPermissions(): Promise<any> {
-    return ForegroundService.checkPermissions();
+  async checkPermissions(): Promise<any> {
+    await ForegroundService.checkPermissions();
   }
 }
