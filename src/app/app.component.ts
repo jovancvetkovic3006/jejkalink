@@ -12,9 +12,10 @@ import {
 
 import { AuthService } from './services/auth.service';
 import { Log } from './utils/log';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService } from './services/notifications.service';
 import { BehaviorSubject, take, tap } from 'rxjs';
-import { BackgroundService } from './background.service';
+import { BackgroundService } from './services/background.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
@@ -28,6 +29,7 @@ import { BackgroundService } from './background.service';
     IonApp,
     IonRouterOutlet,
     IonIcon,
+    CommonModule,
   ],
 })
 export class AppComponent implements OnInit, OnDestroy {

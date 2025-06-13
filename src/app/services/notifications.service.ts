@@ -1,7 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
 
 import { ForegroundService, Importance } from '@capawesome-team/capacitor-android-foreground-service';
-import { Log } from './utils/log';
+import { Log } from '../utils/log';
 
 @Injectable({
   providedIn: 'root'

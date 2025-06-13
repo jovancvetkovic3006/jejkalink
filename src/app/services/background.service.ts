@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { ForegroundService, Importance } from '@capawesome-team/capacitor-android-foreground-service';
-import { Log } from './utils/log';
+import { Log } from '../utils/log';
 import { App } from '@capacitor/app';
 import { BackgroundTask } from '@capawesome/capacitor-background-task';
 import { PluginListenerHandle } from '@capacitor/core';
