@@ -1,10 +1,10 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>Dashboard</ion-title>
+    <ion-title>Status</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content fullscreen *ngIf="data$ | async as data">
+<ion-content fullscreen *ngIf="patientData$ | async as data">
   <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>

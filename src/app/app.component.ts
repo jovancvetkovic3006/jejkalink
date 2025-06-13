@@ -13,10 +13,7 @@ import {
 import { AuthService } from './services/auth.service';
 import { Log } from './utils/log';
 import { NotificationsService } from './notifications.service';
-import { take, tap } from 'rxjs';
-import { App } from '@capacitor/app';
-import { BackgroundTask } from '@capawesome/capacitor-background-task';
-import { PluginListenerHandle } from '@capacitor/core';
+import { BehaviorSubject, take, tap } from 'rxjs';
 import { BackgroundService } from './background.service';
 
 @Component({
@@ -34,43 +31,36 @@ import { BackgroundService } from './background.service';
   ],
 })
 export class AppComponent implements OnInit, OnDestroy {
-  userName: any;
+  username$ = new BehaviorSubject<string>('Jefimija Cvetkovic');
 
-  constructor(private readonly authService: AuthService,
+  constructor(
+    private readonly authService: AuthService,
     private readonly notifyService: NotificationsService,
-    private readonly ngZone: NgZone,
-    private readonly bckgService: BackgroundService) {
+    private readonly bckgService: BackgroundService
+  ) {
     if (this.authService.isTokenExpired()) {
       this.authService.login();
     }
-
-    this.ngZone.run(async () => {
-      await this.notifyService.checkPermissions();
-      await this.notifyService.requestManageOverlayPermission();
-    });
   }
 
   ngOnInit(): void {
     this.bckgService.startBackgroundTask(this.refreshPatientData);
+    this.notifyService.startForegroundService();
+    this.notifyService.startForegroundListener();
 
     // Optionally, load the username from a user service
     const storedUser = localStorage.getItem('userInfo');
     if (storedUser) {
-      this.userName = JSON.parse(storedUser).name;
+      this.username$.next(JSON.parse(storedUser).name);
     } else {
       this.authService.user$.pipe(take(1)).subscribe({
         next: (user) => {
-          this.userName = user.name;
+          this.username$.next(user.name);
         },
       });
     }
 
     this.refreshPatientData().subscribe({
-      next: async () => {
-        await this.notifyService.startForegroundService();
-        await this.notifyService.startForegroundListener();
-        Log().info('Foreground service started successfully');
-      },
       error: (err: any) => {
         Log().error('Data request failed: ', err);
       },
@@ -78,9 +68,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   refreshPatientData = () => {
-    return this.authService.getData().pipe(take(1), tap((data) => {
-      const patientData = this.authService.processPatientData(data.data)
-      this.authService.data$.next(patientData);
+    return this.authService.getData().pipe(tap((data) => {
+      const patientData = this.authService.processPatientData(data.data);
+      this.notifyService.updateForegroundService('Glikemija', `${patientData?.current}` || 'Nema podataka');
+      this.authService.patientData$.next(patientData);
     }));
   }
 

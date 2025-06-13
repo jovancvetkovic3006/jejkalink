@@ -45,7 +45,7 @@ export class AuthService {
   public refreshToken$ = new BehaviorSubject<any | null>(null);
   public idToken$ = new BehaviorSubject<any | null>(null);
   public user$ = new BehaviorSubject<any | null>(null);
-  data$: BehaviorSubject<any> = new BehaviorSubject({
+  patientData$: BehaviorSubject<any> = new BehaviorSubject({
     current: 0,
     trend: '',
     glicemia: [] as string[],
@@ -107,11 +107,11 @@ export class AuthService {
       .pipe(take(1))
       .subscribe({
         next: (data: any) => {
-          this.data$.next(this.processPatientData(data.data));
+          this.patientData$.next(this.processPatientData(data.data));
           (event.target as HTMLIonRefresherElement).complete();
         },
         error: (err: any) => {
-          console.error('Refresh failed', err);
+          Log().error('Refresh failed', err);
           (event.target as HTMLIonRefresherElement).complete();
         },
       });
@@ -119,10 +119,6 @@ export class AuthService {
 
   getData(): Observable<HttpResponse> {
     const userName = 'jejka3006';
-
-    const body = new HttpParams()
-      .set('username', userName)
-      .set('role', 'patient');
 
     Log().info('Request pump data');
     return from(
@@ -207,7 +203,6 @@ export class AuthService {
 
     const lastTime = `${datePart} u ${timePart}`;
 
-    debugger;
     const isSensorConnected = patientData.conduitSensorInRange || false;
     const activeInsulin = patientData.activeInsulin.amount.toFixed(1);
 
@@ -367,7 +362,7 @@ export class AuthService {
                 this.getData().subscribe({
                   next: (data: any) => {
                     Log().info('Data data: ', data.data);
-                    this.data$.next(this.processPatientData(data.data));
+                    this.patientData$.next(this.processPatientData(data.data));
                   },
                   error: (err: any) => {
                     Log().error('Data request failed: ', err);

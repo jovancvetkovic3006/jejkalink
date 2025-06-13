@@ -5,7 +5,7 @@ import {
   HttpHandler,
   HttpEvent,
 } from '@angular/common/http';
-import { Observable, from, throwError } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { isTokenExpired } from './token.util';
@@ -13,7 +13,7 @@ import { Log } from './log';
 
 @Injectable()
 export class TokenInterceptor implements HttpInterceptor {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   intercept(
     req: HttpRequest<any>,
@@ -43,6 +43,9 @@ export class TokenInterceptor implements HttpInterceptor {
     return this.authService.refreshToken().pipe(
       switchMap((res: any) => {
         this.authService.setTokens(res);
+        if (!res.access_token) {
+          this.authService.logout();
+        }
 
         Log().info('Intercepted refresh token: ', res.access_token);
         const cloned = req.clone({

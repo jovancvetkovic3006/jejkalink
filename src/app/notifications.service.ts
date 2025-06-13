@@ -10,11 +10,20 @@ export class NotificationsService {
   constructor(private readonly ngZone: NgZone) { }
 
   startForegroundService = async () => {
+    const permissions = await ForegroundService.checkPermissions();
+    Log().info('Foreground service permissions:', permissions);
+    if (permissions.display !== 'granted') {
+      this.ngZone.run(async () => {
+        await this.requestPermissions();
+        await this.requestManageOverlayPermission();
+      });
+    }
+
     Log().info('Starting foreground service');
     await ForegroundService.startForegroundService({
       id: 1,
-      title: 'Title',
-      body: 'Body',
+      title: 'Glikemija',
+      body: 'Nema podataka',
       smallIcon: 'splash',
       silent: false,
       notificationChannelId: 'Default',
@@ -31,12 +40,12 @@ export class NotificationsService {
     });
   }
 
-  updateForegroundService = async () => {
+  updateForegroundService = async (title = 'Glikemija', body = 'Nema podataka') => {
     Log().info('Updating foreground service');
     await ForegroundService.updateForegroundService({
       id: 1,
-      title: 'Title',
-      body: 'Body',
+      title: title,
+      body: body,
       smallIcon: 'splash',
     });
   };

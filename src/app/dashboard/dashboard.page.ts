@@ -39,8 +39,7 @@ import { CommonModule } from '@angular/common';
   ],
 })
 export class DashboardPage {
-  user$ = this.authService.user$;
-  data$ = this.authService.data$;
+  patientData$ = this.authService.patientData$;
 
   constructor(public authService: AuthService) { }
 
@@ -80,7 +79,7 @@ export class DashboardPage {
       .subscribe({
         next: (data: any) => {
           Log().info('Data data: ', data.data);
-          this.authService.data$.next(
+          this.authService.patientData$.next(
             this.authService.processPatientData(data.data)
           );
         },
