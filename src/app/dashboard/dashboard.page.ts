@@ -11,11 +11,10 @@ import {
   IonItemDivider,
   IonLabel,
   IonItem,
-  IonIcon
+  IonIcon,
+  IonSpinner
 } from '@ionic/angular/standalone';
 import { AuthService } from '../services/auth.service';
-import { take } from 'rxjs';
-import { Log } from '../utils/log';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -35,7 +34,8 @@ import { CommonModule } from '@angular/common';
     IonList,
     IonItemGroup,
     IonItemDivider,
-    IonIcon
+    IonIcon,
+    IonSpinner
   ],
 })
 export class DashboardPage {
@@ -47,12 +47,11 @@ export class DashboardPage {
     this.authService.doRefresh(event);
   }
 
-
   getTrendIcon(trend: number): string {
     switch (trend) {
-      case -1: return 'arrow-down';
-      case 1: return 'arrow-up';
-      default: return 'remove'; // horizontal line
+      case -1: return 'arrow-down-circle';
+      case 1: return 'arrow-up-circle';
+      default: return 'arrow-back-circle'; // horizontal line
     }
   }
 
@@ -70,22 +69,5 @@ export class DashboardPage {
       case 1: return 'trend-up';
       default: return 'trend-stable';
     }
-  }
-
-  refreshData() {
-    this.authService
-      .getData()
-      .pipe(take(1))
-      .subscribe({
-        next: (data: any) => {
-          Log().info('Data data: ', data.data);
-          this.authService.patientData$.next(
-            this.authService.processPatientData(data.data)
-          );
-        },
-        error: (err: any) => {
-          Log().error('Data request failed: ', err);
-        },
-      });
   }
 }

@@ -10,7 +10,7 @@ export function isTokenExpired(token: string | null): boolean {
     if (!token) return true;
 
     const decoded = jwt_decode.jwtDecode<JWTPayload>(token);
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000) - 300000;
     return !decoded.exp || decoded.exp < now;
   } catch (e) {
     return true;

@@ -14,10 +14,10 @@ import {
   pulseOutline,
   statsChartOutline,
   remove,
-  arrowDown,
-  arrowUp,
-  logOut,
-  logOutOutline
+  arrowDownCircle,
+  arrowUpCircle,
+  arrowBackCircle,
+  logOutOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -32,8 +32,8 @@ export class TabsPage {
   constructor() {
     addIcons({
       triangle, ellipse, square, pulseOutline, statsChartOutline, remove,
-      arrowDown,
-      arrowUp, logOutOutline
+      arrowDownCircle,
+      arrowUpCircle, logOutOutline, arrowBackCircle
     });
   }
 }

@@ -1,63 +1,51 @@
-import { Injectable } from '@angular/core';
-
+import { Injectable, NgZone } from '@angular/core';
 import { Log } from '../utils/log';
 import { App } from '@capacitor/app';
-import { BackgroundTask } from '@capawesome/capacitor-background-task';
 import { PluginListenerHandle } from '@capacitor/core';
+import { BackgroundTask } from '@capawesome/capacitor-background-task';
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BackgroundService {
-  runInForeground = true; // Set to false if you want to disable background tasks
+  taskId = '' as string; // Use string | undefined to match the type of taskId in BackgroundTask
+  timeoutId: ReturnType<typeof setTimeout> | undefined; // Use correct type for timeoutId
   appStateChangeListener: Promise<PluginListenerHandle> | undefined;
+  isActive$ = new BehaviorSubject<boolean>(true); // Track app state
+  isTaskTriggered$ = new BehaviorSubject<void>(undefined); // Track task state
 
-  startBackgroundTask(callback: any): void {
+  constructor(private readonly ngZone: NgZone) { }
+
+  startBackgroundTask(): void {
     Log().info('Ready background task listener');
-    setInterval(() => {
-      if (this.runInForeground) {
-        callback();
-      }
-    }, 30000); // 60,000 ms = 1 minute
-
     this.appStateChangeListener = App.addListener(
       'appStateChange',
-      async ({ isActive }) => {
-        Log().info('App state changed: ', isActive);
-        if (isActive) {
-          this.runInForeground = true;
-          return;
-        }
+      ({ isActive }) => {
+        this.ngZone.run(async () => {
+          if (isActive) {
+            return;
+          }
 
-        const taskId = await BackgroundTask.beforeExit(async () => {
-          this.runInForeground = false;
-          await this.runTask(callback);
-          BackgroundTask.finish({ taskId });
+          const taskId = await BackgroundTask.beforeExit(async () => {
+            await this.keepRefreshInLoop();
+            BackgroundTask.finish({ taskId });
+          });
         });
       },
     );
   }
 
+  keepRefreshInLoop = async () => {
+    this.timeoutId && clearTimeout(this.timeoutId);
+    this.isTaskTriggered$.next();
+    this.timeoutId = setTimeout(async () => {
+      Log().info('Foreground service timeout reached, starting service');
+      await this.keepRefreshInLoop();
+    }, 120000);
+  }
+
   onDestroy() {
     this.appStateChangeListener?.then(listener => listener.remove());
-  }
-
-  private async runTask(callback: any): Promise<void> {
-    const taskDurationMs = 120000;
-    const end = new Date().getTime() + taskDurationMs;
-    while (new Date().getTime() < end) {
-      const isAppActive = await this.isAppActive();
-      if (isAppActive) {
-        this.runInForeground = true;
-        break;
-      }
-      Log().info('Background task still active.');
-      await callback();
-    }
-  }
-
-  private async isAppActive(): Promise<boolean> {
-    const currentState = await App.getState();
-    return currentState.isActive;
   }
 }

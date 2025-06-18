@@ -1,4 +1,4 @@
-import { Component, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import {
   IonApp,
   IonRouterOutlet,
@@ -12,10 +12,10 @@ import {
 
 import { AuthService } from './services/auth.service';
 import { Log } from './utils/log';
-import { NotificationsService } from './services/notifications.service';
-import { BehaviorSubject, take, tap } from 'rxjs';
+import { BehaviorSubject, take } from 'rxjs';
 import { BackgroundService } from './services/background.service';
 import { CommonModule } from '@angular/common';
+import { App } from '@capacitor/app';
 
 @Component({
   selector: 'app-root',
@@ -32,12 +32,12 @@ import { CommonModule } from '@angular/common';
     CommonModule,
   ],
 })
-export class AppComponent implements OnInit, OnDestroy {
+export class AppComponent implements OnInit {
+  timeoutId: ReturnType<typeof setTimeout> | undefined;
   username$ = new BehaviorSubject<string>('Jefimija Cvetkovic');
 
   constructor(
     private readonly authService: AuthService,
-    private readonly notifyService: NotificationsService,
     private readonly bckgService: BackgroundService
   ) {
     if (this.authService.isTokenExpired()) {
@@ -46,9 +46,19 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.bckgService.startBackgroundTask(this.refreshPatientData);
-    this.notifyService.startForegroundService();
-    this.notifyService.startForegroundListener();
+    this.bckgService.isTaskTriggered$.subscribe(() => {
+      this.refreshPatientData();
+    });
+
+    this.bckgService.startBackgroundTask();
+
+    this.refreshPatientData();
+
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        this.refreshPatientData(); // Refresh data when app comes to foreground
+      }
+    });
 
     // Optionally, load the username from a user service
     const storedUser = localStorage.getItem('userInfo');
@@ -61,24 +71,28 @@ export class AppComponent implements OnInit, OnDestroy {
         },
       });
     }
+  }
 
-    this.refreshPatientData().subscribe({
+  refreshPatientData = () => {
+    this.authService.getData().subscribe({
+      next: (data) => {
+        const patientData = this.authService.processPatientData(data.data);
+        this.authService.patientData$.next(patientData);
+      },
       error: (err: any) => {
         Log().error('Data request failed: ', err);
       },
     });
   }
 
-  refreshPatientData = () => {
-    return this.authService.getData().pipe(tap((data) => {
-      const patientData = this.authService.processPatientData(data.data);
-      this.notifyService.updateForegroundService('Glikemija', `${patientData?.current}` || 'Nema podataka');
-      this.authService.patientData$.next(patientData);
-    }));
-  }
+  keepRefreshInLoop() {
+    this.timeoutId && clearTimeout(this.timeoutId);
 
-  ngOnDestroy() {
-    this.bckgService.onDestroy();
+    this.refreshPatientData();
+    this.timeoutId = setTimeout(() => {
+      Log().info('Foreground service timeout reached, starting service');
+      this.keepRefreshInLoop(); // Restart the loop
+    }, 5000);
   }
 
   logout() {

@@ -104,7 +104,7 @@ export class AuthService {
 
   doRefresh(event: CustomEvent) {
     this.getData()
-      .pipe(take(1))
+      .pipe()
       .subscribe({
         next: (data: any) => {
           this.patientData$.next(this.processPatientData(data.data));
@@ -255,7 +255,7 @@ export class AuthService {
       data.senzor.push('Senzor nije povezan');
       for (const sg of data.sgs || []) {
         if (sg) {
-          const lastGlicemia = this.getLastGlicemia(data)?.sg;
+          const lastGlicemia = (this.getLastGlicemia(data)?.sg / 18).toFixed(1);
           data.glicemia.push(`Poslednja glikemija ${lastGlicemia}`);
           data.senzor.push(`Poslednja sinhronizacija ${lastTime}`);
           break;
