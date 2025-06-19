@@ -7,7 +7,7 @@ import {
   IonRefresher,
   IonRefresherContent,
 } from '@ionic/angular/standalone';
-import { AuthService } from '../services/auth.service';
+import { AuthenticationService } from '../services/authentication.service';
 import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartData, ChartOptions } from "chart.js";
 import annotationPlugin from 'chartjs-plugin-annotation';
@@ -89,7 +89,7 @@ export class ChartPage {
       },
     },
   };
-  constructor(public authService: AuthService) { }
+  constructor(public authService: AuthenticationService) { }
 
   ngOnInit() {
     this.patientData$.subscribe((data) => {

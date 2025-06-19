@@ -10,10 +10,9 @@ import {
   IonIcon,
 } from '@ionic/angular/standalone';
 
-import { AuthService } from './services/auth.service';
+import { AuthenticationService } from './services/authentication.service';
 import { Log } from './utils/log';
 import { BehaviorSubject, take } from 'rxjs';
-import { BackgroundService } from './services/background.service';
 import { CommonModule } from '@angular/common';
 import { App } from '@capacitor/app';
 
@@ -37,8 +36,7 @@ export class AppComponent implements OnInit {
   username$ = new BehaviorSubject<string>('Jefimija Cvetkovic');
 
   constructor(
-    private readonly authService: AuthService,
-    private readonly bckgService: BackgroundService
+    private readonly authService: AuthenticationService,
   ) {
     if (this.authService.isTokenExpired()) {
       this.authService.login();
@@ -46,19 +44,13 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.bckgService.isTaskTriggered$.subscribe(() => {
-      this.refreshPatientData();
-    });
+    this.authService.doRefresh();
 
-    this.bckgService.startBackgroundTask();
-
-    this.refreshPatientData();
-
-    App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        this.refreshPatientData(); // Refresh data when app comes to foreground
-      }
-    });
+    // App.addListener('appStateChange', ({ isActive }) => {
+    //   if (isActive) {
+    //     this.authService.doRefresh();
+    //   }
+    // });
 
     // Optionally, load the username from a user service
     const storedUser = localStorage.getItem('userInfo');
@@ -71,28 +63,6 @@ export class AppComponent implements OnInit {
         },
       });
     }
-  }
-
-  refreshPatientData = () => {
-    this.authService.getData().subscribe({
-      next: (data) => {
-        const patientData = this.authService.processPatientData(data.data);
-        this.authService.patientData$.next(patientData);
-      },
-      error: (err: any) => {
-        Log().error('Data request failed: ', err);
-      },
-    });
-  }
-
-  keepRefreshInLoop() {
-    this.timeoutId && clearTimeout(this.timeoutId);
-
-    this.refreshPatientData();
-    this.timeoutId = setTimeout(() => {
-      Log().info('Foreground service timeout reached, starting service');
-      this.keepRefreshInLoop(); // Restart the loop
-    }, 5000);
   }
 
   logout() {

@@ -14,7 +14,7 @@ export interface IUserInfo {
 @Injectable({
   providedIn: 'root',
 })
-export class AuthService {
+export class AuthenticationService {
   private clientId = '4fb211b8-f130-4398-b51e-28900bf68527';
   private redirectUri = 'com.medtronic.carepartner:/sso';
   private scope = 'openid profile roles country';
@@ -102,17 +102,19 @@ export class AuthService {
     });
   }
 
-  doRefresh(event: CustomEvent) {
+  doRefresh(event?: CustomEvent) {
     this.getData()
-      .pipe()
+      .pipe(
+        take(1)
+      )
       .subscribe({
         next: (data: any) => {
           this.patientData$.next(this.processPatientData(data.data));
-          (event.target as HTMLIonRefresherElement).complete();
+          (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {
           Log().error('Refresh failed', err);
-          (event.target as HTMLIonRefresherElement).complete();
+          (event?.target as HTMLIonRefresherElement)?.complete();
         },
       });
   }

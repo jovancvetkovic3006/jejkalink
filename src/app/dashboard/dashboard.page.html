@@ -10,7 +10,7 @@
   </ion-refresher>
 
   <div class="glucose-display">
-    <p class="glucose-last">Poslednje ocitavanje: {{ data.since ? data.since : 'nedostupno' }}</p>
+    <p *ngIf="data.current" class="glucose-last">Poslednje ocitavanje: {{ data.since ? data.since : 'nedostupno' }}</p>
     <div *ngIf="data.current" class="glucose-number">{{data.current}}</div>
     <ion-spinner *ngIf="!data.current" name="circles"></ion-spinner>
     <div *ngIf="data.current" class="glucose-unit">mmol/L</div>

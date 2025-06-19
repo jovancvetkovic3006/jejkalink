@@ -14,7 +14,7 @@ import {
   IonIcon,
   IonSpinner
 } from '@ionic/angular/standalone';
-import { AuthService } from '../services/auth.service';
+import { AuthenticationService } from '../services/authentication.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -41,7 +41,7 @@ import { CommonModule } from '@angular/common';
 export class DashboardPage {
   patientData$ = this.authService.patientData$;
 
-  constructor(public authService: AuthService) { }
+  constructor(public authService: AuthenticationService) { }
 
   doRefresh(event: CustomEvent) {
     this.authService.doRefresh(event);
