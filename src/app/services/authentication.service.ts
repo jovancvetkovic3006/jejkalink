@@ -291,7 +291,6 @@ export class AuthenticationService {
       data.pump.push(`Baterija pumpice ${pumpBattery}%`);
     }
 
-    Log().info('MESAGES: ', data);
     return data;
   }
 

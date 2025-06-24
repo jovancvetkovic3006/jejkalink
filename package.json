@@ -34,6 +34,8 @@
     "@capacitor/haptics": "7.0.1",
     "@capacitor/keyboard": "7.0.1",
     "@capacitor/status-bar": "7.0.1",
+    "background-plugin": "file:ionic.jejkalinkui.plugins.background",
+
     "@ionic/angular": "^8.0.0",
     "chart.js": "^3.8.0",
     "chartjs-plugin-annotation": "^1.2.2",

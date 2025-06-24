@@ -15,6 +15,8 @@ import { Log } from './utils/log';
 import { BehaviorSubject, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { App } from '@capacitor/app';
+import { BackgroundWeb } from './services/background-web.service';
+// Import BackgroundWeb if it exists in your project
 
 @Component({
   selector: 'app-root',
@@ -37,6 +39,7 @@ export class AppComponent implements OnInit {
 
   constructor(
     private readonly authService: AuthenticationService,
+    private readonly bckg: BackgroundWeb
   ) {
     if (this.authService.isTokenExpired()) {
       this.authService.login();
@@ -46,11 +49,19 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     this.authService.doRefresh();
 
-    // App.addListener('appStateChange', ({ isActive }) => {
-    //   if (isActive) {
-    //     this.authService.doRefresh();
-    //   }
-    // });
+    (window as any).Capacitor.Plugins.Background.addListener('onDataFetched', (info: any) => {
+      console.log('Got token refresh:', info);
+    });
+
+    this.bckg.echo({ value: 'Hello from BackgroundWeb!' }).then((response) => {
+      console.log('BackgroundWeb response:', response) // Log the response from BackgroundWeb
+    });
+
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        this.authService.doRefresh();
+      }
+    });
 
     // Optionally, load the username from a user service
     const storedUser = localStorage.getItem('userInfo');
