@@ -42,11 +42,11 @@ export class TokenInterceptor implements HttpInterceptor {
     // Token expired → refresh it
     return this.authService.refreshToken().pipe(
       switchMap((res: any) => {
-        this.authService.setTokens(res);
         if (!res.access_token) {
           this.authService.logout();
         }
 
+        this.authService.setTokens(res);
         Log().info('Intercepted refresh token: ', res.access_token);
         const cloned = req.clone({
           setHeaders: { Authorization: `Bearer ${res.access_token}` },

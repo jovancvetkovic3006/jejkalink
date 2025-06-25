@@ -58,18 +58,26 @@ export class AuthenticationService {
     this.setupDeepLinkListener();
   }
 
-  getToken(): string | null {
-    return this.accessToken$.value || localStorage.getItem('access_token');
+  getToken(): string {
+    return this.accessToken$.value || localStorage.getItem('access_token') || '';
   }
 
   setTokens(token: any) {
-    this.accessToken$.next(token.access_token);
-    this.refreshToken$.next(token.refresh_token);
-    this.idToken$.next(token.id_token_hint);
+    token?.access_token && this.accessToken$.next(token.access_token);
+    token?.refresh_token && this.refreshToken$.next(token.refresh_token);
+    token?.id_token_hint && this.idToken$.next(token.id_token_hint);
 
-    localStorage.setItem('access_token', token.access_token);
-    localStorage.setItem('refresh_token', token.refresh_token);
-    localStorage.setItem('id_token', token.id_token_hint);
+    token?.access_token && localStorage.setItem('access_token', token.access_token);
+    token?.refresh_token && localStorage.setItem('refresh_token', token.refresh_token);
+    token?.id_token_hint && localStorage.setItem('id_token', token.id_token_hint);
+  }
+
+  getTokens(): { accessToken: string; refreshToken: string; idToken: string } {
+    return {
+      accessToken: this.getToken(),
+      refreshToken: this.refreshToken$.value || localStorage.getItem('refresh_token') || '',
+      idToken: this.idToken$.value || localStorage.getItem('id_token') || '',
+    };
   }
 
   isTokenExpired() {
@@ -110,6 +118,7 @@ export class AuthenticationService {
       .subscribe({
         next: (data: any) => {
           this.patientData$.next(this.processPatientData(data.data));
+          Log().info('Fresh data: ', data);
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {
