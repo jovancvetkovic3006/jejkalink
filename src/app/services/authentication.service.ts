@@ -6,6 +6,7 @@ import { BehaviorSubject, from, Observable, of, take, tap } from 'rxjs';
 import { getTokenMag, isTokenExpired } from '../utils/token.util';
 import { Log } from '../utils/log.js';
 import { CapacitorHttp, HttpResponse } from '@capacitor/core';
+import { BackgroundWeb } from './background-web.service';
 
 export interface IUserInfo {
   name: string;
@@ -54,7 +55,8 @@ export class AuthenticationService {
     senzor: [] as string[],
   });
 
-  constructor(private readonly http: HttpClient) {
+  constructor(private readonly http: HttpClient,
+    private readonly bckg: BackgroundWeb) {
     this.setupDeepLinkListener();
   }
 
@@ -118,7 +120,12 @@ export class AuthenticationService {
       .subscribe({
         next: (data: any) => {
           this.patientData$.next(this.processPatientData(data.data));
-          Log().info('Fresh data: ', data);
+          Log().info('Re-fresh data sg: ', data.data?.patientData?.lastSG || {});
+          Log().info('Re-fresh data sgs: ', data.data?.patientData?.sgs || []);
+          this.bckg.showNotificationFromIonic({
+            lastSG: data.data?.patientData?.lastSG || {},
+            sgs: data.data?.patientData?.sgs || []
+          });
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {

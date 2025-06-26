@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 
 // Define BackgroundPlugin interface if not imported from elsewhere
 export interface BackgroundPlugin {
-    updateNotification(options: { content: string }): Promise<void>;
+    showNotificationFromIonic(data: any): Promise<void>;
     requestPermissions(): Promise<{ granted: boolean }>;
     hasNotificationPermission(): Promise<{ granted: boolean }>;
     setTokens(options: { accessToken: string; refreshToken: string }): Promise<{ success: boolean }>;
@@ -24,8 +24,8 @@ export class BackgroundWeb extends WebPlugin implements BackgroundPlugin {
         return (window as any).Capacitor.Plugins.Background.setTokens(options);
     }
 
-    updateNotification(options: { content: string; }): Promise<void> {
-        return (window as any).Capacitor.Plugins.Background.updateNotification(options);
+    showNotificationFromIonic(data: any): Promise<void> {
+        return (window as any).Capacitor.Plugins.Background.showNotificationFromIonic(data);
     }
 
     requestPermissions(): Promise<{ granted: boolean }> {
