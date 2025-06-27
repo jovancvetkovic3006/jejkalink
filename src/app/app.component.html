@@ -1,10 +1,14 @@
 <ion-app>
   <ion-header>
     <ion-toolbar color="primary">
-      <ion-title *ngIf="username$ | async as userName">{{ userName ? `${userName}` : 'Jefimija Cvetkovic' }}
+      <ion-title *ngIf="username$ | async as userName">
+        {{ userName || 'Jefimija Cvetkovic' }}
       </ion-title>
+
       <ion-buttons slot="end">
-        <ion-icon (click)="logout()" slot="icon-only" name="log-out-outline"></ion-icon>
+        <ion-button fill="clear" (click)="logout()">
+          <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
+        </ion-button>
       </ion-buttons>
     </ion-toolbar>
   </ion-header>

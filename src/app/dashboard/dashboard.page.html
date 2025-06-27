@@ -10,8 +10,9 @@
   </ion-refresher>
 
   <div class="glucose-display">
-    <p *ngIf="data.current" class="glucose-last">Poslednje ocitavanje: {{ data.since ? data.since : 'nedostupno' }}</p>
-    <div *ngIf="data.current" class="glucose-number">{{data.current}}</div>
+    <ion-label *ngIf="data.current" class="glucose-last">Poslednje ocitavanje: {{ data.since ? data.since : 'nedostupno'
+      }}</ion-label>
+    <div *ngIf="data.current" class="glucose-number" [ngClass]="getCurrentClass(data.current)">{{data.current}}</div>
     <ion-spinner *ngIf="!data.current" name="circles"></ion-spinner>
     <div *ngIf="data.current" class="glucose-unit">mmol/L</div>
 
@@ -19,6 +20,8 @@
       <ion-icon [name]="getTrendIcon(data.trend)"></ion-icon>
       <span>{{ trendText(data.trend) }}</span>
     </div>
+
+    <ion-label *ngIf="!data.isSensorConnected" class="senzor-indicator">Senzor nije povezan</ion-label>
   </div>
 
   <div *ngIf="data.current" class="data-groups">

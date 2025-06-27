@@ -70,4 +70,11 @@ export class DashboardPage {
       default: return 'trend-stable';
     }
   }
+
+  getCurrentClass(current: number): string {
+    console.log('[LOG CURRENT]', current);
+    if (current < 5) return 'trend-down';
+    if (current > 5 && current < 8) return 'trend-stable';
+    return 'trend-up';
+  }
 }

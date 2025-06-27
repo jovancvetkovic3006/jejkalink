@@ -14,7 +14,12 @@
     "ionic:serve": "npm run start -- --open",
     "ionic:serve:device": "ionic cap run android -l --external --target=adb-AF2SVB3922006565-8aiCMp._adb-tls-connect._tcp",
     "devices:list": " ionic cap run android --list",
-    "ionic:sync": "npx cap copy && npx cap sync"
+    "ionic:sync": "npx cap copy && npx cap sync",
+    "android:sync": "npx cap sync android",
+    "android:build": "cd android && gradlew.bat assembleDebug",
+    "android:install": "cd android && gradlew.bat installDebug",
+    "android:start": "adb shell am force-stop ionic.jejkalinkui && adb shell monkey -p ionic.jejkalinkui -c android.intent.category.LAUNCHER 1",
+    "android:run": "npm run ionic:build && npm run android:sync && npm run android:build && npm run android:install && npm run android:start"
   },
   "private": true,
   "dependencies": {
@@ -34,12 +39,11 @@
     "@capacitor/haptics": "7.0.1",
     "@capacitor/keyboard": "7.0.1",
     "@capacitor/status-bar": "7.0.1",
-    "background-plugin": "file:ionic.jejkalinkui.plugins.background",
-
     "@ionic/angular": "^8.0.0",
+    "background-plugin": "file:ionic.jejkalinkui.plugins.background",
     "chart.js": "^3.8.0",
     "chartjs-plugin-annotation": "^1.2.2",
-    "ionicons": "^7.0.0",
+    "ionicons": "^7.4.0",
     "jwt-decode": "^4.0.0",
     "ng2-charts": "^3.1.0",
     "rxjs": "~7.8.0",

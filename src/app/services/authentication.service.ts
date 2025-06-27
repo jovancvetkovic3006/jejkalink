@@ -124,7 +124,8 @@ export class AuthenticationService {
           Log().info('Re-fresh data sgs: ', data.data?.patientData?.sgs || []);
           this.bckg.showNotificationFromIonic({
             lastSG: data.data?.patientData?.lastSG || {},
-            sgs: data.data?.patientData?.sgs || []
+            sgs: data.data?.patientData?.sgs || [],
+            conduitSensorInRange: data.data?.patientData?.conduitSensorInRange
           });
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
@@ -189,6 +190,7 @@ export class AuthenticationService {
       pump: [] as string[],
       senzor: [] as string[],
       sgs: [] as any[],
+      isSensorConnected: false
     };
 
     const patientData = recentData.patientData || {};
@@ -221,7 +223,21 @@ export class AuthenticationService {
 
     const lastTime = `${datePart} u ${timePart}`;
 
-    const isSensorConnected = patientData.conduitSensorInRange || false;
+    const isSensorConnected = data.isSensorConnected = patientData.conduitSensorInRange || false;
+
+    if (!isSensorConnected) {
+      data.senzor.push('Senzor nije povezan');
+      for (const sg of data.sgs || []) {
+        if (sg) {
+          const lastGlicemia = (this.getLastGlicemia(data)?.sg / 18).toFixed(1);
+          data.glicemia.push(`Poslednja glikemija ${lastGlicemia}`);
+          data.senzor.push(`Poslednja sinhronizacija ${lastTime}`);
+          break;
+        }
+      }
+    }
+
+
     const activeInsulin = patientData.activeInsulin.amount.toFixed(1);
 
     const sensorBattery = patientData.gstBatteryLevel || 0;
@@ -247,10 +263,10 @@ export class AuthenticationService {
     const days = Math.floor(durationMinutes / 1440);
     const hours = Math.floor((durationMinutes % 1440) / 60);
     const minutes = durationMinutes % 60;
-    data.senzor.push(`Serzor traje jos ${days}d ${hours}h ${minutes}m`);
+    isSensorConnected && data.senzor.push(`Serzor traje jos ${days}d ${hours}h ${minutes}m`);
 
     const calibrationMinutes = patientData.timeToNextCalibrationMinutes || 0;
-    data.senzor.push(
+    isSensorConnected && data.senzor.push(
       `Sledeca kalibracija za ${Math.floor(calibrationMinutes / 60)}h ${calibrationMinutes % 60
       }m`
     );
@@ -269,18 +285,6 @@ export class AuthenticationService {
       data.insulin.push(`Aktivni insulin ${activeInsulin}`);
     }
 
-    if (!isSensorConnected) {
-      data.senzor.push('Senzor nije povezan');
-      for (const sg of data.sgs || []) {
-        if (sg) {
-          const lastGlicemia = (this.getLastGlicemia(data)?.sg / 18).toFixed(1);
-          data.glicemia.push(`Poslednja glikemija ${lastGlicemia}`);
-          data.senzor.push(`Poslednja sinhronizacija ${lastTime}`);
-          break;
-        }
-      }
-    }
-
     if (patientData.pumpSuspended) {
       data.pump.push('Pumpica je suspendovana');
     }
@@ -296,9 +300,9 @@ export class AuthenticationService {
     data.insulin.push(`Preostalo jedinica ${unitsLeft}`);
 
     if (sensorBattery < 10) {
-      data.senzor.push(`Baterija senzora ${sensorBattery}%`);
+      isSensorConnected && data.senzor.push(`Baterija senzora ${sensorBattery}%`);
     } else {
-      data.senzor.push(`Baterija senzora ${sensorBattery}%`);
+      isSensorConnected && data.senzor.push(`Baterija senzora ${sensorBattery}%`);
     }
 
     if (pumpBattery < 10) {
