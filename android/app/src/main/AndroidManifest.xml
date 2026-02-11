@@ -23,6 +23,19 @@
         <service
             android:name="ionic.jejkalinkui.plugins.background.ForegroundService"
             android:foregroundServiceType="dataSync" />
+
+        <receiver
+            android:name=".GlucoseWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ionic.jejkalinkui.UPDATE_GLUCOSE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glucose_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

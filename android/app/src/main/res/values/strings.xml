@@ -4,4 +4,6 @@
     <string name="title_activity_main">jejkalinkui</string>
     <string name="package_name">ionic.jejkalinkui</string>
     <string name="custom_url_scheme">ionic.jejkalinkui</string>
+    <string name="widget_description">Prikazuje trenutnu glikemiju, trend i vreme poslednjeg merenja</string>
+    <string name="widget_label">CareLink Glikemija</string>
 </resources>
