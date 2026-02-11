@@ -36,10 +36,7 @@ export class AppComponent implements OnInit {
   }
 
   async init() {
-    const hasPermission = await this.bckg.ensureNotificationPermission();
-    if (!hasPermission) {
-      await this.bckg.requestPermissions();
-    }
+    await this.bckg.ensureNotificationPermission();
 
     (window as any).Capacitor.Plugins.Background.addListener('onDataFetched', async (info: any) => {
       console.log('[LOGG] Data fetched:', info);
