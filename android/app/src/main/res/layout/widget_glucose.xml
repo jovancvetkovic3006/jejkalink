@@ -4,8 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
-    android:gravity="center"
-    android:padding="8dp"
+    android:gravity="center_vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:clipToPadding="false"
     android:background="@drawable/widget_background">
 
     <!-- Glucose value + trend arrow -->
@@ -27,19 +31,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="32sp"
+                android:textSize="30sp"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
-                android:fontFamily="sans-serif-medium" />
+                android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false" />
 
             <TextView
                 android:id="@+id/widget_trend_arrow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textColor="#FFFFFF"
-                android:layout_marginStart="4dp" />
+                android:layout_marginStart="2dp"
+                android:includeFontPadding="false" />
         </LinearLayout>
 
         <TextView
@@ -47,11 +53,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="mmol/L"
-            android:textSize="11sp"
-            android:textColor="#B0FFFFFF" />
+            android:textSize="10sp"
+            android:textColor="#B0FFFFFF"
+            android:includeFontPadding="false" />
     </LinearLayout>
 
-    <!-- Time since last reading -->
+    <!-- Time since + status -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -64,8 +71,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="--"
-            android:textSize="13sp"
-            android:textColor="#DDFFFFFF" />
+            android:textSize="12sp"
+            android:textColor="#DDFFFFFF"
+            android:includeFontPadding="false" />
 
         <TextView
             android:id="@+id/widget_status"
@@ -74,7 +82,9 @@
             android:text=""
             android:textSize="10sp"
             android:textColor="#EEFFFFFF"
-            android:layout_marginTop="2dp" />
+            android:layout_marginTop="1dp"
+            android:maxLines="2"
+            android:includeFontPadding="false" />
     </LinearLayout>
 
 </LinearLayout>
