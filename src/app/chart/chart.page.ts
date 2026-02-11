@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -13,6 +13,7 @@ import {
 import { AuthenticationService } from '../services/authentication.service';
 import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartData, ChartOptions } from "chart.js";
+import { BaseChartDirective } from 'ng2-charts';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -40,6 +41,7 @@ const HIGH_THRESHOLD = 7.5;
   ],
 })
 export class ChartPage implements OnInit, OnDestroy {
+  @ViewChild(BaseChartDirective) chartDirective?: BaseChartDirective;
   private subscription?: Subscription;
   patientData$ = this.authService.patientData$;
   hoursFilter = 6;
@@ -56,7 +58,7 @@ export class ChartPage implements OnInit, OnDestroy {
         backgroundColor: '#333',
         tension: 0.3,
         pointRadius: 0,
-        pointHoverRadius: 0,
+        pointHoverRadius: 6,
         pointBackgroundColor: [],
         pointBorderColor: [],
         borderWidth: 2,
@@ -202,6 +204,18 @@ export class ChartPage implements OnInit, OnDestroy {
     });
     this.lineChartData.datasets[0].pointBackgroundColor = pointColors;
     this.lineChartData.datasets[0].pointBorderColor = pointColors;
+
+    // Show tooltip on last data point by default
+    setTimeout(() => this.showLastTooltip(), 300);
+  }
+
+  private showLastTooltip() {
+    const chart = this.chartDirective?.chart;
+    if (!chart || !chart.data.datasets[0]?.data?.length) return;
+    const lastIndex = chart.data.datasets[0].data.length - 1;
+    chart.setActiveElements([{ datasetIndex: 0, index: lastIndex }]);
+    chart.tooltip?.setActiveElements([{ datasetIndex: 0, index: lastIndex }], { x: 0, y: 0 });
+    chart.update();
   }
 
   doRefresh(event: CustomEvent) {

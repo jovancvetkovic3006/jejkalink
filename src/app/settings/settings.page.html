@@ -63,17 +63,18 @@
     </div>
 
     <div class="settings-card log-card" *ngIf="debugLog$ | async as logs">
-      <div class="card-header">
+      <div class="card-header" (click)="logsExpanded = !logsExpanded">
         <ion-icon name="code-outline" color="medium"></ion-icon>
-        <span>Logovi</span>
-        <ion-button fill="clear" size="small" color="medium" (click)="clearLogs()" class="clear-btn">
+        <span>Logovi ({{ logs.length }})</span>
+        <ion-icon [name]="logsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'" color="medium" class="expand-icon"></ion-icon>
+        <ion-button fill="clear" size="small" color="medium" (click)="clearLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
           Obrisi
         </ion-button>
       </div>
-      <div class="log-container" *ngIf="logs.length > 0">
+      <div class="log-container" *ngIf="logsExpanded && logs.length > 0">
         <div class="log-entry" *ngFor="let log of logs">{{ log }}</div>
       </div>
-      <div class="log-empty" *ngIf="logs.length === 0">
+      <div class="log-empty" *ngIf="logsExpanded && logs.length === 0">
         Nema logova
       </div>
     </div>

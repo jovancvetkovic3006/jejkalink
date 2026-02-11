@@ -45,9 +45,16 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+
+      .expand-icon {
+        margin-left: auto;
+        font-size: 1.1rem;
+      }
 
       .clear-btn {
-        margin-left: auto;
+        margin-left: 0.25rem;
         font-size: 0.8rem;
         --padding-start: 0.5rem;
         --padding-end: 0.5rem;

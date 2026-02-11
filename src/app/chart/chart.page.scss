@@ -2,16 +2,19 @@
   padding: 0.75rem 1rem 0;
 
   ion-segment {
-    --background: #f3f4f6;
+    --background: #e0e0e0;
     border-radius: 12px;
   }
 
   ion-segment-button {
     --indicator-color: var(--ion-color-primary);
+    --color: #555;
     --color-checked: #fff;
     --border-radius: 10px;
     font-weight: 600;
+    font-size: 0.95rem;
     min-height: 36px;
+    letter-spacing: 0.02em;
   }
 }
 

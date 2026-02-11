@@ -92,6 +92,7 @@ export class AuthenticationService {
   public idToken$ = new BehaviorSubject<any | null>(null);
   public user$ = new BehaviorSubject<any | null>(null);
   patientData$: BehaviorSubject<any> = new BehaviorSubject({
+    loading: true,
     current: 0,
     trend: '',
     glicemia: [] as string[],
@@ -206,7 +207,8 @@ export class AuthenticationService {
           this.bckg.showNotificationFromIonic({
             lastSG: data.data?.patientData?.lastSG || {},
             sgs: data.data?.patientData?.sgs || [],
-            conduitSensorInRange: data.data?.patientData?.conduitSensorInRange
+            conduitSensorInRange: data.data?.patientData?.conduitSensorInRange,
+            lastSGTrend: data.data?.patientData?.lastSGTrend || ''
           });
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
@@ -287,6 +289,7 @@ export class AuthenticationService {
 
   processPatientData(recentData: any) {
     const data = {
+      loading: false,
       current: 0 as string | number,
       since: '' as string,
       trend: 0,

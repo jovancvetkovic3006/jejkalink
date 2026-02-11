@@ -17,6 +17,7 @@
       {{data.current}}
     </div>
     <ion-spinner *ngIf="!data.current" name="circles"></ion-spinner>
+    <div *ngIf="data.loading" class="loading-text">Ucitavanje...</div>
     <div *ngIf="data.current" class="glucose-unit">mmol/L</div>
 
     <div *ngIf="data.current" class="trend-indicator" [ngClass]="getTrendClass(data.trend)">
@@ -24,7 +25,7 @@
       <span>{{ trendText(data.trend) }}</span>
     </div>
 
-    <div *ngIf="!data.isSensorConnected" class="senzor-indicator">
+    <div *ngIf="!data.loading && !data.isSensorConnected" class="senzor-indicator">
       <ion-icon name="warning-outline"></ion-icon>
       <span>Senzor nije povezan</span>
     </div>

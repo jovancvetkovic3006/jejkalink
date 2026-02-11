@@ -41,6 +41,7 @@ export class SettingsPage implements OnInit {
   appVersion = '0.1.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
+  logsExpanded = false;
   userName = '';
   userEmail = '';
   tokenStatus = '';
