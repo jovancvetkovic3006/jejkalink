@@ -21,12 +21,45 @@ export class AuthenticationService {
   private scope = 'profile openid offline_access';
   private audience = 'carepartner.patient.ous';
 
-  public debugLog$ = new BehaviorSubject<string[]>([]);
+  private static readonly LOG_STORAGE_KEY = 'debug_logs';
+  private static readonly LOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+  private static readonly LOG_MAX_ENTRIES = 500;
+
+  public debugLog$ = new BehaviorSubject<string[]>(this.loadPersistedLogs());
+
+  private loadPersistedLogs(): string[] {
+    try {
+      const raw = localStorage.getItem(AuthenticationService.LOG_STORAGE_KEY);
+      if (!raw) return [];
+      const entries: { ts: number; msg: string }[] = JSON.parse(raw);
+      const cutoff = Date.now() - AuthenticationService.LOG_MAX_AGE_MS;
+      const valid = entries.filter((e) => e.ts >= cutoff);
+      if (valid.length !== entries.length) {
+        localStorage.setItem(AuthenticationService.LOG_STORAGE_KEY, JSON.stringify(valid));
+      }
+      return valid.map((e) => e.msg);
+    } catch {
+      return [];
+    }
+  }
+
+  private persistLog(formattedMsg: string) {
+    try {
+      const raw = localStorage.getItem(AuthenticationService.LOG_STORAGE_KEY);
+      const entries: { ts: number; msg: string }[] = raw ? JSON.parse(raw) : [];
+      entries.push({ ts: Date.now(), msg: formattedMsg });
+      const cutoff = Date.now() - AuthenticationService.LOG_MAX_AGE_MS;
+      const pruned = entries.filter((e) => e.ts >= cutoff).slice(-AuthenticationService.LOG_MAX_ENTRIES);
+      localStorage.setItem(AuthenticationService.LOG_STORAGE_KEY, JSON.stringify(pruned));
+    } catch { /* ignore storage errors */ }
+  }
+
   private addDebug(msg: string) {
-    const logs = this.debugLog$.value;
-    logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
-    if (logs.length > 50) logs.shift();
-    this.debugLog$.next([...logs]);
+    const formatted = `[${new Date().toLocaleString()}] ${msg}`;
+    const logs = [...this.debugLog$.value, formatted];
+    if (logs.length > AuthenticationService.LOG_MAX_ENTRIES) logs.splice(0, logs.length - AuthenticationService.LOG_MAX_ENTRIES);
+    this.debugLog$.next(logs);
+    this.persistLog(formatted);
     Log().info(msg);
   }
 

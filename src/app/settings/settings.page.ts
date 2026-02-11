@@ -40,6 +40,7 @@ export class SettingsPage implements OnInit {
   patientUsername = '';
   appVersion = '0.1.0';
   saved = false;
+  debugLog$ = this.authService.debugLog$;
 
   constructor(private readonly authService: AuthenticationService) {}
 
@@ -56,5 +57,10 @@ export class SettingsPage implements OnInit {
 
   logout() {
     this.authService.logout();
+  }
+
+  clearLogs() {
+    localStorage.removeItem('debug_logs');
+    this.authService.debugLog$.next([]);
   }
 }

@@ -36,7 +36,6 @@ import { CommonModule } from '@angular/common';
 })
 export class DashboardPage {
   patientData$ = this.authService.patientData$;
-  debugLog$ = this.authService.debugLog$;
 
   constructor(public authService: AuthenticationService) { }
 

@@ -139,30 +139,3 @@ ion-spinner {
   width: 80px;
   height: 80px;
 }
-
-.debug-panel {
-  margin: 1rem;
-  padding: 0.75rem;
-  background: #1a1a2e;
-  border-radius: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-
-  .debug-header {
-    color: #00d4ff;
-    font-weight: 700;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .debug-entry {
-    color: #b0bec5;
-    font-size: 0.7rem;
-    font-family: monospace;
-    padding: 2px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    word-break: break-all;
-  }
-}

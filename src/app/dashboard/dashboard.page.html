@@ -80,8 +80,4 @@
     </div>
   </div>
 
-  <div class="debug-panel" *ngIf="debugLog$ | async as logs">
-    <div class="debug-header">Debug Log</div>
-    <div class="debug-entry" *ngFor="let log of logs">{{ log }}</div>
-  </div>
 </ion-content>

@@ -27,6 +27,7 @@ import {
   personOutline,
   saveOutline,
   informationCircleOutline,
+  codeOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -44,7 +45,7 @@ export class TabsPage {
       arrowDownCircle, arrowUpCircle, logOutOutline, arrowBackCircle,
       waterOutline, fitnessOutline, bluetoothOutline, hardwareChipOutline,
       warningOutline, settingsOutline, personOutline, saveOutline,
-      informationCircleOutline,
+      informationCircleOutline, codeOutline,
     });
   }
 }
