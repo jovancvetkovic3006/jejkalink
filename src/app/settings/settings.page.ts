@@ -41,12 +41,45 @@ export class SettingsPage implements OnInit {
   appVersion = '0.1.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
+  userName = '';
+  userEmail = '';
+  tokenStatus = '';
 
   constructor(private readonly authService: AuthenticationService) {}
 
   ngOnInit() {
     this.patientUsername =
       localStorage.getItem('patientUsername') || 'jejka3006';
+    this.loadUserInfo();
+    this.updateTokenStatus();
+  }
+
+  private loadUserInfo() {
+    try {
+      const raw = localStorage.getItem('userInfo');
+      if (raw) {
+        const user = JSON.parse(raw);
+        this.userName = user.name || '';
+        this.userEmail = user.email || user.nickname || '';
+      }
+    } catch { /* ignore */ }
+  }
+
+  private updateTokenStatus() {
+    if (this.authService.isTokenExpired()) {
+      this.tokenStatus = 'Istekao';
+    } else {
+      try {
+        const token = this.authService.getToken();
+        const parts = token.split('.');
+        const padded = parts[1] + '='.repeat((4 - parts[1].length % 4) % 4);
+        const payload = JSON.parse(atob(padded));
+        const exp = new Date(payload.exp * 1000);
+        this.tokenStatus = 'Aktivan do ' + exp.toLocaleString();
+      } catch {
+        this.tokenStatus = 'Aktivan';
+      }
+    }
   }
 
   saveUsername() {

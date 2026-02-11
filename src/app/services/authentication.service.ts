@@ -10,6 +10,11 @@ import { MedtronicDiscoveryService } from './medtronic-discovery.service';
 
 export interface IUserInfo {
   name: string;
+  email?: string;
+  nickname?: string;
+  picture?: string;
+  sub?: string;
+  [key: string]: any;
 }
 
 @Injectable({

@@ -12,12 +12,24 @@
         <span>Nalog</span>
       </div>
       <ion-list lines="none">
+        <ion-item *ngIf="userName">
+          <ion-label>Ime</ion-label>
+          <ion-note slot="end">{{ userName }}</ion-note>
+        </ion-item>
+        <ion-item *ngIf="userEmail">
+          <ion-label>Email</ion-label>
+          <ion-note slot="end">{{ userEmail }}</ion-note>
+        </ion-item>
+        <ion-item *ngIf="tokenStatus">
+          <ion-label>Sesija</ion-label>
+          <ion-note slot="end" [color]="tokenStatus === 'Istekao' ? 'danger' : 'success'">{{ tokenStatus }}</ion-note>
+        </ion-item>
         <ion-item>
           <ion-input
-            label="Korisnicko ime"
+            label="Pacijent"
             labelPlacement="stacked"
             [(ngModel)]="patientUsername"
-            placeholder="Unesite korisnicko ime"
+            placeholder="Korisnicko ime pacijenta"
             (ionBlur)="saveUsername()"
           ></ion-input>
         </ion-item>
