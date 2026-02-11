@@ -381,9 +381,21 @@ export class AuthenticationService {
     }
 
     const banner = patientData.pumpBannerState || [];
-    if (banner.length > 0 && banner?.[0]?.type === 'TEMP_BASAL') {
-      const temporalni = banner[0].timeRemaining || 0;
-      data.insulin.push(`Temporalni tece jos ${temporalni} min`);
+    this.addDebug('basal: ' + JSON.stringify({ banner, basal: patientData.basal, currentBasal: patientData.currentBasal, basalRate: patientData.basalRate })?.substring(0, 300));
+    const tempBasal = banner.find((b: any) => b.type === 'TEMP_BASAL');
+    if (tempBasal) {
+      const remaining = tempBasal.timeRemaining || 0;
+      const rate = patientData.lastAlarm?.tempRate ?? patientData.currentBasal?.tempRate ?? null;
+      if (rate !== null) {
+        data.insulin.push(`Temporalni ${rate} j/h jos ${remaining} min`);
+      } else {
+        data.insulin.push(`Temporalni tece jos ${remaining} min`);
+      }
+    }
+
+    const basalRate = patientData.basal?.basalRate ?? patientData.currentBasal?.basalRate ?? null;
+    if (basalRate !== null) {
+      data.insulin.push(`Bazalni ${basalRate} j/h`);
     }
 
     if (activeInsulin !== -1.0) {

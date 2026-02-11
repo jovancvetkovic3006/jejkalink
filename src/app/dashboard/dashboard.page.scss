@@ -129,8 +129,12 @@
   ion-item {
     --background: transparent;
     --padding-start: 1rem;
-    --min-height: 36px;
-    font-size: 0.9rem;
+    --padding-top: 0;
+    --padding-bottom: 0;
+    --inner-padding-top: 0;
+    --inner-padding-bottom: 0;
+    --min-height: 24px;
+    font-size: 0.85rem;
     color: #555;
   }
 }
