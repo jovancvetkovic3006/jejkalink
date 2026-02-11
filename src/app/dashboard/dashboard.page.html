@@ -9,10 +9,13 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="glucose-display">
-    <ion-label *ngIf="data.current" class="glucose-last">Poslednje ocitavanje: {{ data.since ? data.since : 'nedostupno'
-      }}</ion-label>
-    <div *ngIf="data.current" class="glucose-number" [ngClass]="getCurrentClass(data.current)">{{data.current}}</div>
+  <div class="glucose-display" [ngClass]="data.current ? getCurrentClass(data.current) + '-bg' : ''">
+    <div *ngIf="data.current" class="glucose-since">
+      {{ data.since ? data.since : 'nedostupno' }}
+    </div>
+    <div *ngIf="data.current" class="glucose-number" [ngClass]="getCurrentClass(data.current)">
+      {{data.current}}
+    </div>
     <ion-spinner *ngIf="!data.current" name="circles"></ion-spinner>
     <div *ngIf="data.current" class="glucose-unit">mmol/L</div>
 
@@ -21,46 +24,64 @@
       <span>{{ trendText(data.trend) }}</span>
     </div>
 
-    <ion-label *ngIf="!data.isSensorConnected" class="senzor-indicator">Senzor nije povezan</ion-label>
+    <div *ngIf="!data.isSensorConnected" class="senzor-indicator">
+      <ion-icon name="warning-outline"></ion-icon>
+      <span>Senzor nije povezan</span>
+    </div>
   </div>
 
-  <div *ngIf="data.current" class="data-groups">
-    <ion-list>
-      <ion-item-group>
-        <ion-item-divider color="light">
-          <ion-label>Glikemija</ion-label>
-        </ion-item-divider>
+  <div *ngIf="data.current" class="data-cards">
+    <div class="data-card">
+      <div class="card-header">
+        <ion-icon name="water-outline" color="primary"></ion-icon>
+        <span>Glikemija</span>
+      </div>
+      <ion-list lines="none">
         <ion-item *ngFor="let item of data.glicemia">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
-      </ion-item-group>
+      </ion-list>
+    </div>
 
-      <ion-item-group>
-        <ion-item-divider color="light">
-          <ion-label>Insulin</ion-label>
-        </ion-item-divider>
+    <div class="data-card">
+      <div class="card-header">
+        <ion-icon name="fitness-outline" color="tertiary"></ion-icon>
+        <span>Insulin</span>
+      </div>
+      <ion-list lines="none">
         <ion-item *ngFor="let item of data.insulin">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
-      </ion-item-group>
+      </ion-list>
+    </div>
 
-      <ion-item-group>
-        <ion-item-divider color="light">
-          <ion-label>Senzor</ion-label>
-        </ion-item-divider>
+    <div class="data-card">
+      <div class="card-header">
+        <ion-icon name="bluetooth-outline" color="secondary"></ion-icon>
+        <span>Senzor</span>
+      </div>
+      <ion-list lines="none">
         <ion-item *ngFor="let item of data.senzor">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
-      </ion-item-group>
+      </ion-list>
+    </div>
 
-      <ion-item-group>
-        <ion-item-divider color="light">
-          <ion-label>Pumpica</ion-label>
-        </ion-item-divider>
+    <div class="data-card">
+      <div class="card-header">
+        <ion-icon name="hardware-chip-outline" color="warning"></ion-icon>
+        <span>Pumpica</span>
+      </div>
+      <ion-list lines="none">
         <ion-item *ngFor="let item of data.pump">
           <ion-label>{{ item }}</ion-label>
         </ion-item>
-      </ion-item-group>
-    </ion-list>
+      </ion-list>
+    </div>
+  </div>
+
+  <div class="debug-panel" *ngIf="debugLog$ | async as logs">
+    <div class="debug-header">Debug Log</div>
+    <div class="debug-entry" *ngFor="let log of logs">{{ log }}</div>
   </div>
 </ion-content>

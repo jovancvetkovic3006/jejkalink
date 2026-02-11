@@ -19,7 +19,7 @@ export class TokenInterceptor implements HttpInterceptor {
     req: HttpRequest<any>,
     next: HttpHandler
   ): Observable<HttpEvent<any>> {
-    const skipUrls = ['mdtlogin-ocl.medtronic.com', 'clcloud.minimed.eu'];
+    const skipUrls = ['mdtlogin-ocl.medtronic.com', 'carelink-login.minimed.eu', 'clcloud.minimed.eu', 'carelink.minimed.eu'];
 
     const shouldSkip = skipUrls.some((url) => req.url.includes(url));
 

@@ -17,6 +17,11 @@ export const routes: Routes = [
           import('../chart/chart.page').then((m) => m.ChartPage),
       },
       {
+        path: 'settings',
+        loadComponent: () =>
+          import('../settings/settings.page').then((m) => m.SettingsPage),
+      },
+      {
         path: '',
         redirectTo: '/tabs/dashboard',
         pathMatch: 'full',

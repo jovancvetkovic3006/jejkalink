@@ -3,11 +3,8 @@ import {
   IonApp,
   IonRouterOutlet,
   IonToolbar,
-  IonButton,
   IonHeader,
   IonTitle,
-  IonButtons,
-  IonIcon,
 } from '@ionic/angular/standalone';
 
 import { AuthenticationService } from './services/authentication.service';
@@ -22,14 +19,11 @@ import { BackgroundWeb } from './services/background-web.service';
   selector: 'app-root',
   templateUrl: 'app.component.html',
   imports: [
-    IonButtons,
     IonTitle,
     IonHeader,
-    IonButton,
     IonToolbar,
     IonApp,
     IonRouterOutlet,
-    IonIcon,
     CommonModule,
   ],
 })
@@ -71,12 +65,14 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.authService.doRefresh();
+    if (!this.authService.isTokenExpired()) {
+      this.authService.doRefresh();
+    }
 
     this.init();
 
     App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
+      if (isActive && !this.authService.isTokenExpired()) {
         this.authService.doRefresh();
       }
     });
@@ -94,7 +90,4 @@ export class AppComponent implements OnInit {
     }
   }
 
-  logout() {
-    this.authService.logout();
-  }
 }

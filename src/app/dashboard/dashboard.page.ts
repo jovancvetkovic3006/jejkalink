@@ -7,8 +7,6 @@ import {
   IonRefresher,
   IonRefresherContent,
   IonList,
-  IonItemGroup,
-  IonItemDivider,
   IonLabel,
   IonItem,
   IonIcon,
@@ -32,14 +30,13 @@ import { CommonModule } from '@angular/common';
     IonRefresher,
     IonRefresherContent,
     IonList,
-    IonItemGroup,
-    IonItemDivider,
     IonIcon,
     IonSpinner
   ],
 })
 export class DashboardPage {
   patientData$ = this.authService.patientData$;
+  debugLog$ = this.authService.debugLog$;
 
   constructor(public authService: AuthenticationService) { }
 
@@ -73,8 +70,8 @@ export class DashboardPage {
 
   getCurrentClass(current: number): string {
     console.log('[LOG CURRENT]', current);
-    if (current < 5) return 'trend-down';
-    if (current > 5 && current < 8) return 'trend-stable';
+    if (current < 4.5) return 'trend-down';
+    if (current <= 7.5) return 'trend-stable';
     return 'trend-up';
   }
 }

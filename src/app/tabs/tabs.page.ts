@@ -18,6 +18,15 @@ import {
   arrowUpCircle,
   arrowBackCircle,
   logOutOutline,
+  waterOutline,
+  fitnessOutline,
+  bluetoothOutline,
+  hardwareChipOutline,
+  warningOutline,
+  settingsOutline,
+  personOutline,
+  saveOutline,
+  informationCircleOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -32,8 +41,10 @@ export class TabsPage {
   constructor() {
     addIcons({
       triangle, ellipse, square, pulseOutline, statsChartOutline, remove,
-      arrowDownCircle,
-      arrowUpCircle, logOutOutline, arrowBackCircle
+      arrowDownCircle, arrowUpCircle, logOutOutline, arrowBackCircle,
+      waterOutline, fitnessOutline, bluetoothOutline, hardwareChipOutline,
+      warningOutline, settingsOutline, personOutline, saveOutline,
+      informationCircleOutline,
     });
   }
 }

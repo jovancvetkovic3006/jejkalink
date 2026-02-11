@@ -1,12 +1,12 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { BehaviorSubject, from, Observable, of, take, tap } from 'rxjs';
-import { getTokenMag, isTokenExpired } from '../utils/token.util';
+import { BehaviorSubject, from, Observable, of, take } from 'rxjs';
+import { isTokenExpired } from '../utils/token.util';
 import { Log } from '../utils/log.js';
 import { CapacitorHttp, HttpResponse } from '@capacitor/core';
 import { BackgroundWeb } from './background-web.service';
+import { MedtronicDiscoveryService } from './medtronic-discovery.service';
 
 export interface IUserInfo {
   name: string;
@@ -16,30 +16,37 @@ export interface IUserInfo {
   providedIn: 'root',
 })
 export class AuthenticationService {
-  private clientId = '4fb211b8-f130-4398-b51e-28900bf68527';
+  private clientId = 'PeAhkbhQWlQRxJiQxWfcFBiGus1lxfe9';
   private redirectUri = 'com.medtronic.carepartner:/sso';
-  private scope = 'openid profile roles country';
+  private scope = 'profile openid offline_access';
+  private audience = 'carepartner.patient.ous';
+
+  public debugLog$ = new BehaviorSubject<string[]>([]);
+  private addDebug(msg: string) {
+    const logs = this.debugLog$.value;
+    logs.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
+    if (logs.length > 50) logs.shift();
+    this.debugLog$.next([...logs]);
+    Log().info(msg);
+  }
 
   // Observable for auth code (or tokens if you want)
   public authCode$ = new BehaviorSubject<string | null>(null);
 
   private tokenEndpoint =
-    'https://mdtlogin-ocl.medtronic.com/mmcl/auth/oauth/v2/token';
+    'https://carelink-login.minimed.eu/oauth/token';
 
   private userEndpoint =
-    'https://mdtlogin-ocl.medtronic.com/mmcl/openid/connect/v1/userinfo';
+    'https://carelink-login.minimed.eu/userinfo';
 
   private loginEndpoint =
-    'https://mdtlogin-ocl.medtronic.com/mmcl/auth/oauth/v2/authorize';
+    'https://carelink-login.minimed.eu/authorize';
 
   private logoutEndpoint =
-    'https://mdtlogin-ocl.medtronic.com/mmcl/connect/session/logout';
+    'https://carelink-login.minimed.eu/oidc/logout';
 
   private dataEndpoint =
-    'https://clcloud.minimed.eu/connect/carepartner/v11/display/message';
-
-  private patientEndpoint =
-    'https://mdtlogin-ocl.medtronic.com/mmcl/auth/oauth/v2/links/patients';
+    'https://clcloud.minimed.eu/connect/carepartner/v13/display/message';
 
   // Observable for tokens after exchange
   public accessToken$ = new BehaviorSubject<any | null>(null);
@@ -55,9 +62,31 @@ export class AuthenticationService {
     senzor: [] as string[],
   });
 
-  constructor(private readonly http: HttpClient,
-    private readonly bckg: BackgroundWeb) {
+  constructor(
+    private readonly bckg: BackgroundWeb,
+    private readonly discovery: MedtronicDiscoveryService
+  ) {
     this.setupDeepLinkListener();
+    this.initDiscovery();
+  }
+
+  private async initDiscovery() {
+    try {
+      this.addDebug('Discovery: starting...');
+      const endpoints = await this.discovery.discover();
+      this.clientId = endpoints.clientId;
+      this.redirectUri = endpoints.redirectUri;
+      this.scope = endpoints.scope;
+      this.audience = endpoints.audience;
+      this.tokenEndpoint = endpoints.tokenEndpoint;
+      this.userEndpoint = endpoints.userEndpoint;
+      this.loginEndpoint = endpoints.loginEndpoint;
+      this.logoutEndpoint = endpoints.logoutEndpoint;
+      this.dataEndpoint = endpoints.dataEndpoint;
+      this.addDebug('Discovery: OK, login=' + this.loginEndpoint);
+    } catch (err) {
+      this.addDebug('Discovery: FAILED, using defaults');
+    }
   }
 
   getToken(): string {
@@ -67,11 +96,14 @@ export class AuthenticationService {
   setTokens(token: any) {
     token?.access_token && this.accessToken$.next(token.access_token);
     token?.refresh_token && this.refreshToken$.next(token.refresh_token);
-    token?.id_token_hint && this.idToken$.next(token.id_token_hint);
+    const idToken = token?.id_token || token?.id_token_hint;
+    idToken && this.idToken$.next(idToken);
 
     token?.access_token && localStorage.setItem('access_token', token.access_token);
     token?.refresh_token && localStorage.setItem('refresh_token', token.refresh_token);
-    token?.id_token_hint && localStorage.setItem('id_token', token.id_token_hint);
+    idToken && localStorage.setItem('id_token', idToken);
+
+    this.addDebug('setTokens: access=' + (!!token?.access_token) + ' refresh=' + (!!token?.refresh_token) + ' id=' + (!!idToken));
   }
 
   getTokens(): { accessToken: string; refreshToken: string; idToken: string } {
@@ -87,29 +119,40 @@ export class AuthenticationService {
   }
 
   getUserInfo(): Observable<IUserInfo> {
-    Log().info('Get user info', this.getToken());
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${this.getToken()}`,
-    });
-    return this.http.get<any>(this.userEndpoint, {
-      headers,
-    });
+    this.addDebug('getUserInfo: ' + this.userEndpoint);
+    return from(
+      CapacitorHttp.get({
+        url: this.userEndpoint,
+        headers: {
+          Authorization: `Bearer ${this.getToken()}`,
+        },
+      }).then((response) => {
+        this.addDebug('getUserInfo: status=' + response.status);
+        return response.data as IUserInfo;
+      })
+    );
   }
+
+  
 
   refreshToken(): Observable<any> {
     const refresh_token =
       this.refreshToken$.value || localStorage.getItem('refresh_token');
     if (!refresh_token) return of();
 
-    const body = new URLSearchParams();
-    body.set('grant_type', 'refresh_token');
-    body.set('refresh_token', refresh_token);
-    body.set('client_id', '4fb211b8-f130-4398-b51e-28900bf68527');
-
-    Log().info('Auth refresh token: ', refresh_token);
-    return this.http.post<any>(this.tokenEndpoint, body.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+    this.addDebug('refreshToken: starting...');
+    return from(
+      CapacitorHttp.post({
+        url: this.tokenEndpoint,
+        data: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refresh_token)}&client_id=${encodeURIComponent(this.clientId)}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }).then((response) => {
+        this.addDebug('refreshToken: status=' + response.status);
+        return response.data;
+      })
+    );
   }
 
   doRefresh(event?: CustomEvent) {
@@ -137,24 +180,48 @@ export class AuthenticationService {
   }
 
   getData(): Observable<HttpResponse> {
-    const userName = 'jejka3006';
+    const patientUsername = localStorage.getItem('patientUsername') || 'jejka3006';
 
-    Log().info('Request pump data');
+    // Extract username from JWT token payload (matching Python client)
+    let tokenUsername = patientUsername;
+    try {
+      const tokenParts = this.getToken().split('.');
+      const padded = tokenParts[1] + '='.repeat((4 - tokenParts[1].length % 4) % 4);
+      const payload = JSON.parse(atob(padded));
+      tokenUsername = payload?.token_details?.preferred_username || payload?.preferred_username || payload?.sub || patientUsername;
+      this.addDebug('token: aud=' + payload.aud + ' user=' + tokenUsername);
+    } catch (e) {
+      this.addDebug('token decode failed');
+    }
+
+    // Match Python client exactly: application/x-www-form-urlencoded + JSON string body
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.getToken()}`,
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 10; Nexus 5X Build/QQ3A.200805.001)',
+    };
+
+    const requestBody = JSON.stringify({
+      username: tokenUsername,
+      role: 'carepartner',
+      patientId: patientUsername,
+    });
+
+    this.addDebug('getData: endpoint=' + this.dataEndpoint);
+    this.addDebug('getData: body=' + requestBody);
     return from(
       CapacitorHttp.post({
         url: this.dataEndpoint,
-        data: {
-          username: userName,
-          role: 'patient',
-        },
-        headers: {
-          Authorization: `Bearer ${this.getToken()}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          'User-Agent':
-            'Dalvik/2.1.0 (Linux; U; Android 10; Nexus 5X Build/QQ3A.200805.001)',
-          'mag-identifier': getTokenMag(this.getToken()),
-        },
+        data: requestBody,
+        headers,
+      }).then(async (response) => {
+        this.addDebug('getData: status=' + response.status);
+        this.addDebug('getData: resp=' + JSON.stringify(response.data)?.substring(0, 300));
+        return response;
+      }).catch((err) => {
+        this.addDebug('getData: ERROR ' + JSON.stringify(err)?.substring(0, 300));
+        throw err;
       })
     );
   }
@@ -197,7 +264,7 @@ export class AuthenticationService {
 
     data.sgs = (patientData.sgs?.reverse() as any[] || []).filter(sg => sg.sg > 0 && sg.timestamp).sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );;
+    );
 
     data.since = this.getTimeSinceLastGS(data);
     const unitsLeft = patientData.reservoirRemainingUnits || 0;
@@ -299,17 +366,8 @@ export class AuthenticationService {
 
     data.insulin.push(`Preostalo jedinica ${unitsLeft}`);
 
-    if (sensorBattery < 10) {
-      isSensorConnected && data.senzor.push(`Baterija senzora ${sensorBattery}%`);
-    } else {
-      isSensorConnected && data.senzor.push(`Baterija senzora ${sensorBattery}%`);
-    }
-
-    if (pumpBattery < 10) {
-      data.pump.push(`Baterija pumpice ${pumpBattery}%`);
-    } else {
-      data.pump.push(`Baterija pumpice ${pumpBattery}%`);
-    }
+    isSensorConnected && data.senzor.push(`Baterija senzora ${sensorBattery}%`);
+    data.pump.push(`Baterija pumpice ${pumpBattery}%`);
 
     return data;
   }
@@ -355,61 +413,66 @@ export class AuthenticationService {
     });
   }
 
-  private exchangeCodeForToken(code: string) {
-    const body = new HttpParams()
-      .set('grant_type', 'authorization_code')
-      .set('code', code)
-      .set('redirect_uri', this.redirectUri)
-      .set('client_id', this.clientId);
-    // .set('client_secret', 'YOUR_CLIENT_SECRET_IF_REQUIRED'); // add if needed
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/x-www-form-urlencoded',
-    });
-    Log().info('Request access token');
-    this.http
-      .post<any>(this.tokenEndpoint, body.toString(), { headers })
-      .subscribe({
-        next: (tokens) => {
-          Log().info('Token received', tokens);
-          this.setTokens(tokens);
-          this.getUserInfo()
-            .pipe(take(1))
-            .subscribe({
-              next: (userInfo) => {
-                Log().info('New user info: ', userInfo);
-                this.user$.next(userInfo);
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-
-                this.getData().subscribe({
-                  next: (data: any) => {
-                    Log().info('Data data: ', data.data);
-                    this.patientData$.next(this.processPatientData(data.data));
-                  },
-                  error: (err: any) => {
-                    Log().error('Data request failed: ', err);
-                  },
-                });
-              },
-              error: (err) => {
-                Log().info('Error getting user info: ', err);
-                this.logout();
-              },
-            });
-          // TODO: store tokens securely (e.g., Secure Storage)
-        },
-        error: (err: any) => {
-          Log().error('Token exchange failed:', err);
-          this.setTokens({});
-          this.logout();
+  private async exchangeCodeForToken(code: string) {
+    this.addDebug('Token exchange: starting...');
+    this.addDebug('Token endpoint: ' + this.tokenEndpoint);
+    try {
+      const bodyStr = `grant_type=authorization_code&code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(this.redirectUri)}&client_id=${encodeURIComponent(this.clientId)}&audience=${encodeURIComponent(this.audience)}`;
+      const response = await CapacitorHttp.post({
+        url: this.tokenEndpoint,
+        data: bodyStr,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
+      const tokens = response.data;
+      this.addDebug('Token exchange: OK status=' + response.status + ' keys=' + Object.keys(tokens).join(','));
+
+      if (!tokens.access_token) {
+        this.addDebug('Token exchange: no access_token in response');
+        this.logout();
+        return;
+      }
+
+      this.setTokens(tokens);
+
+      this.getUserInfo()
+        .pipe(take(1))
+        .subscribe({
+          next: (userInfo) => {
+            this.addDebug('UserInfo: OK, name=' + userInfo?.name);
+            this.user$.next(userInfo);
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+            this.getData().subscribe({
+              next: (data: any) => {
+                this.addDebug('Data: status=' + data?.status + ' hasPatientData=' + (!!data?.data?.patientData));
+                this.addDebug('Data: conduitSensorInRange=' + data?.data?.patientData?.conduitSensorInRange);
+                this.patientData$.next(this.processPatientData(data.data));
+              },
+              error: (err: any) => {
+                this.addDebug('Data: FAILED ' + (err?.status || '') + ' ' + (err?.message || JSON.stringify(err)?.substring(0, 200)));
+              },
+            });
+          },
+          error: (err) => {
+            this.addDebug('UserInfo: FAILED ' + JSON.stringify(err)?.substring(0, 200));
+            this.logout();
+          },
+        });
+    } catch (err: any) {
+      this.addDebug('Token exchange: FAILED ' + JSON.stringify(err)?.substring(0, 300));
+      this.setTokens({});
+      this.logout();
+    }
   }
 
   async login() {
     const authUrl = `${this.loginEndpoint}?response_type=code&client_id=${this.clientId
       }&redirect_uri=${encodeURIComponent(
         this.redirectUri
-      )}&scope=${encodeURIComponent(this.scope)}`;
+      )}&scope=${encodeURIComponent(this.scope
+      )}&audience=${encodeURIComponent(this.audience)}`;
 
     await Browser.open({ url: authUrl });
   }

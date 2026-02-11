@@ -1,90 +1,168 @@
 .glucose-display {
-  height: 50vh;
+  min-height: 40vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #f3f4f6;
+  padding: 2rem 1rem;
+  border-radius: 0 0 24px 24px;
+  background: linear-gradient(135deg, #e8eaf6, #f3f4f6);
+  position: relative;
+  transition: background 0.3s ease;
+
+  &.trend-stable-bg {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  }
+
+  &.trend-up-bg {
+    background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  }
+
+  &.trend-down-bg {
+    background: linear-gradient(135deg, #ffebee, #ffcdd2);
+  }
+
+  .glucose-since {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+  }
 
   .glucose-number {
     font-size: 5rem;
-    font-weight: bold;
+    font-weight: 800;
+    line-height: 1;
     color: #3880ff;
 
     &.trend-up {
-      color: orange;
+      color: #e65100;
     }
 
     &.trend-down {
-      color: red;
+      color: #c62828;
     }
 
     &.trend-stable {
-      color: green;
+      color: #2e7d32;
     }
   }
 
   .glucose-unit {
-    font-size: 1rem;
-    color: #666;
-  }
-
-  .glucose-last {
-    position: absolute;
-    top: 6rem;
-    right: 1rem;
-    font-size: .8rem;
+    font-size: 0.9rem;
+    color: #888;
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 
   .senzor-indicator {
-    justify-content: center;
+    display: flex;
     align-items: center;
-    font-size: 1rem;
-    color: red;
-    padding-top: 1rem;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    color: #c62828;
+    margin-top: 1rem;
+    padding: 0.4rem 1rem;
+    background: rgba(198, 40, 40, 0.1);
+    border-radius: 20px;
+
+    ion-icon {
+      font-size: 1.1rem;
+    }
   }
 
   .trend-indicator {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     margin-top: 0.5rem;
-
-    ion-icon {
-      margin-right: 0.3rem;
-    }
+    gap: 0.3rem;
 
     &.trend-up {
-      color: green;
+      color: #2e7d32;
     }
 
     &.trend-down {
-      color: red;
+      color: #c62828;
     }
 
     &.trend-stable {
-      color: gray;
+      color: #757575;
+    }
+  }
+}
+
+.data-cards {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.data-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 0.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+
+    ion-icon {
+      font-size: 1.3rem;
     }
   }
 
-}
+  ion-list {
+    padding: 0;
+    background: transparent;
+  }
 
-.data-groups {
-  padding: 0;
-
-  ion-item-divider {
-    font-size: 1.5rem;
+  ion-item {
+    --background: transparent;
+    --padding-start: 1rem;
+    --min-height: 36px;
+    font-size: 0.9rem;
+    color: #555;
   }
 }
 
-.glycemia-value {
-  font-size: 5rem;
-  text-align: center;
-  font-weight: bold;
+ion-spinner {
+  width: 80px;
+  height: 80px;
 }
 
-ion-spinner {
-  width: 100px;
-  height: 100px;
+.debug-panel {
+  margin: 1rem;
+  padding: 0.75rem;
+  background: #1a1a2e;
+  border-radius: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+
+  .debug-header {
+    color: #00d4ff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .debug-entry {
+    color: #b0bec5;
+    font-size: 0.7rem;
+    font-family: monospace;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    word-break: break-all;
+  }
 }

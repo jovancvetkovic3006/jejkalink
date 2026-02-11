@@ -1,0 +1,62 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Podesavanja</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content fullscreen>
+  <div class="settings-container">
+    <div class="settings-card">
+      <div class="card-header">
+        <ion-icon name="person-outline" color="primary"></ion-icon>
+        <span>Nalog</span>
+      </div>
+      <ion-list lines="none">
+        <ion-item>
+          <ion-input
+            label="Korisnicko ime"
+            labelPlacement="stacked"
+            [(ngModel)]="patientUsername"
+            placeholder="Unesite korisnicko ime"
+            (ionBlur)="saveUsername()"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-button expand="block" fill="clear" color="primary" (click)="saveUsername()">
+            <ion-icon name="save-outline" slot="start"></ion-icon>
+            Sacuvaj
+          </ion-button>
+        </ion-item>
+        <ion-item *ngIf="saved">
+          <ion-note color="success">Sacuvano!</ion-note>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-header">
+        <ion-icon name="information-circle-outline" color="secondary"></ion-icon>
+        <span>Aplikacija</span>
+      </div>
+      <ion-list lines="none">
+        <ion-item>
+          <ion-label>Verzija</ion-label>
+          <ion-note slot="end">{{ appVersion }}</ion-note>
+        </ion-item>
+        <ion-item>
+          <ion-label>JejkaLink</ion-label>
+          <ion-note slot="end">Medtronic CarePartner</ion-note>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <div class="settings-card danger-card">
+      <ion-list lines="none">
+        <ion-item button (click)="logout()" detail="false">
+          <ion-icon name="log-out-outline" slot="start" color="danger"></ion-icon>
+          <ion-label color="danger">Odjavi se</ion-label>
+        </ion-item>
+      </ion-list>
+    </div>
+  </div>
+</ion-content>

@@ -1,15 +1,12 @@
 <ion-app>
-  <ion-header>
+  <ion-header class="app-header">
     <ion-toolbar color="primary">
-      <ion-title *ngIf="username$ | async as userName">
-        {{ userName || 'Jefimija Cvetkovic' }}
+      <ion-title>
+        <div class="header-content">
+          <span class="app-name">JejkaLink</span>
+          <span *ngIf="username$ | async as userName" class="user-greeting">{{ userName }}</span>
+        </div>
       </ion-title>
-
-      <ion-buttons slot="end">
-        <ion-button fill="clear" (click)="logout()">
-          <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-        </ion-button>
-      </ion-buttons>
     </ion-toolbar>
   </ion-header>
   <ion-router-outlet></ion-router-outlet>
