@@ -269,7 +269,10 @@ export class AuthenticationService {
             lastSG: response.data?.patientData?.lastSG || {},
             sgs: response.data?.patientData?.sgs || [],
             conduitSensorInRange: response.data?.patientData?.conduitSensorInRange,
-            lastSGTrend: response.data?.patientData?.lastSGTrend || ''
+            lastSGTrend: response.data?.patientData?.lastSGTrend || '',
+            activeInsulin: response.data?.patientData?.activeInsulin || {},
+            reservoirRemainingUnits: response.data?.patientData?.reservoirRemainingUnits ?? -1,
+            isTempBasal: response.data?.patientData?.isTempBasal ?? false
           });
           (event?.target as HTMLIonRefresherElement)?.complete();
         },

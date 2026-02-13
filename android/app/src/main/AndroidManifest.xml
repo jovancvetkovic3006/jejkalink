@@ -25,6 +25,15 @@
             android:foregroundServiceType="dataSync" />
 
         <receiver
+            android:name=".NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="ionic.jejkalinkui.ACTION_REFRESH" />
+                <action android:name="ionic.jejkalinkui.ACTION_OPEN" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".GlucoseWidgetProvider"
             android:exported="true"
             android:label="@string/widget_label">
