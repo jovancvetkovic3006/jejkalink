@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { BehaviorSubject, from, Observable, of, take } from 'rxjs';
-import { isTokenExpired } from '../utils/token.util';
+import { isTokenExpired, isTokenExpiringSoon } from '../utils/token.util';
 import { Log } from '../utils/log.js';
 import { CapacitorHttp, HttpResponse } from '@capacitor/core';
 import { BackgroundWeb } from './background-web.service';
@@ -195,10 +195,40 @@ export class AuthenticationService {
   }
 
   doRefresh(event?: CustomEvent) {
+    const token = this.getToken();
+    const needsRefresh = isTokenExpiringSoon(token, 120);
+
+    if (needsRefresh) {
+      this.addDebug('doRefresh: token expired/expiring, refreshing first...');
+      this.refreshToken()
+        .pipe(take(1))
+        .subscribe({
+          next: (tokenData: any) => {
+            if (tokenData?.access_token) {
+              this.setTokens(tokenData);
+              this.bckg.setTokens(this.getTokens());
+              this.addDebug('doRefresh: token refreshed OK');
+              this.fetchAndProcessData(event);
+            } else {
+              this.addDebug('doRefresh: token refresh returned no access_token');
+              (event?.target as HTMLIonRefresherElement)?.complete();
+            }
+          },
+          error: (err: any) => {
+            this.addDebug('doRefresh: token refresh FAILED: ' + JSON.stringify(err)?.substring(0, 200));
+            Log().error('Token refresh failed', err);
+            (event?.target as HTMLIonRefresherElement)?.complete();
+          },
+        });
+    } else {
+      this.addDebug('doRefresh: token still valid, fetching data...');
+      this.fetchAndProcessData(event);
+    }
+  }
+
+  private fetchAndProcessData(event?: CustomEvent) {
     this.getData()
-      .pipe(
-        take(1)
-      )
+      .pipe(take(1))
       .subscribe({
         next: (data: any) => {
           this.patientData$.next(this.processPatientData(data.data));
@@ -213,6 +243,7 @@ export class AuthenticationService {
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {
+          this.addDebug('fetchData: ERROR ' + JSON.stringify(err)?.substring(0, 200));
           Log().error('Refresh failed', err);
           (event?.target as HTMLIonRefresherElement)?.complete();
         },

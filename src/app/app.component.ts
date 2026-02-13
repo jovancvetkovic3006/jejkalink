@@ -52,6 +52,12 @@ export class AppComponent implements OnInit {
       console.log('[LOGG DEBUG]', info);
     });
 
+    (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshFailed', async (info: any) => {
+      console.log('[LOGG] Token refresh failed in background:', info);
+      // Background refresh token expired — try Ionic-side refresh, or force re-login
+      this.authService.doRefresh();
+    });
+
     await this.bckg.setTokens(this.authService.getTokens());
     await this.bckg.startPolling();
   }
@@ -64,7 +70,8 @@ export class AppComponent implements OnInit {
     this.init();
 
     App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive && !this.authService.isTokenExpired()) {
+      if (isActive) {
+        // Always try to refresh when app comes to foreground
         this.authService.doRefresh();
       }
     });
