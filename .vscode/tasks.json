@@ -1,0 +1,192 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1. ADB: Pair Phone Wirelessly",
+      "type": "shell",
+      "command": "adb pair ${input:pairAddress} ${input:pairCode}",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "2. ADB: Connect to Phone",
+      "type": "shell",
+      "command": "adb connect ${input:connectAddress}",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "3. ADB: List Devices",
+      "type": "shell",
+      "command": "adb devices",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "4. Angular: Build Web Assets",
+      "type": "shell",
+      "command": "npx ng build",
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "5. Capacitor: Sync Android",
+      "type": "shell",
+      "command": "npx cap sync android",
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "6. Capacitor: List Targets",
+      "type": "shell",
+      "command": "npx cap run android --list",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "7. Capacitor: Deploy to Device",
+      "type": "shell",
+      "command": "npx cap run android --target ${input:deviceTarget}",
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "8. Gradle: Build APK",
+      "type": "shell",
+      "command": ".\\gradlew.bat assembleDebug",
+      "options": {
+        "cwd": "${workspaceFolder}/android"
+      },
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "9. Copy APK to Project Root",
+      "type": "shell",
+      "command": "Copy-Item '${workspaceFolder}\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk' '${workspaceFolder}\\carelink.apk' -Force",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "10. Git: Commit & Push Background Plugin",
+      "type": "shell",
+      "command": "cd ionic.jejkalinkui.plugins.background && git add -A && git commit -m \"${input:commitMessage}\" && git push",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "11. Git: Commit & Push Main Repo",
+      "type": "shell",
+      "command": "git add -A && git add -f carelink.apk && git commit -m \"${input:commitMessage}\" && git push",
+      "problemMatcher": [],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "FULL: Build + Sync + Deploy",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "4. Angular: Build Web Assets",
+        "5. Capacitor: Sync Android",
+        "7. Capacitor: Deploy to Device"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "FULL: Build + Sync + Deploy + APK",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "4. Angular: Build Web Assets",
+        "5. Capacitor: Sync Android",
+        "7. Capacitor: Deploy to Device",
+        "8. Gradle: Build APK",
+        "9. Copy APK to Project Root"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pairAddress",
+      "description": "Phone pairing IP:port (from Wireless debugging > Pair device)",
+      "type": "promptString",
+      "default": "192.168.1.20:40225"
+    },
+    {
+      "id": "pairCode",
+      "description": "6-digit pairing code from phone",
+      "type": "promptString"
+    },
+    {
+      "id": "connectAddress",
+      "description": "Phone connect IP:port (from Wireless debugging main screen, NOT pairing port)",
+      "type": "promptString",
+      "default": "192.168.1.20:41069"
+    },
+    {
+      "id": "deviceTarget",
+      "description": "Target device ID (run 'List Targets' first to see options)",
+      "type": "promptString",
+      "default": "192.168.1.20:41069"
+    },
+    {
+      "id": "commitMessage",
+      "description": "Git commit message",
+      "type": "promptString",
+      "default": "update"
+    }
+  ]
+}

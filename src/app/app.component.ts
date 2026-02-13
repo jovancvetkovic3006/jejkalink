@@ -9,6 +9,7 @@ import {
 
 import { AuthenticationService } from './services/authentication.service';
 import { App } from '@capacitor/app';
+import { take } from 'rxjs';
 import { BackgroundWeb } from './services/background-web.service';
 // Import BackgroundWeb if it exists in your project
 
@@ -31,7 +32,8 @@ export class AppComponent implements OnInit {
     private readonly bckg: BackgroundWeb
   ) {
     if (this.authService.isTokenExpired()) {
-      this.authService.login();
+      // Try refreshing token first before forcing full re-login
+      this.authService.doRefresh();
     }
   }
 
@@ -54,8 +56,23 @@ export class AppComponent implements OnInit {
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshFailed', async (info: any) => {
       console.log('[LOGG] Token refresh failed in background:', info);
-      // Background refresh token expired — try Ionic-side refresh, or force re-login
-      this.authService.doRefresh();
+      // Background refresh failed — try Ionic-side refresh and update background plugin tokens
+      this.authService.refreshToken().pipe(take(1)).subscribe({
+        next: (tokenData: any) => {
+          if (tokenData?.access_token) {
+            this.authService.setTokens(tokenData);
+            this.bckg.setTokens(this.authService.getTokens());
+            console.log('[LOGG] Ionic-side token refresh OK, updated background plugin');
+          } else {
+            console.log('[LOGG] Ionic-side refresh returned no token, re-login needed');
+            this.authService.login();
+          }
+        },
+        error: () => {
+          console.log('[LOGG] Ionic-side refresh also failed, re-login needed');
+          this.authService.login();
+        }
+      });
     });
 
     await this.bckg.setTokens(this.authService.getTokens());

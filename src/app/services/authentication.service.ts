@@ -177,7 +177,10 @@ export class AuthenticationService {
   refreshToken(): Observable<any> {
     const refresh_token =
       this.refreshToken$.value || localStorage.getItem('refresh_token');
-    if (!refresh_token) return of();
+    if (!refresh_token) {
+      this.addDebug('refreshToken: no refresh_token available');
+      return of(null);
+    }
 
     this.addDebug('refreshToken: starting...');
     return from(
@@ -189,63 +192,106 @@ export class AuthenticationService {
         },
       }).then((response) => {
         this.addDebug('refreshToken: status=' + response.status);
-        return response.data;
+        if (response.status === 200 && response.data?.access_token) {
+          return response.data;
+        }
+        throw new Error('Token refresh failed: status=' + response.status);
       })
     );
   }
 
-  doRefresh(event?: CustomEvent) {
+  private ensureValidToken(): Observable<boolean> {
     const token = this.getToken();
-    const needsRefresh = isTokenExpiringSoon(token, 120);
+    if (!isTokenExpiringSoon(token, 120)) {
+      return of(true);
+    }
 
-    if (needsRefresh) {
-      this.addDebug('doRefresh: token expired/expiring, refreshing first...');
+    this.addDebug('ensureValidToken: token expired/expiring, refreshing...');
+    return from(
       this.refreshToken()
         .pipe(take(1))
-        .subscribe({
-          next: (tokenData: any) => {
-            if (tokenData?.access_token) {
-              this.setTokens(tokenData);
-              this.bckg.setTokens(this.getTokens());
-              this.addDebug('doRefresh: token refreshed OK');
-              this.fetchAndProcessData(event);
-            } else {
-              this.addDebug('doRefresh: token refresh returned no access_token');
-              (event?.target as HTMLIonRefresherElement)?.complete();
-            }
-          },
-          error: (err: any) => {
-            this.addDebug('doRefresh: token refresh FAILED: ' + JSON.stringify(err)?.substring(0, 200));
-            Log().error('Token refresh failed', err);
-            (event?.target as HTMLIonRefresherElement)?.complete();
-          },
-        });
-    } else {
-      this.addDebug('doRefresh: token still valid, fetching data...');
-      this.fetchAndProcessData(event);
-    }
+        .toPromise()
+        .then((tokenData: any) => {
+          if (tokenData?.access_token) {
+            this.setTokens(tokenData);
+            this.bckg.setTokens(this.getTokens());
+            this.addDebug('ensureValidToken: refreshed OK');
+            return true;
+          }
+          this.addDebug('ensureValidToken: no access_token in response');
+          return false;
+        })
+        .catch((err: any) => {
+          this.addDebug('ensureValidToken: refresh FAILED: ' + JSON.stringify(err)?.substring(0, 200));
+          return false;
+        })
+    );
   }
 
-  private fetchAndProcessData(event?: CustomEvent) {
+  doRefresh(event?: CustomEvent) {
+    this.ensureValidToken()
+      .pipe(take(1))
+      .subscribe((valid: boolean) => {
+        if (valid) {
+          this.fetchAndProcessData(event);
+        } else {
+          this.addDebug('doRefresh: token invalid, triggering re-login...');
+          (event?.target as HTMLIonRefresherElement)?.complete();
+          this.login();
+        }
+      });
+  }
+
+  private fetchAndProcessData(event?: CustomEvent, isRetry = false) {
     this.getData()
       .pipe(take(1))
       .subscribe({
-        next: (data: any) => {
-          this.patientData$.next(this.processPatientData(data.data));
-          Log().info('Re-fresh data sg: ', data.data?.patientData?.lastSG || {});
-          Log().info('Re-fresh data sgs: ', data.data?.patientData?.sgs || []);
+        next: (response: any) => {
+          if (response.status === 401 && !isRetry) {
+            this.addDebug('fetchData: got 401, refreshing token and retrying...');
+            this.ensureValidToken()
+              .pipe(take(1))
+              .subscribe((valid: boolean) => {
+                if (valid) {
+                  this.fetchAndProcessData(event, true);
+                } else {
+                  this.addDebug('fetchData: retry refresh failed, re-login...');
+                  (event?.target as HTMLIonRefresherElement)?.complete();
+                  this.login();
+                }
+              });
+            return;
+          }
+          this.patientData$.next(this.processPatientData(response.data));
+          Log().info('Re-fresh data sg: ', response.data?.patientData?.lastSG || {});
+          Log().info('Re-fresh data sgs: ', response.data?.patientData?.sgs || []);
           this.bckg.showNotificationFromIonic({
-            lastSG: data.data?.patientData?.lastSG || {},
-            sgs: data.data?.patientData?.sgs || [],
-            conduitSensorInRange: data.data?.patientData?.conduitSensorInRange,
-            lastSGTrend: data.data?.patientData?.lastSGTrend || ''
+            lastSG: response.data?.patientData?.lastSG || {},
+            sgs: response.data?.patientData?.sgs || [],
+            conduitSensorInRange: response.data?.patientData?.conduitSensorInRange,
+            lastSGTrend: response.data?.patientData?.lastSGTrend || ''
           });
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {
           this.addDebug('fetchData: ERROR ' + JSON.stringify(err)?.substring(0, 200));
-          Log().error('Refresh failed', err);
-          (event?.target as HTMLIonRefresherElement)?.complete();
+          if (!isRetry) {
+            this.addDebug('fetchData: error on first try, refreshing token and retrying...');
+            this.ensureValidToken()
+              .pipe(take(1))
+              .subscribe((valid: boolean) => {
+                if (valid) {
+                  this.fetchAndProcessData(event, true);
+                } else {
+                  this.addDebug('fetchData: retry refresh failed, re-login...');
+                  (event?.target as HTMLIonRefresherElement)?.complete();
+                  this.login();
+                }
+              });
+          } else {
+            Log().error('Refresh failed after retry', err);
+            (event?.target as HTMLIonRefresherElement)?.complete();
+          }
         },
       });
   }
