@@ -97,4 +97,8 @@ export class SettingsPage implements OnInit {
     localStorage.removeItem('debug_logs');
     this.authService.debugLog$.next([]);
   }
+
+  sendLogs() {
+    this.authService.sendLogsViaEmail();
+  }
 }

@@ -67,6 +67,9 @@
         <ion-icon name="code-outline" color="medium"></ion-icon>
         <span>Logovi ({{ logs.length }})</span>
         <ion-icon [name]="logsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'" color="medium" class="expand-icon"></ion-icon>
+        <ion-button fill="clear" size="small" color="primary" (click)="sendLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
+          Posalji
+        </ion-button>
         <ion-button fill="clear" size="small" color="medium" (click)="clearLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
           Obrisi
         </ion-button>

@@ -30,6 +30,9 @@ export class AuthenticationService {
   private static readonly LOG_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
   private static readonly LOG_MAX_ENTRIES = 500;
 
+  private loginInProgress = false;
+  private refreshInFlight: Promise<any> | null = null;
+
   public debugLog$ = new BehaviorSubject<string[]>(this.loadPersistedLogs());
 
   private loadPersistedLogs(): string[] {
@@ -182,22 +185,32 @@ export class AuthenticationService {
       return of(null);
     }
 
+    // Deduplicate concurrent refresh calls
+    if (this.refreshInFlight) {
+      this.addDebug('refreshToken: reusing in-flight request');
+      return from(this.refreshInFlight);
+    }
+
     this.addDebug('refreshToken: starting...');
-    return from(
-      CapacitorHttp.post({
-        url: this.tokenEndpoint,
-        data: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refresh_token)}&client_id=${encodeURIComponent(this.clientId)}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }).then((response) => {
-        this.addDebug('refreshToken: status=' + response.status);
-        if (response.status === 200 && response.data?.access_token) {
-          return response.data;
-        }
-        throw new Error('Token refresh failed: status=' + response.status);
-      })
-    );
+    this.refreshInFlight = CapacitorHttp.post({
+      url: this.tokenEndpoint,
+      data: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refresh_token)}&client_id=${encodeURIComponent(this.clientId)}`,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }).then((response) => {
+      this.refreshInFlight = null;
+      this.addDebug('refreshToken: status=' + response.status);
+      if (response.status === 200 && response.data?.access_token) {
+        return response.data;
+      }
+      throw new Error('Token refresh failed: status=' + response.status);
+    }).catch((err) => {
+      this.refreshInFlight = null;
+      throw err;
+    });
+
+    return from(this.refreshInFlight);
   }
 
   private ensureValidToken(): Observable<boolean> {
@@ -547,6 +560,7 @@ export class AuthenticationService {
   }
 
   private async exchangeCodeForToken(code: string) {
+    this.loginInProgress = false;
     this.addDebug('Token exchange: starting...');
     this.addDebug('Token endpoint: ' + this.tokenEndpoint);
     try {
@@ -601,6 +615,13 @@ export class AuthenticationService {
   }
 
   async login() {
+    if (this.loginInProgress) {
+      this.addDebug('login: already in progress, skipping');
+      return;
+    }
+    this.loginInProgress = true;
+    this.addDebug('login: opening browser...');
+
     const authUrl = `${this.loginEndpoint}?response_type=code&client_id=${this.clientId
       }&redirect_uri=${encodeURIComponent(
         this.redirectUri
@@ -608,5 +629,13 @@ export class AuthenticationService {
       )}&audience=${encodeURIComponent(this.audience)}`;
 
     await Browser.open({ url: authUrl });
+  }
+
+  sendLogsViaEmail() {
+    const logs = this.debugLog$.value.join('\n');
+    const subject = encodeURIComponent('JejkaLink Debug Logs - ' + new Date().toLocaleString());
+    const body = encodeURIComponent(logs);
+    const mailto = `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`;
+    window.open(mailto, '_system');
   }
 }
