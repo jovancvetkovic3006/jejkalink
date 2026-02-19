@@ -1,28 +1,5 @@
-.filter-bar {
-  padding: 0.5rem 1rem;
-  display: flex;
-  align-items: center;
-
-  ion-segment {
-    --background: #e0e0e0;
-    border-radius: 12px;
-    flex: 1;
-  }
-
-  ion-segment-button {
-    --indicator-color: var(--ion-color-primary);
-    --color: #555;
-    --color-checked: #fff;
-    --border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    min-height: 36px;
-    letter-spacing: 0.02em;
-  }
-}
-
 .chart-scroll {
-  height: 100%;
+  height: calc(100% - 4px);
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -57,20 +34,16 @@
   }
 }
 
-.header-landscape {
-  ion-toolbar {
-    --min-height: 32px;
-    --padding-top: 0;
-    --padding-bottom: 0;
-  }
-}
+.pattern-summary {
+  padding: 0.5rem 1rem;
+  background: #fafafa;
+  border-top: 1px solid #eee;
 
-.filter-bar-landscape {
-  padding: 0.15rem 0.5rem;
-
-  ion-segment-button {
-    min-height: 26px;
-    font-size: 0.75rem;
+  .pattern-item {
+    font-size: 0.85rem;
+    color: #555;
+    padding: 0.2rem 0;
+    line-height: 1.4;
   }
 }
 
