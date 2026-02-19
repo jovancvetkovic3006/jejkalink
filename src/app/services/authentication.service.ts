@@ -7,6 +7,7 @@ import { Log } from '../utils/log.js';
 import { CapacitorHttp, HttpResponse } from '@capacitor/core';
 import { BackgroundWeb } from './background-web.service';
 import { MedtronicDiscoveryService } from './medtronic-discovery.service';
+import { SgsHistoryService } from './sgs-history.service';
 
 export interface IUserInfo {
   name: string;
@@ -32,6 +33,7 @@ export class AuthenticationService {
 
   private loginInProgress = false;
   private refreshInFlight: Promise<any> | null = null;
+  private refreshCycleInProgress = false;
 
   public debugLog$ = new BehaviorSubject<string[]>(this.loadPersistedLogs());
 
@@ -106,7 +108,8 @@ export class AuthenticationService {
 
   constructor(
     private readonly bckg: BackgroundWeb,
-    private readonly discovery: MedtronicDiscoveryService
+    private readonly discovery: MedtronicDiscoveryService,
+    private readonly sgsHistory: SgsHistoryService
   ) {
     this.setupDeepLinkListener();
     this.initDiscovery();
@@ -242,12 +245,19 @@ export class AuthenticationService {
   }
 
   doRefresh(event?: CustomEvent) {
+    if (this.refreshCycleInProgress && !event) {
+      this.addDebug('doRefresh: already in progress, skipping');
+      return;
+    }
+    this.refreshCycleInProgress = true;
+    this.addDebug('doRefresh: starting...');
     this.ensureValidToken()
       .pipe(take(1))
       .subscribe((valid: boolean) => {
         if (valid) {
           this.fetchAndProcessData(event);
         } else {
+          this.refreshCycleInProgress = false;
           this.addDebug('doRefresh: token invalid, triggering re-login...');
           (event?.target as HTMLIonRefresherElement)?.complete();
           this.login();
@@ -287,6 +297,7 @@ export class AuthenticationService {
             reservoirRemainingUnits: response.data?.patientData?.reservoirRemainingUnits ?? -1,
             isTempBasal: response.data?.patientData?.isTempBasal ?? false
           });
+          this.refreshCycleInProgress = false;
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {
@@ -305,6 +316,7 @@ export class AuthenticationService {
                 }
               });
           } else {
+            this.refreshCycleInProgress = false;
             Log().error('Refresh failed after retry', err);
             (event?.target as HTMLIonRefresherElement)?.complete();
           }
@@ -399,6 +411,8 @@ export class AuthenticationService {
     data.sgs = (patientData.sgs?.reverse() as any[] || []).filter(sg => sg.sg > 0 && sg.timestamp).sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
+
+    this.sgsHistory.merge(data.sgs);
 
     data.since = this.getTimeSinceLastGS(data);
     const unitsLeft = patientData.reservoirRemainingUnits || 0;

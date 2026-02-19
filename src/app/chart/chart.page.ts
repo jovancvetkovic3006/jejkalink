@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -11,6 +11,7 @@ import {
   IonSegmentButton,
 } from '@ionic/angular/standalone';
 import { AuthenticationService } from '../services/authentication.service';
+import { SgsHistoryService } from '../services/sgs-history.service';
 import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartData, ChartOptions } from "chart.js";
 import { BaseChartDirective } from 'ng2-charts';
@@ -46,6 +47,7 @@ export class ChartPage implements OnInit, OnDestroy {
   patientData$ = this.authService.patientData$;
   hoursFilter = 6;
   allSgs: any[] = [];
+  isLandscape = false;
 
   lineChartData: ChartData<'line'> = {
     labels: [],
@@ -136,6 +138,8 @@ export class ChartPage implements OnInit, OnDestroy {
         },
         ticks: {
           maxRotation: 45,
+          autoSkip: true,
+          maxTicksLimit: 12,
           color: '#888',
           font: { size: 11 },
         },
@@ -163,11 +167,25 @@ export class ChartPage implements OnInit, OnDestroy {
     },
   };
 
-  constructor(public authService: AuthenticationService) {}
+  constructor(
+    public authService: AuthenticationService,
+    private readonly sgsHistory: SgsHistoryService
+  ) {
+    this.checkOrientation();
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    this.checkOrientation();
+  }
+
+  private checkOrientation() {
+    this.isLandscape = window.innerWidth > window.innerHeight;
+  }
 
   ngOnInit() {
-    this.subscription = this.patientData$.subscribe((data) => {
-      this.allSgs = data.sgs || [];
+    this.subscription = this.sgsHistory.allSgs$.subscribe((sgs) => {
+      this.allSgs = sgs || [];
       this.applyFilter();
     });
   }
@@ -190,9 +208,15 @@ export class ChartPage implements OnInit, OnDestroy {
   }
 
   loadChartData(sgs: any[]) {
-    this.lineChartData.labels = sgs.map((d) =>
-      new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    );
+    const showDate = this.hoursFilter > 24;
+    this.lineChartData.labels = sgs.map((d) => {
+      const dt = new Date(d.timestamp);
+      if (showDate) {
+        return dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
+          + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
 
     const values = sgs.map((d) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
@@ -204,6 +228,10 @@ export class ChartPage implements OnInit, OnDestroy {
     });
     this.lineChartData.datasets[0].pointBackgroundColor = pointColors;
     this.lineChartData.datasets[0].pointBorderColor = pointColors;
+
+    this.lineChartData.datasets[0].pointRadius = sgs.length > 500 ? 0 : sgs.length > 100 ? 1 : 0;
+    this.lineChartData.datasets[0].pointHoverRadius = sgs.length > 500 ? 2 : 6;
+    this.lineChartData.datasets[0].borderWidth = sgs.length > 500 ? 1 : 2;
 
     // Show tooltip on last data point by default
     setTimeout(() => this.showLastTooltip(), 300);

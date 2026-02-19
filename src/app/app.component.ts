@@ -30,12 +30,7 @@ export class AppComponent implements OnInit {
   constructor(
     private readonly authService: AuthenticationService,
     private readonly bckg: BackgroundWeb
-  ) {
-    if (this.authService.isTokenExpired()) {
-      // Try refreshing token first before forcing full re-login
-      this.authService.doRefresh();
-    }
-  }
+  ) {}
 
   async init() {
     await this.bckg.ensureNotificationPermission();
@@ -80,10 +75,7 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.authService.isTokenExpired()) {
-      this.authService.doRefresh();
-    }
-
+    this.authService.doRefresh();
     this.init();
 
     App.addListener('appStateChange', ({ isActive }) => {

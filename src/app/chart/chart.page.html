@@ -1,15 +1,15 @@
-<ion-header>
+<ion-header *ngIf="!isLandscape">
   <ion-toolbar>
     <ion-title>Trend</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content fullscreen>
+<ion-content fullscreen [ngClass]="{'landscape-fullscreen': isLandscape}">
   <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="filter-bar">
+  <div class="filter-bar" [ngClass]="{'filter-bar-landscape': isLandscape}">
     <ion-segment [value]="hoursFilter.toString()" (ionChange)="onFilterChange($event)">
       <ion-segment-button value="3">
         <ion-label>3h</ion-label>
@@ -23,12 +23,21 @@
       <ion-segment-button value="24">
         <ion-label>24h</ion-label>
       </ion-segment-button>
+      <ion-segment-button value="72">
+        <ion-label>3d</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="168">
+        <ion-label>7d</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="720">
+        <ion-label>30d</ion-label>
+      </ion-segment-button>
     </ion-segment>
   </div>
 
-  <div class="chart-container">
+  <div class="chart-container" [ngClass]="{'chart-container-landscape': isLandscape}">
     <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"
-      [legend]="true">
+      [legend]="!isLandscape">
     </canvas>
   </div>
 </ion-content>

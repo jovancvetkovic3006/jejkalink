@@ -30,3 +30,22 @@
     width: 100%;
   }
 }
+
+.filter-bar-landscape {
+  padding: 0.25rem 0.5rem 0;
+
+  ion-segment-button {
+    min-height: 28px;
+    font-size: 0.8rem;
+  }
+}
+
+.chart-container-landscape {
+  height: calc(100% - 36px);
+  padding: 0.25rem 0.5rem 0.25rem;
+}
+
+.landscape-fullscreen {
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
