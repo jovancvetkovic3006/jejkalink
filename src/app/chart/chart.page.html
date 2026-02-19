@@ -11,34 +11,23 @@
 
   <div class="filter-bar" [ngClass]="{'filter-bar-landscape': isLandscape}">
     <ion-segment [value]="hoursFilter.toString()" (ionChange)="onFilterChange($event)">
-      <ion-segment-button value="3">
-        <ion-label>3h</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="6">
-        <ion-label>6h</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="12">
-        <ion-label>12h</ion-label>
-      </ion-segment-button>
       <ion-segment-button value="24">
         <ion-label>24h</ion-label>
       </ion-segment-button>
-      <ion-segment-button value="72">
-        <ion-label>3d</ion-label>
-      </ion-segment-button>
       <ion-segment-button value="168">
-        <ion-label>7d</ion-label>
+        <ion-label>7D</ion-label>
       </ion-segment-button>
       <ion-segment-button value="720">
-        <ion-label>30d</ion-label>
+        <ion-label>1M</ion-label>
       </ion-segment-button>
     </ion-segment>
-    <button class="reset-zoom-btn" (click)="resetZoom()">Reset</button>
   </div>
 
-  <div class="chart-container" [ngClass]="{'chart-container-landscape': isLandscape}">
-    <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"
-      [legend]="!isLandscape">
-    </canvas>
+  <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">
+    <div class="chart-inner" [style.width.px]="chartWidth">
+      <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"
+        [legend]="false">
+      </canvas>
+    </div>
   </div>
 </ion-content>

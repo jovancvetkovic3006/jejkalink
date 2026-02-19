@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -16,11 +16,9 @@ import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartData, ChartOptions } from "chart.js";
 import { BaseChartDirective } from 'ng2-charts';
 import annotationPlugin from 'chartjs-plugin-annotation';
-import zoomPlugin from 'chartjs-plugin-zoom';
 import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 Chart.register(annotationPlugin);
-Chart.register(zoomPlugin);
 
 const LOW_THRESHOLD = 4.5;
 const HIGH_THRESHOLD = 7.5;
@@ -45,11 +43,15 @@ const HIGH_THRESHOLD = 7.5;
 })
 export class ChartPage implements OnInit, OnDestroy {
   @ViewChild(BaseChartDirective) chartDirective?: BaseChartDirective;
+  @ViewChild('chartScroll') chartScrollRef?: ElementRef<HTMLDivElement>;
   private subscription?: Subscription;
   patientData$ = this.authService.patientData$;
-  hoursFilter = 6;
+  hoursFilter = 24;
   allSgs: any[] = [];
   isLandscape = false;
+  chartWidth = 0;
+
+  private static readonly DAY_WIDTH_PX = 600;
 
   lineChartData: ChartData<'line'> = {
     labels: [],
@@ -126,22 +128,6 @@ export class ChartPage implements OnInit, OnDestroy {
             borderColor: 'rgba(22, 0, 163, 0.5)',
             borderWidth: 2,
             borderDash: [6, 4],
-          },
-        },
-      },
-      zoom: {
-        pan: {
-          enabled: true,
-          mode: 'x',
-          modifierKey: undefined as any,
-        },
-        zoom: {
-          pinch: {
-            enabled: true,
-          },
-          mode: 'x',
-          drag: {
-            enabled: false,
           },
         },
       },
@@ -226,10 +212,6 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lockPortrait();
   }
 
-  resetZoom() {
-    this.chartDirective?.chart?.resetZoom();
-  }
-
   onFilterChange(event: any) {
     this.hoursFilter = Number(event.detail.value);
     this.applyFilter();
@@ -240,6 +222,11 @@ export class ChartPage implements OnInit, OnDestroy {
     const filtered = this.allSgs
       .filter((sg) => new Date(sg.timestamp).getTime() >= cutoff)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const totalDays = Math.max(1, this.hoursFilter / 24);
+    const minWidth = window.innerWidth;
+    this.chartWidth = Math.max(minWidth, totalDays * ChartPage.DAY_WIDTH_PX);
+
     this.loadChartData(filtered);
   }
 
@@ -265,23 +252,19 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lineChartData.datasets[0].pointBackgroundColor = pointColors;
     this.lineChartData.datasets[0].pointBorderColor = pointColors;
 
-    this.lineChartData.datasets[0].pointRadius = sgs.length > 500 ? 0 : sgs.length > 100 ? 1 : 0;
-    this.lineChartData.datasets[0].pointHoverRadius = sgs.length > 500 ? 2 : 6;
-    this.lineChartData.datasets[0].borderWidth = sgs.length > 500 ? 1 : 2;
+    this.lineChartData.datasets[0].pointRadius = 0;
+    this.lineChartData.datasets[0].pointHoverRadius = 4;
+    this.lineChartData.datasets[0].borderWidth = 2;
 
-    this.chartDirective?.chart?.resetZoom();
-
-    // Show tooltip on last data point by default
-    setTimeout(() => this.showLastTooltip(), 300);
+    // Scroll to the right (most recent data) after render
+    setTimeout(() => this.scrollToEnd(), 100);
   }
 
-  private showLastTooltip() {
-    const chart = this.chartDirective?.chart;
-    if (!chart || !chart.data.datasets[0]?.data?.length) return;
-    const lastIndex = chart.data.datasets[0].data.length - 1;
-    chart.setActiveElements([{ datasetIndex: 0, index: lastIndex }]);
-    chart.tooltip?.setActiveElements([{ datasetIndex: 0, index: lastIndex }], { x: 0, y: 0 });
-    chart.update();
+  private scrollToEnd() {
+    const el = this.chartScrollRef?.nativeElement;
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+    }
   }
 
   doRefresh(event: CustomEvent) {
