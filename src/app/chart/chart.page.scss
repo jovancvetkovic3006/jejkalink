@@ -1,5 +1,7 @@
 .filter-bar {
   padding: 0.75rem 1rem 0;
+  display: flex;
+  align-items: center;
 
   ion-segment {
     --background: #e0e0e0;
@@ -28,6 +30,23 @@
   canvas {
     max-height: 100%;
     width: 100%;
+  }
+}
+
+.reset-zoom-btn {
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f5f5f5;
+  color: #555;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:active {
+    background: #ddd;
   }
 }
 

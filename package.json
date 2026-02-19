@@ -43,6 +43,7 @@
     "background-plugin": "file:ionic.jejkalinkui.plugins.background",
     "chart.js": "^3.8.0",
     "chartjs-plugin-annotation": "^1.2.2",
+    "chartjs-plugin-zoom": "^2.2.0",
     "ionicons": "^7.4.0",
     "jwt-decode": "^4.0.0",
     "ng2-charts": "^3.1.0",

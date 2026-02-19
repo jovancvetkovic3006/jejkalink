@@ -16,9 +16,11 @@ import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartData, ChartOptions } from "chart.js";
 import { BaseChartDirective } from 'ng2-charts';
 import annotationPlugin from 'chartjs-plugin-annotation';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 Chart.register(annotationPlugin);
+Chart.register(zoomPlugin);
 
 const LOW_THRESHOLD = 4.5;
 const HIGH_THRESHOLD = 7.5;
@@ -127,6 +129,22 @@ export class ChartPage implements OnInit, OnDestroy {
           },
         },
       },
+      zoom: {
+        pan: {
+          enabled: true,
+          mode: 'x',
+          modifierKey: undefined as any,
+        },
+        zoom: {
+          pinch: {
+            enabled: true,
+          },
+          mode: 'x',
+          drag: {
+            enabled: false,
+          },
+        },
+      },
     },
     scales: {
       x: {
@@ -174,6 +192,18 @@ export class ChartPage implements OnInit, OnDestroy {
     this.checkOrientation();
   }
 
+  private unlockOrientation() {
+    try {
+      (window as any).Capacitor.Plugins.Background.unlockOrientation();
+    } catch (_) { /* not supported */ }
+  }
+
+  private lockPortrait() {
+    try {
+      (window as any).Capacitor.Plugins.Background.lockPortrait();
+    } catch (_) { /* not supported */ }
+  }
+
   @HostListener('window:resize')
   onResize() {
     this.checkOrientation();
@@ -184,6 +214,7 @@ export class ChartPage implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.unlockOrientation();
     this.subscription = this.sgsHistory.allSgs$.subscribe((sgs) => {
       this.allSgs = sgs || [];
       this.applyFilter();
@@ -192,6 +223,11 @@ export class ChartPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscription?.unsubscribe();
+    this.lockPortrait();
+  }
+
+  resetZoom() {
+    this.chartDirective?.chart?.resetZoom();
   }
 
   onFilterChange(event: any) {
@@ -232,6 +268,8 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lineChartData.datasets[0].pointRadius = sgs.length > 500 ? 0 : sgs.length > 100 ? 1 : 0;
     this.lineChartData.datasets[0].pointHoverRadius = sgs.length > 500 ? 2 : 6;
     this.lineChartData.datasets[0].borderWidth = sgs.length > 500 ? 1 : 2;
+
+    this.chartDirective?.chart?.resetZoom();
 
     // Show tooltip on last data point by default
     setTimeout(() => this.showLastTooltip(), 300);
