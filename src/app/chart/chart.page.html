@@ -1,6 +1,19 @@
-<ion-header *ngIf="!isLandscape">
+<ion-header [ngClass]="{'header-landscape': isLandscape}">
   <ion-toolbar>
-    <ion-title>Trend</ion-title>
+    <ion-title *ngIf="!isLandscape">Trend</ion-title>
+    <div class="filter-bar" [ngClass]="{'filter-bar-landscape': isLandscape}">
+      <ion-segment [value]="hoursFilter.toString()" (ionChange)="onFilterChange($event)">
+        <ion-segment-button value="24">
+          <ion-label>24h</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="168">
+          <ion-label>7D</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="720">
+          <ion-label>1M</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+    </div>
   </ion-toolbar>
 </ion-header>
 
@@ -9,18 +22,8 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <div class="filter-bar" [ngClass]="{'filter-bar-landscape': isLandscape}">
-    <ion-segment [value]="hoursFilter.toString()" (ionChange)="onFilterChange($event)">
-      <ion-segment-button value="24">
-        <ion-label>24h</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="168">
-        <ion-label>7D</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="720">
-        <ion-label>1M</ion-label>
-      </ion-segment-button>
-    </ion-segment>
+  <div class="loading-overlay" *ngIf="isLoading">
+    <ion-spinner name="crescent"></ion-spinner>
   </div>
 
   <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">

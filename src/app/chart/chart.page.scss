@@ -1,11 +1,12 @@
 .filter-bar {
-  padding: 0.75rem 1rem 0;
+  padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
 
   ion-segment {
     --background: #e0e0e0;
     border-radius: 12px;
+    flex: 1;
   }
 
   ion-segment-button {
@@ -21,7 +22,7 @@
 }
 
 .chart-scroll {
-  height: calc(100% - 52px);
+  height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -37,17 +38,44 @@
   }
 }
 
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 100;
+
+  ion-spinner {
+    width: 40px;
+    height: 40px;
+    color: var(--ion-color-primary);
+  }
+}
+
+.header-landscape {
+  ion-toolbar {
+    --min-height: 32px;
+    --padding-top: 0;
+    --padding-bottom: 0;
+  }
+}
+
 .filter-bar-landscape {
-  padding: 0.25rem 0.5rem 0;
+  padding: 0.15rem 0.5rem;
 
   ion-segment-button {
-    min-height: 28px;
-    font-size: 0.8rem;
+    min-height: 26px;
+    font-size: 0.75rem;
   }
 }
 
 .chart-scroll-landscape {
-  height: calc(100% - 36px);
+  height: 100%;
 }
 
 .landscape-fullscreen {

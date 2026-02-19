@@ -9,6 +9,7 @@ import {
   IonLabel,
   IonSegment,
   IonSegmentButton,
+  IonSpinner,
 } from '@ionic/angular/standalone';
 import { AuthenticationService } from '../services/authentication.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
@@ -37,6 +38,7 @@ const HIGH_THRESHOLD = 7.5;
     IonLabel,
     IonSegment,
     IonSegmentButton,
+    IonSpinner,
     NgChartsModule,
     CommonModule,
   ],
@@ -50,8 +52,9 @@ export class ChartPage implements OnInit, OnDestroy {
   allSgs: any[] = [];
   isLandscape = false;
   chartWidth = 0;
+  isLoading = false;
 
-  private static readonly DAY_WIDTH_PX = 600;
+  private static readonly DAY_WIDTH_PX = 1200;
 
   lineChartData: ChartData<'line'> = {
     labels: [],
@@ -214,7 +217,8 @@ export class ChartPage implements OnInit, OnDestroy {
 
   onFilterChange(event: any) {
     this.hoursFilter = Number(event.detail.value);
-    this.applyFilter();
+    this.isLoading = true;
+    setTimeout(() => this.applyFilter(), 50);
   }
 
   applyFilter() {
@@ -224,8 +228,12 @@ export class ChartPage implements OnInit, OnDestroy {
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     const totalDays = Math.max(1, this.hoursFilter / 24);
-    const minWidth = window.innerWidth;
-    this.chartWidth = Math.max(minWidth, totalDays * ChartPage.DAY_WIDTH_PX);
+    const screenW = window.innerWidth;
+    this.chartWidth = Math.max(screenW, totalDays * ChartPage.DAY_WIDTH_PX);
+
+    const ticksPerScreen = 8;
+    const totalScreens = Math.max(1, this.chartWidth / screenW);
+    (this.lineChartOptions as any).scales.x.ticks.maxTicksLimit = Math.round(ticksPerScreen * totalScreens);
 
     this.loadChartData(filtered);
   }
@@ -257,7 +265,10 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lineChartData.datasets[0].borderWidth = 2;
 
     // Scroll to the right (most recent data) after render
-    setTimeout(() => this.scrollToEnd(), 100);
+    setTimeout(() => {
+      this.scrollToEnd();
+      this.isLoading = false;
+    }, 150);
   }
 
   private scrollToEnd() {
