@@ -34,6 +34,7 @@ export class AuthenticationService {
   private loginInProgress = false;
   private refreshInFlight: Promise<any> | null = null;
   private refreshCycleInProgress = false;
+  private refreshCycleTimeout: ReturnType<typeof setTimeout> | undefined;
 
   public debugLog$ = new BehaviorSubject<string[]>(this.loadPersistedLogs());
 
@@ -207,9 +208,10 @@ export class AuthenticationService {
       if (response.status === 200 && response.data?.access_token) {
         return response.data;
       }
-      throw new Error('Token refresh failed: status=' + response.status);
+      throw new Error('Token refresh failed: status=' + response.status + ' body=' + JSON.stringify(response.data)?.substring(0, 200));
     }).catch((err) => {
       this.refreshInFlight = null;
+      this.addDebug('refreshToken: FAILED: ' + (err?.message || JSON.stringify(err))?.substring(0, 200));
       throw err;
     });
 
@@ -250,6 +252,16 @@ export class AuthenticationService {
       return;
     }
     this.refreshCycleInProgress = true;
+
+    // Safety: auto-reset flag after 30s to prevent permanent lockout
+    clearTimeout(this.refreshCycleTimeout);
+    this.refreshCycleTimeout = setTimeout(() => {
+      if (this.refreshCycleInProgress) {
+        this.addDebug('doRefresh: safety timeout, resetting refreshCycleInProgress');
+        this.refreshCycleInProgress = false;
+      }
+    }, 30_000);
+
     this.addDebug('doRefresh: starting...');
     this.ensureValidToken()
       .pipe(take(1))
@@ -278,6 +290,7 @@ export class AuthenticationService {
                 if (valid) {
                   this.fetchAndProcessData(event, true);
                 } else {
+                  this.refreshCycleInProgress = false;
                   this.addDebug('fetchData: retry refresh failed, re-login...');
                   (event?.target as HTMLIonRefresherElement)?.complete();
                   this.login();
@@ -310,6 +323,7 @@ export class AuthenticationService {
                 if (valid) {
                   this.fetchAndProcessData(event, true);
                 } else {
+                  this.refreshCycleInProgress = false;
                   this.addDebug('fetchData: retry refresh failed, re-login...');
                   (event?.target as HTMLIonRefresherElement)?.complete();
                   this.login();
