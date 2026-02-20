@@ -208,7 +208,7 @@ export class ChartPage implements OnInit, OnDestroy {
       },
       normalZone: {
         type: 'box', yMin: LOW_THRESHOLD, yMax: HIGH_THRESHOLD,
-        backgroundColor: 'rgba(124, 179, 66, 0.08)', borderWidth: 0,
+        backgroundColor: 'rgba(124, 179, 66, 0.20)', borderWidth: 0,
       },
       highZone: {
         type: 'box', yMin: HIGH_THRESHOLD, yMax: 20,
@@ -251,10 +251,11 @@ export class ChartPage implements OnInit, OnDestroy {
                 content: `${dayNum} ${monthName}.`,
                 position: 'start',
                 backgroundColor: badgeColor,
-                color: '#fff',
+                color: '#ccc',
                 font: { size: 11, weight: 'bold' },
                 padding: { top: 3, bottom: 3, left: 6, right: 6 },
                 borderRadius: 4,
+                xAdjust: 30,
               },
             };
           } else {

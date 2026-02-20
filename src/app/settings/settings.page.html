@@ -27,14 +27,12 @@
         <ion-item>
           <ion-input
             label="Pacijent"
-            labelPlacement="stacked"
+            labelPlacement="fixed"
             [(ngModel)]="patientUsername"
-            placeholder="Korisnicko ime pacijenta"
+            placeholder="Korisnicko ime"
             (ionBlur)="saveUsername()"
           ></ion-input>
-        </ion-item>
-        <ion-item *ngIf="saved">
-          <ion-note color="success">Sacuvano!</ion-note>
+          <ion-note slot="end" color="success" *ngIf="saved">Sacuvano!</ion-note>
         </ion-item>
       </ion-list>
     </div>
