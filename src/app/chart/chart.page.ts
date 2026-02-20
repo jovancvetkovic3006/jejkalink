@@ -18,6 +18,51 @@ import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 Chart.register(annotationPlugin);
 
+const dayLabelPlugin = {
+  id: 'dayLabels',
+  afterDraw(chart: any) {
+    const timestamps: Date[] = chart.config.options?._timestamps;
+    if (!timestamps || timestamps.length === 0) return;
+    const xScale = chart.scales['x'];
+    const ctx = chart.ctx;
+    if (!xScale || !ctx) return;
+
+    const bottom = chart.chartArea.bottom;
+    let lastDay = -1;
+
+    for (let i = 0; i < timestamps.length; i++) {
+      const dt = timestamps[i];
+      const h = dt.getHours();
+      const m = dt.getMinutes();
+      if (h === 0 && m < 5 && dt.getDate() !== lastDay) {
+        lastDay = dt.getDate();
+        const x = xScale.getPixelForValue(i);
+        const label = `${dt.getDate()} ${dt.toLocaleDateString('en-US', { month: 'short' })}.`;
+
+        ctx.save();
+        ctx.font = 'bold 11px sans-serif';
+        const textW = ctx.measureText(label).width;
+        const pad = 4;
+        const boxW = textW + pad * 2;
+        const boxH = 16;
+        const bx = x + 4;
+        const by = bottom + 4;
+
+        ctx.fillStyle = 'rgba(33, 120, 210, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(bx, by, boxW, boxH, 3);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.textBaseline = 'top';
+        ctx.fillText(label, bx + pad, by + 2);
+        ctx.restore();
+      }
+    }
+  }
+};
+Chart.register(dayLabelPlugin);
+
 const LOW_THRESHOLD = 4.5;
 const HIGH_THRESHOLD = 7.5;
 
@@ -72,6 +117,9 @@ export class ChartPage implements OnInit, OnDestroy {
     maintainAspectRatio: false,
     animation: false,
     events: ['click'],
+    layout: {
+      padding: { bottom: 24 },
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -95,35 +143,11 @@ export class ChartPage implements OnInit, OnDestroy {
       x: {
         display: true,
         ticks: {
-          maxRotation: 45,
-          autoSkip: false,
-          callback: (value: any, index: number) => {
-            const dt = this.rawTimestamps[index];
-            if (!dt) return null;
-            const h = dt.getHours();
-            const m = dt.getMinutes();
-            if (h === 0 && m < 5) {
-              const dayNum = dt.getDate();
-              const mon = dt.toLocaleDateString('en-US', { month: 'short' });
-              return `  ${dayNum} ${mon}.  `;
-            }
-            if (m === 0 && h % 2 === 0) {
-              return `${String(h).padStart(2, '0')}:00`;
-            }
-            return null;
-          },
-          color: (ctx: any) => {
-            const dt = this.rawTimestamps[ctx.index];
-            if (dt && dt.getHours() === 0 && dt.getMinutes() < 5) return '#1565C0';
-            return '#888';
-          },
-          font: (ctx: any) => {
-            const dt = this.rawTimestamps[ctx.index];
-            if (dt && dt.getHours() === 0 && dt.getMinutes() < 5) {
-              return { size: 12, weight: 'bold' as const };
-            }
-            return { size: 10, weight: 'normal' as const };
-          },
+          maxRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: 24,
+          color: '#888',
+          font: { size: 10 },
         },
         grid: {
           color: 'rgba(0,0,0,0.06)',
@@ -211,7 +235,12 @@ export class ChartPage implements OnInit, OnDestroy {
 
   private loadChartData(sgs: any[]) {
     this.rawTimestamps = sgs.map((d: any) => new Date(d.timestamp));
-    this.lineChartData.labels = this.rawTimestamps.map(() => '');
+    (this.lineChartOptions as any)._timestamps = this.rawTimestamps;
+    this.lineChartData.labels = this.rawTimestamps.map((dt: Date) => {
+      const h = dt.getHours();
+      const m = dt.getMinutes();
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    });
 
     const values = sgs.map((d: any) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
