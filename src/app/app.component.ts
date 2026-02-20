@@ -41,9 +41,8 @@ export class AppComponent implements OnInit {
     });
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshed', async (info: any) => {
-      console.log('[LOGG] Got token refresh:', info);
+      console.log('[LOGG] Got token refresh from background:', info);
       this.authService.setTokens(info);
-      this.authService.doRefresh();
     });
 
     (window as any).Capacitor.Plugins.Background.addListener('onLogged', async (info: any) => {
@@ -52,22 +51,9 @@ export class AppComponent implements OnInit {
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshFailed', async (info: any) => {
       console.log('[LOGG] Token refresh failed in background:', info);
-      // Background refresh failed — try Ionic-side refresh and update background plugin tokens
-      // Do NOT call login() here — let doRefresh handle re-login to avoid double-login race
-      this.authService.refreshToken().pipe(take(1)).subscribe({
-        next: (tokenData: any) => {
-          if (tokenData?.access_token) {
-            this.authService.setTokens(tokenData);
-            this.bckg.setTokens(this.authService.getTokens());
-            console.log('[LOGG] Ionic-side token refresh OK, updated background plugin');
-          } else {
-            console.log('[LOGG] Ionic-side refresh returned no token, doRefresh will handle re-login');
-          }
-        },
-        error: () => {
-          console.log('[LOGG] Ionic-side refresh also failed, doRefresh will handle re-login');
-        }
-      });
+      // Don't try Ionic-side refresh here — it would race with background plugin
+      // and potentially invalidate rotating refresh tokens.
+      // doRefresh will handle re-login if needed when user opens the app.
     });
 
     await this.bckg.setTokens(this.authService.getTokens());
@@ -78,9 +64,21 @@ export class AppComponent implements OnInit {
     this.authService.doRefresh();
     this.init();
 
-    App.addListener('appStateChange', ({ isActive }) => {
+    App.addListener('appStateChange', async ({ isActive }) => {
       if (isActive) {
-        // Always try to refresh when app comes to foreground
+        // Sync tokens from background plugin first — it may have refreshed while app was in background
+        try {
+          const pluginTokens = await (window as any).Capacitor.Plugins.Background.getTokens();
+          if (pluginTokens?.accessToken) {
+            this.authService.setTokens({
+              access_token: pluginTokens.accessToken,
+              refresh_token: pluginTokens.refreshToken,
+            });
+            console.log('[LOGG] Synced tokens from background plugin on foreground');
+          }
+        } catch (e) {
+          console.log('[LOGG] Failed to sync tokens from background plugin:', e);
+        }
         this.authService.doRefresh();
       }
     });

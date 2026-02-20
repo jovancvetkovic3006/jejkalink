@@ -221,11 +221,13 @@ export class AuthenticationService {
 
   private ensureValidToken(): Observable<boolean> {
     const token = this.getToken();
-    if (!isTokenExpiringSoon(token, 120)) {
+    // If token is still valid (not expired), let it through — background plugin handles proactive refresh
+    if (!isTokenExpired(token)) {
       return of(true);
     }
 
-    this.addDebug('ensureValidToken: token expired/expiring, refreshing...');
+    // Token is actually expired — try Ionic-side refresh as last resort
+    this.addDebug('ensureValidToken: token expired, attempting last-resort refresh...');
     return from(
       this.refreshToken()
         .pipe(take(1))
@@ -234,7 +236,7 @@ export class AuthenticationService {
           if (tokenData?.access_token) {
             this.setTokens(tokenData);
             this.bckg.setTokens(this.getTokens());
-            this.addDebug('ensureValidToken: refreshed OK');
+            this.addDebug('ensureValidToken: last-resort refresh OK, updated background plugin');
             return true;
           }
           this.addDebug('ensureValidToken: no access_token in response');
