@@ -46,6 +46,7 @@ export class ChartPage implements OnInit, OnDestroy {
   isLandscape = false;
   isLoading = false;
   chartWidth = 0;
+  private rawTimestamps: Date[] = [];
 
   private static readonly DAY_WIDTH_PX = 800;
 
@@ -97,8 +98,15 @@ export class ChartPage implements OnInit, OnDestroy {
           maxRotation: 45,
           autoSkip: true,
           maxTicksLimit: 12,
-          color: '#888',
-          font: { size: 10 },
+          color: (ctx: any) => {
+            const label = ctx.tick?.label || '';
+            return /\d+\s\w+\./.test(label) ? '#1565C0' : '#888';
+          },
+          font: (ctx: any) => {
+            const label = ctx.tick?.label || '';
+            const isDate = /\d+\s\w+\./.test(label);
+            return { size: isDate ? 12 : 10, weight: isDate ? 'bold' : 'normal' };
+          },
         },
         grid: {
           color: 'rgba(0,0,0,0.06)',
@@ -190,9 +198,17 @@ export class ChartPage implements OnInit, OnDestroy {
   }
 
   private loadChartData(sgs: any[]) {
-    this.lineChartData.labels = sgs.map((d: any) =>
-      new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    );
+    this.rawTimestamps = sgs.map((d: any) => new Date(d.timestamp));
+    this.lineChartData.labels = this.rawTimestamps.map((dt: Date) => {
+      const h = dt.getHours();
+      const m = dt.getMinutes();
+      if (h === 0 && m < 5) {
+        const dayNum = dt.getDate();
+        const monthName = dt.toLocaleDateString('en-US', { month: 'short' });
+        return `${dayNum} ${monthName}.`;
+      }
+      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
 
     const values = sgs.map((d: any) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
@@ -237,45 +253,13 @@ export class ChartPage implements OnInit, OnDestroy {
           const isAM = h === 0;
           const lineColor = isAM ? 'rgba(33, 120, 210, 0.45)' : 'rgba(230, 140, 30, 0.35)';
           const badgeColor = isAM ? 'rgba(33, 120, 210, 0.9)' : 'rgba(230, 140, 30, 0.75)';
-          if (isAM) {
-            const dayNum = dt.getDate();
-            const monthName = dt.toLocaleDateString('en-US', { month: 'short' });
-            annotations[`t12_${i}`] = {
-              type: 'line',
-              xMin: i,
-              xMax: i,
-              borderColor: lineColor,
-              borderWidth: 1.5,
-              label: {
-                display: true,
-                content: `${dayNum} ${monthName}.`,
-                position: 'start',
-                backgroundColor: badgeColor,
-                color: '#ccc',
-                font: { size: 11, weight: 'bold' },
-                padding: { top: 3, bottom: 3, left: 6, right: 6 },
-                borderRadius: 4,
-                xAdjust: 30,
-              },
-            };
-          } else {
-            annotations[`t12_${i}`] = {
-              type: 'line',
-              xMin: i,
-              xMax: i,
-              borderColor: lineColor,
-              borderWidth: 1,
-              label: {
-                display: true,
-                content: '12:00',
-                position: 'start',
-                backgroundColor: badgeColor,
-                color: '#fff',
-                font: { size: 9 },
-                padding: 2,
-              },
-            };
-          }
+          annotations[`t12_${i}`] = {
+            type: 'line',
+            xMin: i,
+            xMax: i,
+            borderColor: lineColor,
+            borderWidth: isAM ? 1.5 : 1,
+          };
         }
       }
     }
