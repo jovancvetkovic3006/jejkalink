@@ -1,18 +1,46 @@
-.chart-scroll {
-  height: calc(100% - 4px);
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
+.date-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem 0.25rem;
+
+  .date-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .page-indicator {
+    font-size: 0.8rem;
+    color: #999;
+  }
 }
 
-.chart-inner {
-  height: 100%;
-  min-height: 250px;
+.date-bar-landscape {
+  padding: 0.2rem 1rem 0;
+
+  .date-label {
+    font-size: 0.85rem;
+  }
+
+  .page-indicator {
+    font-size: 0.7rem;
+  }
+}
+
+.chart-area {
+  height: calc(100% - 36px);
+  padding: 0 0.25rem;
 
   canvas {
     height: 100% !important;
     width: 100% !important;
   }
+}
+
+.chart-area-landscape {
+  height: calc(100% - 24px);
+  padding: 0;
 }
 
 .loading-overlay {
@@ -45,10 +73,6 @@
     padding: 0.2rem 0;
     line-height: 1.4;
   }
-}
-
-.chart-scroll-landscape {
-  height: 100%;
 }
 
 .landscape-fullscreen {

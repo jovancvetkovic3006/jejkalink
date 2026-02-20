@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -20,14 +20,7 @@ Chart.register(annotationPlugin);
 
 const LOW_THRESHOLD = 4.5;
 const HIGH_THRESHOLD = 7.5;
-const HOUR_BUCKET_TOLERANCE = 1; // ±1 hour for pattern matching
-const MIN_DAYS_FOR_PATTERN = 2; // need 2+ days to call it a pattern
-
-interface PatternInfo {
-  type: 'high' | 'low';
-  hourBucket: number;
-  dayCount: number;
-}
+const MIN_DAYS_FOR_PATTERN = 2;
 
 @Component({
   selector: 'app-chart-tab',
@@ -47,16 +40,20 @@ interface PatternInfo {
 })
 export class ChartPage implements OnInit, OnDestroy {
   @ViewChild(BaseChartDirective) chartDirective?: BaseChartDirective;
-  @ViewChild('chartScroll') chartScrollRef?: ElementRef<HTMLDivElement>;
   private subscription?: Subscription;
   patientData$ = this.authService.patientData$;
   allSgs: any[] = [];
   isLandscape = false;
-  chartWidth = 0;
   isLoading = false;
   patternSummary: string[] = [];
 
-  private static readonly DAY_WIDTH_PX = 1200;
+  // Pagination: each page = 1 day
+  dayPages: { date: string; sgs: any[] }[] = [];
+  currentPage = 0;
+
+  // Touch tracking for swipe
+  private touchStartX = 0;
+  private touchStartY = 0;
 
   lineChartData: ChartData<'line'> = {
     labels: [],
@@ -69,9 +66,7 @@ export class ChartPage implements OnInit, OnDestroy {
         backgroundColor: '#333',
         tension: 0.3,
         pointRadius: 0,
-        pointHoverRadius: 6,
-        pointBackgroundColor: [],
-        pointBorderColor: [],
+        pointHoverRadius: 0,
         borderWidth: 2,
       },
     ],
@@ -80,6 +75,7 @@ export class ChartPage implements OnInit, OnDestroy {
   lineChartOptions: ChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: { duration: 300 },
     interaction: {
       mode: 'index',
       intersect: false,
@@ -97,52 +93,16 @@ export class ChartPage implements OnInit, OnDestroy {
         },
       },
       annotation: {
-        annotations: {
-          lowZone: {
-            type: 'box',
-            yMin: 0,
-            yMax: LOW_THRESHOLD,
-            backgroundColor: 'rgba(198, 40, 40, 0.06)',
-            borderWidth: 0,
-          },
-          highZone: {
-            type: 'box',
-            yMin: HIGH_THRESHOLD,
-            yMax: 20,
-            backgroundColor: 'rgba(230, 81, 0, 0.06)',
-            borderWidth: 0,
-          },
-          lowLine: {
-            type: 'line',
-            yMin: LOW_THRESHOLD,
-            yMax: LOW_THRESHOLD,
-            borderColor: 'rgba(198, 40, 40, 0.5)',
-            borderWidth: 2,
-            borderDash: [6, 4],
-          },
-          highLine: {
-            type: 'line',
-            yMin: HIGH_THRESHOLD,
-            yMax: HIGH_THRESHOLD,
-            borderColor: 'rgba(22, 0, 163, 0.5)',
-            borderWidth: 2,
-            borderDash: [6, 4],
-          },
-        },
+        annotations: {},
       },
     },
     scales: {
       x: {
         display: true,
-        title: {
-          display: true,
-          text: 'Vreme',
-          color: '#888',
-        },
         ticks: {
           maxRotation: 45,
           autoSkip: true,
-          maxTicksLimit: 12,
+          maxTicksLimit: 8,
           color: '#888',
           font: { size: 11 },
         },
@@ -203,7 +163,7 @@ export class ChartPage implements OnInit, OnDestroy {
     this.isLoading = true;
     this.subscription = this.sgsHistory.allSgs$.subscribe((sgs) => {
       this.allSgs = sgs || [];
-      this.buildChart();
+      this.buildPages();
     });
   }
 
@@ -212,48 +172,38 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lockPortrait();
   }
 
-  private buildChart() {
+  /** Group all data into day pages and detect patterns */
+  private buildPages() {
     const sorted = [...this.allSgs]
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    if (sorted.length === 0) {
-      this.isLoading = false;
-      return;
+    // Group by date
+    const dayMap = new Map<string, any[]>();
+    for (const entry of sorted) {
+      const dateKey = new Date(entry.timestamp).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
+      if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
+      dayMap.get(dateKey)!.push(entry);
     }
 
-    const firstTs = new Date(sorted[0].timestamp).getTime();
-    const lastTs = new Date(sorted[sorted.length - 1].timestamp).getTime();
-    const totalDays = Math.max(1, (lastTs - firstTs) / (24 * 60 * 60 * 1000));
-    const screenW = window.innerWidth;
-    this.chartWidth = Math.max(screenW, totalDays * ChartPage.DAY_WIDTH_PX);
+    this.dayPages = Array.from(dayMap.entries()).map(([date, sgs]) => ({ date, sgs }));
 
-    const ticksPerScreen = 6;
-    const totalScreens = Math.max(1, this.chartWidth / screenW);
-    (this.lineChartOptions as any).scales.x.ticks.maxTicksLimit =
-      Math.round(ticksPerScreen * totalScreens);
+    // Detect patterns across all data
+    this.detectPatterns(sorted);
 
-    // Detect recurring patterns
-    const patterns = this.detectPatterns(sorted);
-
-    this.loadChartData(sorted, patterns);
+    // Go to last page (most recent day)
+    this.currentPage = Math.max(0, this.dayPages.length - 1);
+    this.renderCurrentPage();
   }
 
-  /**
-   * Detect recurring highs/lows at similar times of day across multiple days.
-   * Groups readings into 1-hour buckets by time-of-day.
-   * If a bucket has highs (or lows) on 2+ distinct days, it's a pattern.
-   * Returns a Set of indices into the sorted sgs array that are pattern points.
-   */
-  private detectPatterns(sgs: any[]): Map<number, PatternInfo> {
-    // bucket key = hour of day (0-23)
-    // For each bucket, track which dates had a high and which had a low
-    const highBuckets = new Map<number, Set<string>>(); // hour -> set of date strings
+  /** Detect recurring highs/lows at similar times across days */
+  private detectPatterns(sgs: any[]) {
+    const highBuckets = new Map<number, Set<string>>();
     const lowBuckets = new Map<number, Set<string>>();
 
     for (const entry of sgs) {
       const dt = new Date(entry.timestamp);
       const hour = dt.getHours();
-      const dateKey = dt.toISOString().substring(0, 10); // YYYY-MM-DD
+      const dateKey = dt.toISOString().substring(0, 10);
       const val = entry.sg / 18;
 
       if (val > HIGH_THRESHOLD) {
@@ -266,109 +216,157 @@ export class ChartPage implements OnInit, OnDestroy {
       }
     }
 
-    // Find buckets with patterns (2+ days)
-    const patternHighHours = new Map<number, number>(); // hour -> dayCount
-    const patternLowHours = new Map<number, number>();
-
+    this.patternSummary = [];
     for (const [hour, dates] of highBuckets) {
       if (dates.size >= MIN_DAYS_FOR_PATTERN) {
-        patternHighHours.set(hour, dates.size);
+        const hStr = `${hour.toString().padStart(2, '0')}:00`;
+        this.patternSummary.push(`\u26a0 Visok \u0161e\u0107er oko ${hStr} (${dates.size} dana)`);
       }
     }
     for (const [hour, dates] of lowBuckets) {
       if (dates.size >= MIN_DAYS_FOR_PATTERN) {
-        patternLowHours.set(hour, dates.size);
+        const hStr = `${hour.toString().padStart(2, '0')}:00`;
+        this.patternSummary.push(`\u26a0 Nizak \u0161e\u0107er oko ${hStr} (${dates.size} dana)`);
       }
     }
-
-    // Build summary text
-    this.patternSummary = [];
-    for (const [hour, count] of patternHighHours) {
-      const hStr = `${hour.toString().padStart(2, '0')}:00`;
-      this.patternSummary.push(`\u26a0 Visok \u0161e\u0107er oko ${hStr} (${count} dana)`);
-    }
-    for (const [hour, count] of patternLowHours) {
-      const hStr = `${hour.toString().padStart(2, '0')}:00`;
-      this.patternSummary.push(`\u26a0 Nizak \u0161e\u0107er oko ${hStr} (${count} dana)`);
-    }
-
-    // Map each data point index to its pattern info (if any)
-    const result = new Map<number, PatternInfo>();
-    for (let i = 0; i < sgs.length; i++) {
-      const dt = new Date(sgs[i].timestamp);
-      const hour = dt.getHours();
-      const val = sgs[i].sg / 18;
-
-      if (val > HIGH_THRESHOLD && this.isInPatternBucket(hour, patternHighHours)) {
-        const bucketHour = this.getMatchingBucket(hour, patternHighHours);
-        result.set(i, { type: 'high', hourBucket: bucketHour, dayCount: patternHighHours.get(bucketHour)! });
-      } else if (val < LOW_THRESHOLD && this.isInPatternBucket(hour, patternLowHours)) {
-        const bucketHour = this.getMatchingBucket(hour, patternLowHours);
-        result.set(i, { type: 'low', hourBucket: bucketHour, dayCount: patternLowHours.get(bucketHour)! });
-      }
-    }
-
-    return result;
   }
 
-  private isInPatternBucket(hour: number, buckets: Map<number, number>): boolean {
-    for (const bHour of buckets.keys()) {
-      if (Math.abs(hour - bHour) <= HOUR_BUCKET_TOLERANCE) return true;
+  /** Render the chart for the current page (day) */
+  private renderCurrentPage() {
+    if (this.dayPages.length === 0) {
+      this.isLoading = false;
+      return;
     }
-    return false;
-  }
 
-  private getMatchingBucket(hour: number, buckets: Map<number, number>): number {
-    for (const bHour of buckets.keys()) {
-      if (Math.abs(hour - bHour) <= HOUR_BUCKET_TOLERANCE) return bHour;
-    }
-    return hour;
-  }
+    const page = this.dayPages[this.currentPage];
+    const sgs = page.sgs;
 
-  private loadChartData(sgs: any[], patterns: Map<number, PatternInfo>) {
-    this.lineChartData.labels = sgs.map((d) => {
-      const dt = new Date(d.timestamp);
-      return dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
-        + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    });
+    // Labels = time only
+    this.lineChartData.labels = sgs.map((d: any) =>
+      new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    );
 
-    const values = sgs.map((d) => parseFloat((d.sg / 18).toFixed(1)));
+    const values = sgs.map((d: any) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
 
-    // Color points: pattern points get special colors + larger radius
-    const PATTERN_HIGH_COLOR = '#d500f9'; // purple for recurring highs
-    const PATTERN_LOW_COLOR = '#2979ff';  // blue for recurring lows
-
-    const pointColors = values.map((v, i) => {
-      if (patterns.has(i)) {
-        return patterns.get(i)!.type === 'high' ? PATTERN_HIGH_COLOR : PATTERN_LOW_COLOR;
-      }
-      if (v < LOW_THRESHOLD) return '#c62828';
-      if (v > HIGH_THRESHOLD) return '#e65100';
-      return '#2e7d32';
-    });
-
-    const pointRadii = values.map((_, i) => patterns.has(i) ? 4 : 0);
-    const pointBorderWidths = values.map((_, i) => patterns.has(i) ? 2 : 0);
-
-    this.lineChartData.datasets[0].pointBackgroundColor = pointColors;
-    this.lineChartData.datasets[0].pointBorderColor = pointColors;
-    this.lineChartData.datasets[0].pointRadius = pointRadii;
-    this.lineChartData.datasets[0].pointHoverRadius = 6;
+    // No points at all
+    this.lineChartData.datasets[0].pointRadius = 0;
+    this.lineChartData.datasets[0].pointHoverRadius = 0;
     this.lineChartData.datasets[0].borderWidth = 2;
 
-    // Scroll to the right (most recent data) after render
-    setTimeout(() => {
-      this.scrollToEnd();
-      this.isLoading = false;
-    }, 150);
+    // Build annotations: vertical lines at the highest peaks
+    const annotations: any = {
+      lowZone: {
+        type: 'box', yMin: 0, yMax: LOW_THRESHOLD,
+        backgroundColor: 'rgba(198, 40, 40, 0.06)', borderWidth: 0,
+      },
+      highZone: {
+        type: 'box', yMin: HIGH_THRESHOLD, yMax: 20,
+        backgroundColor: 'rgba(230, 81, 0, 0.06)', borderWidth: 0,
+      },
+      lowLine: {
+        type: 'line', yMin: LOW_THRESHOLD, yMax: LOW_THRESHOLD,
+        borderColor: 'rgba(198, 40, 40, 0.5)', borderWidth: 1, borderDash: [6, 4],
+      },
+      highLine: {
+        type: 'line', yMin: HIGH_THRESHOLD, yMax: HIGH_THRESHOLD,
+        borderColor: 'rgba(22, 0, 163, 0.5)', borderWidth: 1, borderDash: [6, 4],
+      },
+    };
+
+    // Find peaks: local maxima that are above HIGH_THRESHOLD
+    const peakIndices = this.findPeaks(values);
+    for (const idx of peakIndices) {
+      const label = this.lineChartData.labels![idx] as string;
+      annotations[`peak_${idx}`] = {
+        type: 'line',
+        xMin: idx,
+        xMax: idx,
+        borderColor: 'rgba(230, 81, 0, 0.6)',
+        borderWidth: 2,
+        borderDash: [4, 3],
+        label: {
+          display: true,
+          content: `${values[idx]}`,
+          position: 'start',
+          backgroundColor: 'rgba(230, 81, 0, 0.8)',
+          color: '#fff',
+          font: { size: 10, weight: 'bold' as const },
+          padding: 3,
+        },
+      };
+    }
+
+    (this.lineChartOptions as any).plugins.annotation.annotations = annotations;
+
+    // Force chart update
+    this.chartDirective?.update();
+
+    setTimeout(() => { this.isLoading = false; }, 100);
   }
 
-  private scrollToEnd() {
-    const el = this.chartScrollRef?.nativeElement;
-    if (el) {
-      el.scrollLeft = el.scrollWidth;
+  /** Find indices of local maxima above HIGH_THRESHOLD */
+  private findPeaks(values: number[]): number[] {
+    if (values.length < 3) return [];
+
+    const peaks: number[] = [];
+    // Find all local maxima above threshold
+    for (let i = 1; i < values.length - 1; i++) {
+      if (values[i] > HIGH_THRESHOLD &&
+          values[i] >= values[i - 1] &&
+          values[i] >= values[i + 1]) {
+        peaks.push(i);
+      }
     }
+
+    // Deduplicate: if peaks are within 6 readings of each other, keep the highest
+    const filtered: number[] = [];
+    let lastPeak = -10;
+    for (const p of peaks) {
+      if (p - lastPeak < 6) {
+        // Replace last if this one is higher
+        if (values[p] > values[filtered[filtered.length - 1]]) {
+          filtered[filtered.length - 1] = p;
+        }
+      } else {
+        filtered.push(p);
+      }
+      lastPeak = p;
+    }
+
+    return filtered;
+  }
+
+  // --- Swipe navigation ---
+  onTouchStart(event: TouchEvent) {
+    this.touchStartX = event.touches[0].clientX;
+    this.touchStartY = event.touches[0].clientY;
+  }
+
+  onTouchEnd(event: TouchEvent) {
+    const dx = event.changedTouches[0].clientX - this.touchStartX;
+    const dy = event.changedTouches[0].clientY - this.touchStartY;
+
+    // Only trigger if horizontal swipe is dominant and > 50px
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0 && this.currentPage < this.dayPages.length - 1) {
+        this.currentPage++;
+        this.renderCurrentPage();
+      } else if (dx > 0 && this.currentPage > 0) {
+        this.currentPage--;
+        this.renderCurrentPage();
+      }
+    }
+  }
+
+  get currentDateLabel(): string {
+    if (this.dayPages.length === 0) return '';
+    return this.dayPages[this.currentPage]?.date || '';
+  }
+
+  get pageIndicator(): string {
+    if (this.dayPages.length === 0) return '';
+    return `${this.currentPage + 1} / ${this.dayPages.length}`;
   }
 
   doRefresh(event: CustomEvent) {
