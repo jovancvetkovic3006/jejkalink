@@ -56,8 +56,8 @@ export class ChartPage implements OnInit, OnDestroy {
         label: 'Glikemija (mmol/l)',
         data: [],
         fill: false,
-        borderColor: '#333',
-        backgroundColor: '#333',
+        borderColor: '#1B5E20',
+        backgroundColor: '#1B5E20',
         tension: 0.3,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -101,7 +101,7 @@ export class ChartPage implements OnInit, OnDestroy {
           font: { size: 10 },
         },
         grid: {
-          color: 'rgba(0,0,0,0.04)',
+          color: 'rgba(0,0,0,0.06)',
         },
       },
       y: {
@@ -109,16 +109,16 @@ export class ChartPage implements OnInit, OnDestroy {
         title: {
           display: true,
           text: 'mmol/L',
-          color: '#888',
+          color: '#666',
         },
         suggestedMin: 2,
         suggestedMax: 16,
         ticks: {
-          color: '#888',
+          color: '#666',
           font: { size: 11 },
         },
         grid: {
-          color: 'rgba(0,0,0,0.06)',
+          color: 'rgba(0,0,0,0.08)',
         },
       },
     },
@@ -204,19 +204,23 @@ export class ChartPage implements OnInit, OnDestroy {
     const annotations: any = {
       lowZone: {
         type: 'box', yMin: 0, yMax: LOW_THRESHOLD,
-        backgroundColor: 'rgba(198, 40, 40, 0.06)', borderWidth: 0,
+        backgroundColor: 'rgba(211, 47, 47, 0.10)', borderWidth: 0,
+      },
+      normalZone: {
+        type: 'box', yMin: LOW_THRESHOLD, yMax: HIGH_THRESHOLD,
+        backgroundColor: 'rgba(124, 179, 66, 0.08)', borderWidth: 0,
       },
       highZone: {
         type: 'box', yMin: HIGH_THRESHOLD, yMax: 20,
-        backgroundColor: 'rgba(230, 81, 0, 0.06)', borderWidth: 0,
+        backgroundColor: 'rgba(245, 124, 0, 0.10)', borderWidth: 0,
       },
       lowLine: {
         type: 'line', yMin: LOW_THRESHOLD, yMax: LOW_THRESHOLD,
-        borderColor: 'rgba(198, 40, 40, 0.5)', borderWidth: 1, borderDash: [6, 4],
+        borderColor: 'rgba(211, 47, 47, 0.5)', borderWidth: 1, borderDash: [6, 4],
       },
       highLine: {
         type: 'line', yMin: HIGH_THRESHOLD, yMax: HIGH_THRESHOLD,
-        borderColor: 'rgba(22, 0, 163, 0.5)', borderWidth: 1, borderDash: [6, 4],
+        borderColor: 'rgba(245, 124, 0, 0.5)', borderWidth: 1, borderDash: [6, 4],
       },
     };
 
@@ -231,27 +235,46 @@ export class ChartPage implements OnInit, OnDestroy {
         if (key !== lastMarkerDate) {
           lastMarkerDate = key;
           const isAM = h === 0;
-          const label = isAM
-            ? dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
-            : '12:00';
-          const lineColor = isAM ? 'rgba(33, 120, 210, 0.45)' : 'rgba(230, 140, 30, 0.45)';
-          const badgeColor = isAM ? 'rgba(33, 120, 210, 0.85)' : 'rgba(230, 140, 30, 0.85)';
-          annotations[`t12_${i}`] = {
-            type: 'line',
-            xMin: i,
-            xMax: i,
-            borderColor: lineColor,
-            borderWidth: 1,
-            label: {
-              display: true,
-              content: label,
-              position: 'start',
-              backgroundColor: badgeColor,
-              color: '#fff',
-              font: { size: 9 },
-              padding: 2,
-            },
-          };
+          const lineColor = isAM ? 'rgba(33, 120, 210, 0.45)' : 'rgba(230, 140, 30, 0.35)';
+          const badgeColor = isAM ? 'rgba(33, 120, 210, 0.9)' : 'rgba(230, 140, 30, 0.75)';
+          if (isAM) {
+            const dayName = dt.toLocaleDateString('sr-Latn', { weekday: 'short' });
+            const datePart = dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+            annotations[`t12_${i}`] = {
+              type: 'line',
+              xMin: i,
+              xMax: i,
+              borderColor: lineColor,
+              borderWidth: 1.5,
+              label: {
+                display: true,
+                content: `${dayName} ${datePart}`,
+                position: 'start',
+                backgroundColor: badgeColor,
+                color: '#fff',
+                font: { size: 11, weight: 'bold' },
+                padding: { top: 3, bottom: 3, left: 6, right: 6 },
+                borderRadius: 4,
+              },
+            };
+          } else {
+            annotations[`t12_${i}`] = {
+              type: 'line',
+              xMin: i,
+              xMax: i,
+              borderColor: lineColor,
+              borderWidth: 1,
+              label: {
+                display: true,
+                content: '12:00',
+                position: 'start',
+                backgroundColor: badgeColor,
+                color: '#fff',
+                font: { size: 9 },
+                padding: 2,
+              },
+            };
+          }
         }
       }
     }

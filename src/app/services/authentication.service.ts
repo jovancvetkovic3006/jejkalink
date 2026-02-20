@@ -308,7 +308,10 @@ export class AuthenticationService {
             lastSGTrend: response.data?.patientData?.lastSGTrend || '',
             activeInsulin: response.data?.patientData?.activeInsulin || {},
             reservoirRemainingUnits: response.data?.patientData?.reservoirRemainingUnits ?? -1,
-            isTempBasal: response.data?.patientData?.isTempBasal ?? false
+            isTempBasal: response.data?.patientData?.isTempBasal ?? false,
+            sensorDurationMinutes: response.data?.patientData?.sensorDurationMinutes ?? -1,
+            gstBatteryLevel: response.data?.patientData?.gstBatteryLevel ?? -1,
+            conduitBatteryLevel: response.data?.patientData?.conduitBatteryLevel ?? -1,
           });
           this.refreshCycleInProgress = false;
           (event?.target as HTMLIonRefresherElement)?.complete();
