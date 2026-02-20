@@ -20,7 +20,6 @@ Chart.register(annotationPlugin);
 
 const LOW_THRESHOLD = 4.5;
 const HIGH_THRESHOLD = 7.5;
-const MIN_DAYS_FOR_PATTERN = 2;
 
 @Component({
   selector: 'app-chart-tab',
@@ -47,7 +46,6 @@ export class ChartPage implements OnInit, OnDestroy {
   isLandscape = false;
   isLoading = false;
   chartWidth = 0;
-  patternSummary: string[] = [];
 
   private static readonly DAY_WIDTH_PX = 800;
 
@@ -176,46 +174,7 @@ export class ChartPage implements OnInit, OnDestroy {
     (this.lineChartOptions as any).scales.x.ticks.maxTicksLimit =
       Math.round(ticksPerScreen * totalScreens);
 
-    // Detect patterns
-    this.detectPatterns(sorted);
-
-    // Build chart data with peak annotations
     this.loadChartData(sorted);
-  }
-
-  private detectPatterns(sgs: any[]) {
-    const highBuckets = new Map<number, Set<string>>();
-    const lowBuckets = new Map<number, Set<string>>();
-
-    for (const entry of sgs) {
-      const dt = new Date(entry.timestamp);
-      const hour = dt.getHours();
-      const dateKey = dt.toISOString().substring(0, 10);
-      const val = entry.sg / 18;
-
-      if (val > HIGH_THRESHOLD) {
-        if (!highBuckets.has(hour)) highBuckets.set(hour, new Set());
-        highBuckets.get(hour)!.add(dateKey);
-      }
-      if (val < LOW_THRESHOLD) {
-        if (!lowBuckets.has(hour)) lowBuckets.set(hour, new Set());
-        lowBuckets.get(hour)!.add(dateKey);
-      }
-    }
-
-    this.patternSummary = [];
-    for (const [hour, dates] of highBuckets) {
-      if (dates.size >= MIN_DAYS_FOR_PATTERN) {
-        const hStr = `${hour.toString().padStart(2, '0')}:00`;
-        this.patternSummary.push(`\u26a0 Visok \u0161e\u0107er oko ${hStr} (${dates.size} dana)`);
-      }
-    }
-    for (const [hour, dates] of lowBuckets) {
-      if (dates.size >= MIN_DAYS_FOR_PATTERN) {
-        const hStr = `${hour.toString().padStart(2, '0')}:00`;
-        this.patternSummary.push(`\u26a0 Nizak \u0161e\u0107er oko ${hStr} (${dates.size} dana)`);
-      }
-    }
   }
 
   private loadChartData(sgs: any[]) {
@@ -231,7 +190,7 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lineChartData.datasets[0].pointHoverRadius = 0;
     this.lineChartData.datasets[0].borderWidth = 2;
 
-    // Annotations: threshold zones + vertical lines at peaks
+    // Annotations: threshold zones + vertical lines every 12 hours
     const annotations: any = {
       lowZone: {
         type: 'box', yMin: 0, yMax: LOW_THRESHOLD,
@@ -251,25 +210,36 @@ export class ChartPage implements OnInit, OnDestroy {
       },
     };
 
-    const peakIndices = this.findPeaks(values);
-    for (const idx of peakIndices) {
-      annotations[`peak_${idx}`] = {
-        type: 'line',
-        xMin: idx,
-        xMax: idx,
-        borderColor: 'rgba(230, 81, 0, 0.6)',
-        borderWidth: 2,
-        borderDash: [4, 3],
-        label: {
-          display: true,
-          content: `${values[idx]}`,
-          position: 'start',
-          backgroundColor: 'rgba(230, 81, 0, 0.8)',
-          color: '#fff',
-          font: { size: 10, weight: 'bold' as const },
-          padding: 3,
-        },
-      };
+    // Add vertical lines every 12 hours (00:00 and 12:00)
+    let lastMarkerDate = '';
+    for (let i = 0; i < sgs.length; i++) {
+      const dt = new Date(sgs[i].timestamp);
+      const h = dt.getHours();
+      if (h === 0 || h === 12) {
+        const key = dt.toISOString().substring(0, 13);
+        if (key !== lastMarkerDate) {
+          lastMarkerDate = key;
+          const label = h === 0
+            ? dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
+            : '12:00';
+          annotations[`t12_${i}`] = {
+            type: 'line',
+            xMin: i,
+            xMax: i,
+            borderColor: 'rgba(0, 0, 0, 0.15)',
+            borderWidth: 1,
+            label: {
+              display: true,
+              content: label,
+              position: 'start',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              color: '#fff',
+              font: { size: 9 },
+              padding: 2,
+            },
+          };
+        }
+      }
     }
 
     (this.lineChartOptions as any).plugins.annotation.annotations = annotations;
@@ -278,31 +248,6 @@ export class ChartPage implements OnInit, OnDestroy {
       this.scrollToEnd();
       this.isLoading = false;
     }, 150);
-  }
-
-  private findPeaks(values: number[]): number[] {
-    if (values.length < 3) return [];
-    const peaks: number[] = [];
-    for (let i = 1; i < values.length - 1; i++) {
-      if (values[i] > HIGH_THRESHOLD &&
-          values[i] >= values[i - 1] &&
-          values[i] >= values[i + 1]) {
-        peaks.push(i);
-      }
-    }
-    const filtered: number[] = [];
-    let lastPeak = -10;
-    for (const p of peaks) {
-      if (p - lastPeak < 6) {
-        if (values[p] > values[filtered[filtered.length - 1]]) {
-          filtered[filtered.length - 1] = p;
-        }
-      } else {
-        filtered.push(p);
-      }
-      lastPeak = p;
-    }
-    return filtered;
   }
 
   private scrollToEnd() {
