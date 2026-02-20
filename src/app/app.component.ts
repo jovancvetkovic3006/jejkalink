@@ -35,6 +35,12 @@ export class AppComponent implements OnInit {
 
   async init() {
     await this.bckg.ensureNotificationPermission();
+    // Request full-screen intent permission (needed for lock screen notifications on Android 14+)
+    try {
+      await (window as any).Capacitor.Plugins.Background.requestFullScreenPermission();
+    } catch (e) {
+      console.log('[LOGG] requestFullScreenPermission error:', e);
+    }
 
     (window as any).Capacitor.Plugins.Background.addListener('onDataFetched', async (info: any) => {
       console.log('[LOGG] Data fetched:', info);
