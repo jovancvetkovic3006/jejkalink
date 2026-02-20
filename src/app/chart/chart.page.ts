@@ -223,6 +223,7 @@ export class ChartPage implements OnInit, OnDestroy {
     };
 
     // Add vertical lines every 12 hours (00:00 and 12:00)
+    // AM (midnight) = blue, PM (noon) = orange
     let lastMarkerDate = '';
     for (let i = 0; i < sgs.length; i++) {
       const dt = new Date(sgs[i].timestamp);
@@ -231,20 +232,23 @@ export class ChartPage implements OnInit, OnDestroy {
         const key = dt.toISOString().substring(0, 13);
         if (key !== lastMarkerDate) {
           lastMarkerDate = key;
-          const label = h === 0
+          const isAM = h === 0;
+          const label = isAM
             ? dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
             : '12:00';
+          const lineColor = isAM ? 'rgba(33, 120, 210, 0.45)' : 'rgba(230, 140, 30, 0.45)';
+          const badgeColor = isAM ? 'rgba(33, 120, 210, 0.85)' : 'rgba(230, 140, 30, 0.85)';
           annotations[`t12_${i}`] = {
             type: 'line',
             xMin: i,
             xMax: i,
-            borderColor: 'rgba(0, 0, 0, 0.15)',
+            borderColor: lineColor,
             borderWidth: 1,
             label: {
               display: true,
               content: label,
               position: 'start',
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backgroundColor: badgeColor,
               color: '#fff',
               font: { size: 9 },
               padding: 2,
