@@ -96,16 +96,33 @@ export class ChartPage implements OnInit, OnDestroy {
         display: true,
         ticks: {
           maxRotation: 45,
-          autoSkip: true,
-          maxTicksLimit: 12,
+          autoSkip: false,
+          callback: (value: any, index: number) => {
+            const dt = this.rawTimestamps[index];
+            if (!dt) return null;
+            const h = dt.getHours();
+            const m = dt.getMinutes();
+            if (h === 0 && m < 5) {
+              const dayNum = dt.getDate();
+              const mon = dt.toLocaleDateString('en-US', { month: 'short' });
+              return `  ${dayNum} ${mon}.  `;
+            }
+            if (m === 0 && h % 2 === 0) {
+              return `${String(h).padStart(2, '0')}:00`;
+            }
+            return null;
+          },
           color: (ctx: any) => {
-            const label = ctx.tick?.label || '';
-            return /\d+\s\w+\./.test(label) ? '#1565C0' : '#888';
+            const dt = this.rawTimestamps[ctx.index];
+            if (dt && dt.getHours() === 0 && dt.getMinutes() < 5) return '#1565C0';
+            return '#888';
           },
           font: (ctx: any) => {
-            const label = ctx.tick?.label || '';
-            const isDate = /\d+\s\w+\./.test(label);
-            return { size: isDate ? 12 : 10, weight: isDate ? 'bold' : 'normal' };
+            const dt = this.rawTimestamps[ctx.index];
+            if (dt && dt.getHours() === 0 && dt.getMinutes() < 5) {
+              return { size: 12, weight: 'bold' as const };
+            }
+            return { size: 10, weight: 'normal' as const };
           },
         },
         grid: {
@@ -189,26 +206,12 @@ export class ChartPage implements OnInit, OnDestroy {
     const screenW = window.innerWidth;
     this.chartWidth = Math.max(screenW, totalDays * ChartPage.DAY_WIDTH_PX);
 
-    const ticksPerScreen = 6;
-    const totalScreens = Math.max(1, this.chartWidth / screenW);
-    (this.lineChartOptions as any).scales.x.ticks.maxTicksLimit =
-      Math.round(ticksPerScreen * totalScreens);
-
     this.loadChartData(sorted);
   }
 
   private loadChartData(sgs: any[]) {
     this.rawTimestamps = sgs.map((d: any) => new Date(d.timestamp));
-    this.lineChartData.labels = this.rawTimestamps.map((dt: Date) => {
-      const h = dt.getHours();
-      const m = dt.getMinutes();
-      if (h === 0 && m < 5) {
-        const dayNum = dt.getDate();
-        const monthName = dt.toLocaleDateString('en-US', { month: 'short' });
-        return `${dayNum} ${monthName}.`;
-      }
-      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    });
+    this.lineChartData.labels = this.rawTimestamps.map(() => '');
 
     const values = sgs.map((d: any) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
