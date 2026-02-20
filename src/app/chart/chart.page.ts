@@ -70,10 +70,22 @@ export class ChartPage implements OnInit, OnDestroy {
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
-    events: [],
+    events: ['click'],
     plugins: {
       legend: { display: false },
-      tooltip: { enabled: false },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        titleFont: { size: 13 },
+        bodyFont: { size: 12 },
+        padding: 10,
+        cornerRadius: 8,
+        callbacks: {
+          label: (ctx: any) => ` ${ctx.parsed.y} mmol/L`,
+        },
+      },
       annotation: {
         annotations: {},
       },
