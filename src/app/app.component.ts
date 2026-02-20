@@ -84,6 +84,12 @@ export class AppComponent implements OnInit {
         this.authService.doRefresh();
       }
     });
+
+    App.addListener('backButton', ({ canGoBack }) => {
+      if (!canGoBack) {
+        App.exitApp();
+      }
+    });
   }
 
 }

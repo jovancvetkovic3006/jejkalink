@@ -190,11 +190,9 @@ export class ChartPage implements OnInit, OnDestroy {
   }
 
   private loadChartData(sgs: any[]) {
-    this.lineChartData.labels = sgs.map((d: any) => {
-      const dt = new Date(d.timestamp);
-      return dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
-        + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    });
+    this.lineChartData.labels = sgs.map((d: any) =>
+      new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    );
 
     const values = sgs.map((d: any) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
