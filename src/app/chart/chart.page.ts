@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -40,20 +40,16 @@ const MIN_DAYS_FOR_PATTERN = 2;
 })
 export class ChartPage implements OnInit, OnDestroy {
   @ViewChild(BaseChartDirective) chartDirective?: BaseChartDirective;
+  @ViewChild('chartScroll') chartScrollRef?: ElementRef<HTMLDivElement>;
   private subscription?: Subscription;
   patientData$ = this.authService.patientData$;
   allSgs: any[] = [];
   isLandscape = false;
   isLoading = false;
+  chartWidth = 0;
   patternSummary: string[] = [];
 
-  // Pagination: each page = 1 day
-  dayPages: { date: string; sgs: any[] }[] = [];
-  currentPage = 0;
-
-  // Touch tracking for swipe
-  private touchStartX = 0;
-  private touchStartY = 0;
+  private static readonly DAY_WIDTH_PX = 800;
 
   lineChartData: ChartData<'line'> = {
     labels: [],
@@ -75,23 +71,11 @@ export class ChartPage implements OnInit, OnDestroy {
   lineChartOptions: ChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: { duration: 300 },
-    interaction: {
-      mode: 'index',
-      intersect: false,
-    },
+    animation: false,
+    events: [],
     plugins: {
       legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        titleFont: { size: 13 },
-        bodyFont: { size: 12 },
-        padding: 10,
-        cornerRadius: 8,
-        callbacks: {
-          label: (ctx) => ` ${ctx.parsed.y} mmol/L`,
-        },
-      },
+      tooltip: { enabled: false },
       annotation: {
         annotations: {},
       },
@@ -102,9 +86,9 @@ export class ChartPage implements OnInit, OnDestroy {
         ticks: {
           maxRotation: 45,
           autoSkip: true,
-          maxTicksLimit: 8,
+          maxTicksLimit: 12,
           color: '#888',
-          font: { size: 11 },
+          font: { size: 10 },
         },
         grid: {
           color: 'rgba(0,0,0,0.04)',
@@ -163,7 +147,7 @@ export class ChartPage implements OnInit, OnDestroy {
     this.isLoading = true;
     this.subscription = this.sgsHistory.allSgs$.subscribe((sgs) => {
       this.allSgs = sgs || [];
-      this.buildPages();
+      this.buildChart();
     });
   }
 
@@ -172,30 +156,33 @@ export class ChartPage implements OnInit, OnDestroy {
     this.lockPortrait();
   }
 
-  /** Group all data into day pages and detect patterns */
-  private buildPages() {
+  private buildChart() {
     const sorted = [...this.allSgs]
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-    // Group by date
-    const dayMap = new Map<string, any[]>();
-    for (const entry of sorted) {
-      const dateKey = new Date(entry.timestamp).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
-      if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
-      dayMap.get(dateKey)!.push(entry);
+    if (sorted.length === 0) {
+      this.isLoading = false;
+      return;
     }
 
-    this.dayPages = Array.from(dayMap.entries()).map(([date, sgs]) => ({ date, sgs }));
+    const firstTs = new Date(sorted[0].timestamp).getTime();
+    const lastTs = new Date(sorted[sorted.length - 1].timestamp).getTime();
+    const totalDays = Math.max(1, (lastTs - firstTs) / (24 * 60 * 60 * 1000));
+    const screenW = window.innerWidth;
+    this.chartWidth = Math.max(screenW, totalDays * ChartPage.DAY_WIDTH_PX);
 
-    // Detect patterns across all data
+    const ticksPerScreen = 6;
+    const totalScreens = Math.max(1, this.chartWidth / screenW);
+    (this.lineChartOptions as any).scales.x.ticks.maxTicksLimit =
+      Math.round(ticksPerScreen * totalScreens);
+
+    // Detect patterns
     this.detectPatterns(sorted);
 
-    // Go to last page (most recent day)
-    this.currentPage = Math.max(0, this.dayPages.length - 1);
-    this.renderCurrentPage();
+    // Build chart data with peak annotations
+    this.loadChartData(sorted);
   }
 
-  /** Detect recurring highs/lows at similar times across days */
   private detectPatterns(sgs: any[]) {
     const highBuckets = new Map<number, Set<string>>();
     const lowBuckets = new Map<number, Set<string>>();
@@ -231,30 +218,20 @@ export class ChartPage implements OnInit, OnDestroy {
     }
   }
 
-  /** Render the chart for the current page (day) */
-  private renderCurrentPage() {
-    if (this.dayPages.length === 0) {
-      this.isLoading = false;
-      return;
-    }
-
-    const page = this.dayPages[this.currentPage];
-    const sgs = page.sgs;
-
-    // Labels = time only
-    this.lineChartData.labels = sgs.map((d: any) =>
-      new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    );
+  private loadChartData(sgs: any[]) {
+    this.lineChartData.labels = sgs.map((d: any) => {
+      const dt = new Date(d.timestamp);
+      return dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' })
+        + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
 
     const values = sgs.map((d: any) => parseFloat((d.sg / 18).toFixed(1)));
     this.lineChartData.datasets[0].data = values;
-
-    // No points at all
     this.lineChartData.datasets[0].pointRadius = 0;
     this.lineChartData.datasets[0].pointHoverRadius = 0;
     this.lineChartData.datasets[0].borderWidth = 2;
 
-    // Build annotations: vertical lines at the highest peaks
+    // Annotations: threshold zones + vertical lines at peaks
     const annotations: any = {
       lowZone: {
         type: 'box', yMin: 0, yMax: LOW_THRESHOLD,
@@ -274,10 +251,8 @@ export class ChartPage implements OnInit, OnDestroy {
       },
     };
 
-    // Find peaks: local maxima that are above HIGH_THRESHOLD
     const peakIndices = this.findPeaks(values);
     for (const idx of peakIndices) {
-      const label = this.lineChartData.labels![idx] as string;
       annotations[`peak_${idx}`] = {
         type: 'line',
         xMin: idx,
@@ -299,18 +274,15 @@ export class ChartPage implements OnInit, OnDestroy {
 
     (this.lineChartOptions as any).plugins.annotation.annotations = annotations;
 
-    // Force chart update
-    this.chartDirective?.update();
-
-    setTimeout(() => { this.isLoading = false; }, 100);
+    setTimeout(() => {
+      this.scrollToEnd();
+      this.isLoading = false;
+    }, 150);
   }
 
-  /** Find indices of local maxima above HIGH_THRESHOLD */
   private findPeaks(values: number[]): number[] {
     if (values.length < 3) return [];
-
     const peaks: number[] = [];
-    // Find all local maxima above threshold
     for (let i = 1; i < values.length - 1; i++) {
       if (values[i] > HIGH_THRESHOLD &&
           values[i] >= values[i - 1] &&
@@ -318,13 +290,10 @@ export class ChartPage implements OnInit, OnDestroy {
         peaks.push(i);
       }
     }
-
-    // Deduplicate: if peaks are within 6 readings of each other, keep the highest
     const filtered: number[] = [];
     let lastPeak = -10;
     for (const p of peaks) {
       if (p - lastPeak < 6) {
-        // Replace last if this one is higher
         if (values[p] > values[filtered[filtered.length - 1]]) {
           filtered[filtered.length - 1] = p;
         }
@@ -333,40 +302,14 @@ export class ChartPage implements OnInit, OnDestroy {
       }
       lastPeak = p;
     }
-
     return filtered;
   }
 
-  // --- Swipe navigation ---
-  onTouchStart(event: TouchEvent) {
-    this.touchStartX = event.touches[0].clientX;
-    this.touchStartY = event.touches[0].clientY;
-  }
-
-  onTouchEnd(event: TouchEvent) {
-    const dx = event.changedTouches[0].clientX - this.touchStartX;
-    const dy = event.changedTouches[0].clientY - this.touchStartY;
-
-    // Only trigger if horizontal swipe is dominant and > 50px
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0 && this.currentPage < this.dayPages.length - 1) {
-        this.currentPage++;
-        this.renderCurrentPage();
-      } else if (dx > 0 && this.currentPage > 0) {
-        this.currentPage--;
-        this.renderCurrentPage();
-      }
+  private scrollToEnd() {
+    const el = this.chartScrollRef?.nativeElement;
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
     }
-  }
-
-  get currentDateLabel(): string {
-    if (this.dayPages.length === 0) return '';
-    return this.dayPages[this.currentPage]?.date || '';
-  }
-
-  get pageIndicator(): string {
-    if (this.dayPages.length === 0) return '';
-    return `${this.currentPage + 1} / ${this.dayPages.length}`;
   }
 
   doRefresh(event: CustomEvent) {

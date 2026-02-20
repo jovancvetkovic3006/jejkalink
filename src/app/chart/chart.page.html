@@ -13,16 +13,12 @@
     <ion-spinner name="crescent"></ion-spinner>
   </div>
 
-  <div class="date-bar" [ngClass]="{'date-bar-landscape': isLandscape}">
-    <span class="date-label">{{ currentDateLabel }}</span>
-    <span class="page-indicator">{{ pageIndicator }}</span>
-  </div>
-
-  <div class="chart-area" [ngClass]="{'chart-area-landscape': isLandscape}"
-    (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
-    <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"
-      [legend]="false">
-    </canvas>
+  <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">
+    <div class="chart-inner" [style.width.px]="chartWidth">
+      <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"
+        [legend]="false">
+      </canvas>
+    </div>
   </div>
 
   <div class="pattern-summary" *ngIf="patternSummary.length > 0 && !isLandscape">
