@@ -33,12 +33,6 @@
             (ionBlur)="saveUsername()"
           ></ion-input>
         </ion-item>
-        <ion-item>
-          <ion-button expand="block" fill="clear" color="primary" (click)="saveUsername()">
-            <ion-icon name="save-outline" slot="start"></ion-icon>
-            Sacuvaj
-          </ion-button>
-        </ion-item>
         <ion-item *ngIf="saved">
           <ion-note color="success">Sacuvano!</ion-note>
         </ion-item>

@@ -238,8 +238,8 @@ export class ChartPage implements OnInit, OnDestroy {
           const lineColor = isAM ? 'rgba(33, 120, 210, 0.45)' : 'rgba(230, 140, 30, 0.35)';
           const badgeColor = isAM ? 'rgba(33, 120, 210, 0.9)' : 'rgba(230, 140, 30, 0.75)';
           if (isAM) {
-            const dayName = dt.toLocaleDateString('sr-Latn', { weekday: 'short' });
-            const datePart = dt.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+            const dayNum = dt.getDate();
+            const monthName = dt.toLocaleDateString('en-US', { month: 'short' });
             annotations[`t12_${i}`] = {
               type: 'line',
               xMin: i,
@@ -248,7 +248,7 @@ export class ChartPage implements OnInit, OnDestroy {
               borderWidth: 1.5,
               label: {
                 display: true,
-                content: `${dayName} ${datePart}`,
+                content: `${dayNum} ${monthName}.`,
                 position: 'start',
                 backgroundColor: badgeColor,
                 color: '#fff',

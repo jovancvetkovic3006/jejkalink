@@ -1,7 +1,12 @@
+:host {
+  ion-content {
+    --background: linear-gradient(135deg, #e8eaf6, #f3f4f6);
+  }
+}
+
 .chart-wrapper {
   padding: 0.5rem;
   height: 100%;
-  background: linear-gradient(135deg, #e8eaf6, #f3f4f6);
 }
 
 .chart-card {

@@ -5,13 +5,13 @@ import {
   IonToolbar,
   IonHeader,
   IonTitle,
+  Platform,
 } from '@ionic/angular/standalone';
 
 import { AuthenticationService } from './services/authentication.service';
 import { App } from '@capacitor/app';
 import { take } from 'rxjs';
 import { BackgroundWeb } from './services/background-web.service';
-// Import BackgroundWeb if it exists in your project
 
 @Component({
   selector: 'app-root',
@@ -29,7 +29,8 @@ export class AppComponent implements OnInit {
 
   constructor(
     private readonly authService: AuthenticationService,
-    private readonly bckg: BackgroundWeb
+    private readonly bckg: BackgroundWeb,
+    private readonly platform: Platform
   ) {}
 
   async init() {
@@ -85,10 +86,8 @@ export class AppComponent implements OnInit {
       }
     });
 
-    App.addListener('backButton', ({ canGoBack }) => {
-      if (!canGoBack) {
-        App.exitApp();
-      }
+    this.platform.backButton.subscribeWithPriority(10, () => {
+      App.exitApp();
     });
   }
 

@@ -39,7 +39,7 @@
       </div>
       <ion-list lines="none">
         <ion-item *ngFor="let item of data.glicemia">
-          <ion-label>{{ item }}</ion-label>
+          <ion-label [class.warn-label]="item.warn">{{ item.text }}</ion-label>
         </ion-item>
       </ion-list>
     </div>
@@ -51,7 +51,7 @@
       </div>
       <ion-list lines="none">
         <ion-item *ngFor="let item of data.insulin">
-          <ion-label>{{ item }}</ion-label>
+          <ion-label [class.warn-label]="item.warn">{{ item.text }}</ion-label>
         </ion-item>
       </ion-list>
     </div>
@@ -63,7 +63,7 @@
       </div>
       <ion-list lines="none">
         <ion-item *ngFor="let item of data.senzor">
-          <ion-label>{{ item }}</ion-label>
+          <ion-label [class.warn-label]="item.warn">{{ item.text }}</ion-label>
         </ion-item>
       </ion-list>
     </div>
@@ -75,7 +75,7 @@
       </div>
       <ion-list lines="none">
         <ion-item *ngFor="let item of data.pump">
-          <ion-label>{{ item }}</ion-label>
+          <ion-label [class.warn-label]="item.warn">{{ item.text }}</ion-label>
         </ion-item>
       </ion-list>
     </div>
