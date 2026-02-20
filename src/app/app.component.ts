@@ -53,6 +53,7 @@ export class AppComponent implements OnInit {
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshFailed', async (info: any) => {
       console.log('[LOGG] Token refresh failed in background:', info);
       // Background refresh failed — try Ionic-side refresh and update background plugin tokens
+      // Do NOT call login() here — let doRefresh handle re-login to avoid double-login race
       this.authService.refreshToken().pipe(take(1)).subscribe({
         next: (tokenData: any) => {
           if (tokenData?.access_token) {
@@ -60,13 +61,11 @@ export class AppComponent implements OnInit {
             this.bckg.setTokens(this.authService.getTokens());
             console.log('[LOGG] Ionic-side token refresh OK, updated background plugin');
           } else {
-            console.log('[LOGG] Ionic-side refresh returned no token, re-login needed');
-            this.authService.login();
+            console.log('[LOGG] Ionic-side refresh returned no token, doRefresh will handle re-login');
           }
         },
         error: () => {
-          console.log('[LOGG] Ionic-side refresh also failed, re-login needed');
-          this.authService.login();
+          console.log('[LOGG] Ionic-side refresh also failed, doRefresh will handle re-login');
         }
       });
     });

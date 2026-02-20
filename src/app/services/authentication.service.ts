@@ -32,6 +32,7 @@ export class AuthenticationService {
   private static readonly LOG_MAX_ENTRIES = 500;
 
   private loginInProgress = false;
+  private loginCooldownUntil = 0;
   private refreshInFlight: Promise<any> | null = null;
   private refreshCycleInProgress = false;
   private refreshCycleTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -247,6 +248,16 @@ export class AuthenticationService {
   }
 
   doRefresh(event?: CustomEvent) {
+    if (this.loginInProgress) {
+      this.addDebug('doRefresh: login in progress, skipping');
+      (event?.target as HTMLIonRefresherElement)?.complete();
+      return;
+    }
+    if (this.loginCooldownUntil && Date.now() < this.loginCooldownUntil) {
+      this.addDebug('doRefresh: login cooldown active, skipping');
+      (event?.target as HTMLIonRefresherElement)?.complete();
+      return;
+    }
     if (this.refreshCycleInProgress && !event) {
       this.addDebug('doRefresh: already in progress, skipping');
       return;
@@ -593,7 +604,6 @@ export class AuthenticationService {
   }
 
   private async exchangeCodeForToken(code: string) {
-    this.loginInProgress = false;
     this.addDebug('Token exchange: starting...');
     this.addDebug('Token endpoint: ' + this.tokenEndpoint);
     try {
@@ -615,6 +625,9 @@ export class AuthenticationService {
       }
 
       this.setTokens(tokens);
+      this.loginInProgress = false;
+      this.loginCooldownUntil = Date.now() + 5000;
+      this.addDebug('Token exchange: loginInProgress=false, cooldown 5s');
 
       this.getUserInfo()
         .pipe(take(1))
@@ -641,6 +654,7 @@ export class AuthenticationService {
           },
         });
     } catch (err: any) {
+      this.loginInProgress = false;
       this.addDebug('Token exchange: FAILED ' + JSON.stringify(err)?.substring(0, 300));
       this.setTokens({});
       this.logout();
