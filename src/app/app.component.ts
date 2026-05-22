@@ -48,7 +48,11 @@ export class AppComponent implements OnInit {
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshed', async (info: any) => {
       console.log('[LOGG] Got token refresh from background:', info);
-      this.authService.setTokens(info);
+      this.authService.setTokens({
+        access_token: info?.access_token ?? info?.accessToken,
+        refresh_token: info?.refresh_token ?? info?.refreshToken,
+        id_token: info?.id_token ?? info?.idToken,
+      });
     });
 
     (window as any).Capacitor.Plugins.Background.addListener('onLogged', async (info: any) => {
@@ -67,24 +71,11 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.authService.doRefresh();
-    this.init();
+    void this.bootstrap();
 
     App.addListener('appStateChange', async ({ isActive }) => {
       if (isActive) {
-        // Sync tokens from background plugin first — it may have refreshed while app was in background
-        try {
-          const pluginTokens = await (window as any).Capacitor.Plugins.Background.getTokens();
-          if (pluginTokens?.accessToken) {
-            this.authService.setTokens({
-              access_token: pluginTokens.accessToken,
-              refresh_token: pluginTokens.refreshToken,
-            });
-            console.log('[LOGG] Synced tokens from background plugin on foreground');
-          }
-        } catch (e) {
-          console.log('[LOGG] Failed to sync tokens from background plugin:', e);
-        }
+        await this.syncTokensFromPlugin();
         this.authService.doRefresh();
       }
     });
@@ -92,6 +83,27 @@ export class AppComponent implements OnInit {
     this.platform.backButton.subscribeWithPriority(10, () => {
       App.exitApp();
     });
+  }
+
+  private async syncTokensFromPlugin() {
+    try {
+      const pluginTokens = await (window as any).Capacitor.Plugins.Background.getTokens();
+      if (pluginTokens?.accessToken) {
+        this.authService.setTokens({
+          access_token: pluginTokens.accessToken,
+          refresh_token: pluginTokens.refreshToken,
+        });
+        console.log('[LOGG] Synced tokens from background plugin');
+      }
+    } catch (e) {
+      console.log('[LOGG] Failed to sync tokens from background plugin:', e);
+    }
+  }
+
+  private async bootstrap() {
+    await this.init();
+    await this.syncTokensFromPlugin();
+    this.authService.doRefresh();
   }
 
 }

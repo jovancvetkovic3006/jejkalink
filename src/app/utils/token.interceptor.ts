@@ -8,7 +8,7 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthenticationService } from '../services/authentication.service';
-import { isTokenExpired } from './token.util';
+import { isTokenExpired, isTokenExpiringSoon } from './token.util';
 import { Log } from './log';
 
 @Injectable()
@@ -31,19 +31,17 @@ export class TokenInterceptor implements HttpInterceptor {
     const token = this.authService.getToken();
 
     Log().info('Intercepted token is: ', token);
-    if (token && !isTokenExpired(token)) {
-      // Use the token as-is
+    if (token && !isTokenExpired(token) && !isTokenExpiringSoon(token, 300)) {
       const cloned = req.clone({
         setHeaders: { Authorization: `Bearer ${token}` },
       });
       return next.handle(cloned);
     }
 
-    // Token expired → refresh it
     return this.authService.refreshToken().pipe(
       switchMap((res: any) => {
-        if (!res.access_token) {
-          this.authService.logout();
+        if (!res?.access_token) {
+          return throwError(() => new Error('No access_token after refresh'));
         }
 
         this.authService.setTokens(res);
@@ -55,7 +53,6 @@ export class TokenInterceptor implements HttpInterceptor {
         return next.handle(cloned);
       }),
       catchError((err) => {
-        this.authService.logout();
         return throwError(() => err);
       })
     );

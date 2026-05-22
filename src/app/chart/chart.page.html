@@ -15,9 +15,16 @@
 
   <div class="chart-wrapper" [ngClass]="{'chart-wrapper-landscape': isLandscape}">
     <div class="chart-card" [ngClass]="{'chart-card-landscape': isLandscape}">
-      <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">
-        <div class="chart-inner" [style.width.px]="chartWidth">
-          <canvas baseChart [type]="'line'" [data]="lineChartData" [options]="lineChartOptions"
+      <div class="chart-scroll-host">
+        <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">
+          <div class="chart-scroll-track" [style.width.px]="totalScrollWidth"></div>
+        </div>
+        <div class="chart-viewport" [ngClass]="{'chart-viewport-landscape': isLandscape}" [style.width.px]="viewportWidth">
+          <canvas
+            baseChart
+            [type]="'line'"
+            [data]="lineChartData"
+            [options]="lineChartOptions"
             [legend]="false">
           </canvas>
         </div>
