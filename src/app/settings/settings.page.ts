@@ -76,7 +76,7 @@ export class SettingsPage implements OnInit {
         const padded = parts[1] + '='.repeat((4 - parts[1].length % 4) % 4);
         const payload = JSON.parse(atob(padded));
         const exp = new Date(payload.exp * 1000);
-        this.tokenStatus = 'Aktivan do ' + exp.toLocaleString();
+        this.tokenStatus = 'Aktivan do ' + exp.toLocaleString('sr-Latn-RS');
       } catch {
         this.tokenStatus = 'Aktivan';
       }

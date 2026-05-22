@@ -25,10 +25,17 @@
 }
 
 .chart-period-info {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   font-size: 0.8rem;
   line-height: 1.35;
   color: #555;
+}
+
+.chart-scroll-hint {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: #888;
 }
 
 .period-chips {
@@ -66,7 +73,7 @@
 }
 
 .chart-card:not(.chart-card-landscape) .chart-scroll-host {
-  height: calc(100% - 72px);
+  height: calc(100% - 96px);
 }
 
 .chart-viewport {

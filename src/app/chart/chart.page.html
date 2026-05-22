@@ -17,15 +17,18 @@
     <div class="chart-card" [ngClass]="{'chart-card-landscape': isLandscape}">
       <div class="chart-period-bar" *ngIf="!isLoading && sortedSgsCount > 0">
         <p class="chart-period-info">{{ periodSummary }}</p>
+        <p class="chart-scroll-hint">Prevucite ulevo/udesno da pomerate vremenski prozor kroz istoriju.</p>
         <div class="period-chips">
           <button
             type="button"
             class="period-chip"
-            *ngFor="let preset of periodPresets"
-            [class.active]="activePeriodDays === preset.days"
-            (click)="scrollToPeriod(preset.days)">
+            *ngFor="let preset of windowPresets"
+            [class.active]="activeWindowHours === preset.hours"
+            (click)="setWindowHours(preset.hours)">
             {{ preset.label }}
           </button>
+          <button type="button" class="period-chip" (click)="scrollToLatest()">Najnovije</button>
+          <button type="button" class="period-chip" (click)="scrollToOldest()">Najstarije</button>
         </div>
       </div>
       <div class="chart-scroll-host">
