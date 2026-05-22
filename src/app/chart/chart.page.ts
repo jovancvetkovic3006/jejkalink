@@ -100,6 +100,7 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
 
   private subscription?: Subscription;
   private scrollRaf = 0;
+  private periodScrollLock = 0;
   private sortedSgs: { sg: number; timestamp: string }[] = [];
 
   patientData$ = this.authService.patientData$;
@@ -109,9 +110,20 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
 
   /** Wide scroll track (full history span). */
   totalScrollWidth = 0;
-  /** Fixed viewport where Chart.js renders (screen width). */
+  /** Viewport width (scroll host client width). */
   viewportWidth = 0;
+  periodSummary = '';
+  activePeriodDays: number | null = null;
+  sortedSgsCount = 0;
 
+  readonly periodPresets = [
+    { label: '2 dana', days: 2 },
+    { label: '5 dana', days: 5 },
+    { label: '15 dana', days: 15 },
+    { label: 'Sve', days: 0 },
+  ];
+
+  private static readonly MS_PER_DAY = 24 * 60 * 60 * 1000;
   private static readonly PIXELS_PER_DAY = 360;
   private static readonly MAX_CHART_POINTS = 1200;
 
@@ -219,10 +231,16 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
   @HostListener('window:resize')
   onResize() {
     this.checkOrientation();
-    this.viewportWidth = window.innerWidth;
+    this.measureViewport();
     if (this.sortedSgs.length > 0) {
+      this.recalculateScrollWidth();
       this.updateViewportFromScroll();
     }
+  }
+
+  private measureViewport() {
+    const el = this.chartScrollRef?.nativeElement;
+    this.viewportWidth = el?.clientWidth || window.innerWidth;
   }
 
   private checkOrientation() {
@@ -231,7 +249,6 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnInit() {
     this.unlockOrientation();
-    this.viewportWidth = window.innerWidth;
     this.isLoading = true;
     this.subscription = this.sgsHistory.allSgs$.subscribe((sgs) => {
       this.allSgs = sgs || [];
@@ -240,9 +257,13 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngAfterViewInit() {
+    this.measureViewport();
     const el = this.chartScrollRef?.nativeElement;
     if (!el) return;
     el.addEventListener('scroll', () => this.onChartScroll(), { passive: true });
+    if (this.sortedSgs.length > 0) {
+      this.prepareTimeline();
+    }
   }
 
   ngOnDestroy() {
@@ -252,6 +273,9 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private onChartScroll() {
+    if (Date.now() - this.periodScrollLock > 150) {
+      this.activePeriodDays = null;
+    }
     cancelAnimationFrame(this.scrollRaf);
     this.scrollRaf = requestAnimationFrame(() => this.updateViewportFromScroll());
   }
@@ -260,25 +284,65 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
     this.sortedSgs = [...this.allSgs].sort(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
+    this.sortedSgsCount = this.sortedSgs.length;
 
     if (this.sortedSgs.length === 0) {
       this.isLoading = false;
       this.totalScrollWidth = 0;
+      this.periodSummary = 'Nema podataka za prikaz.';
       return;
     }
 
-    const firstTs = new Date(this.sortedSgs[0].timestamp).getTime();
-    const lastTs = new Date(this.sortedSgs[this.sortedSgs.length - 1].timestamp).getTime();
-    const totalDays = Math.max(1, (lastTs - firstTs) / (24 * 60 * 60 * 1000));
-    this.totalScrollWidth = Math.max(
-      this.viewportWidth,
-      totalDays * ChartPage.PIXELS_PER_DAY
-    );
+    this.recalculateScrollWidth();
 
     setTimeout(() => {
-      this.scrollToEnd();
-      this.updateViewportFromScroll();
-    }, 50);
+      this.measureViewport();
+      this.recalculateScrollWidth();
+      if (this.activePeriodDays == null) {
+        this.scrollToPeriod(2);
+      } else {
+        this.scrollToPeriod(this.activePeriodDays);
+      }
+    }, 80);
+  }
+
+  private recalculateScrollWidth() {
+    if (this.sortedSgs.length === 0) return;
+    this.measureViewport();
+    const firstTs = new Date(this.sortedSgs[0].timestamp).getTime();
+    const lastTs = new Date(this.sortedSgs[this.sortedSgs.length - 1].timestamp).getTime();
+    const totalDays = Math.max(1, (lastTs - firstTs) / ChartPage.MS_PER_DAY);
+    this.totalScrollWidth = Math.max(
+      this.viewportWidth + 1,
+      totalDays * ChartPage.PIXELS_PER_DAY
+    );
+  }
+
+  scrollToPeriod(days: number) {
+    const el = this.chartScrollRef?.nativeElement;
+    if (!el || this.sortedSgs.length === 0) return;
+
+    this.activePeriodDays = days;
+    this.periodScrollLock = Date.now();
+    this.measureViewport();
+
+    const firstTs = new Date(this.sortedSgs[0].timestamp).getTime();
+    const lastTs = new Date(this.sortedSgs[this.sortedSgs.length - 1].timestamp).getTime();
+    const totalMs = Math.max(1, lastTs - firstTs);
+    const viewportPx = el.clientWidth || this.viewportWidth;
+    const trackWidth = Math.max(this.totalScrollWidth, viewportPx);
+    const viewportMs =
+      days <= 0 ? totalMs : Math.min(totalMs, days * ChartPage.MS_PER_DAY);
+
+    const startMs = Math.max(firstTs, lastTs - viewportMs);
+    const scrollable = Math.max(1, trackWidth - viewportPx);
+    const scrollLeft =
+      totalMs <= viewportMs
+        ? 0
+        : ((startMs - firstTs) / (totalMs - viewportMs)) * scrollable;
+
+    el.scrollLeft = Math.max(0, Math.min(scrollable, scrollLeft));
+    this.updateViewportFromScroll();
   }
 
   /** Map horizontal scroll position → time window → chart dataset. */
@@ -299,6 +363,8 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
     const startMs = firstTs + (scrollLeft / scrollable) * (totalMs - viewportMs);
     const endMs = startMs + viewportMs;
 
+    this.updatePeriodSummary(firstTs, lastTs, startMs, endMs, viewportMs);
+
     const padMs = 30 * 60 * 1000;
     const slice = this.sortedSgs.filter((d) => {
       const t = new Date(d.timestamp).getTime();
@@ -307,6 +373,31 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
 
     const display = downsampleSgPoints(slice, ChartPage.MAX_CHART_POINTS);
     this.renderSlice(display);
+  }
+
+  private updatePeriodSummary(
+    historyStartMs: number,
+    historyEndMs: number,
+    viewStartMs: number,
+    viewEndMs: number,
+    viewSpanMs: number
+  ) {
+    const historyDays = Math.max(
+      1,
+      Math.round((historyEndMs - historyStartMs) / ChartPage.MS_PER_DAY)
+    );
+    const viewDays = Math.max(1, Math.round(viewSpanMs / ChartPage.MS_PER_DAY));
+    const fmt = (ms: number) =>
+      new Date(ms).toLocaleString('hr-HR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+    this.periodSummary =
+      `Prikaz: ${fmt(viewStartMs)} – ${fmt(viewEndMs)} (~${viewDays} d) · ` +
+      `Povijest: ${historyDays} d`;
   }
 
   private renderSlice(sgs: { sg: number; timestamp: string }[]) {
@@ -392,13 +483,6 @@ export class ChartPage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private rawTimestamps: Date[] = [];
-
-  private scrollToEnd() {
-    const el = this.chartScrollRef?.nativeElement;
-    if (el) {
-      el.scrollLeft = el.scrollWidth;
-    }
-  }
 
   doRefresh(event: CustomEvent) {
     this.authService.doRefresh(event);

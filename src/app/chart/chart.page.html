@@ -15,11 +15,21 @@
 
   <div class="chart-wrapper" [ngClass]="{'chart-wrapper-landscape': isLandscape}">
     <div class="chart-card" [ngClass]="{'chart-card-landscape': isLandscape}">
-      <div class="chart-scroll-host">
-        <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">
-          <div class="chart-scroll-track" [style.width.px]="totalScrollWidth"></div>
+      <div class="chart-period-bar" *ngIf="!isLoading && sortedSgsCount > 0">
+        <p class="chart-period-info">{{ periodSummary }}</p>
+        <div class="period-chips">
+          <button
+            type="button"
+            class="period-chip"
+            *ngFor="let preset of periodPresets"
+            [class.active]="activePeriodDays === preset.days"
+            (click)="scrollToPeriod(preset.days)">
+            {{ preset.label }}
+          </button>
         </div>
-        <div class="chart-viewport" [ngClass]="{'chart-viewport-landscape': isLandscape}" [style.width.px]="viewportWidth">
+      </div>
+      <div class="chart-scroll-host">
+        <div class="chart-viewport" [ngClass]="{'chart-viewport-landscape': isLandscape}">
           <canvas
             baseChart
             [type]="'line'"
@@ -27,6 +37,9 @@
             [options]="lineChartOptions"
             [legend]="false">
           </canvas>
+        </div>
+        <div class="chart-scroll" #chartScroll [ngClass]="{'chart-scroll-landscape': isLandscape}">
+          <div class="chart-scroll-track" [style.width.px]="totalScrollWidth"></div>
         </div>
       </div>
     </div>
