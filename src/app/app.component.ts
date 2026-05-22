@@ -47,8 +47,8 @@ export class AppComponent implements OnInit {
     });
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshed', async (info: any) => {
-      console.log('[LOGG] Got token refresh from background:', info);
-      this.authService.setTokens({
+      console.log('[LOGG] Got token refresh from background');
+      this.authService.applyTokensFromBackground({
         access_token: info?.access_token ?? info?.accessToken,
         refresh_token: info?.refresh_token ?? info?.refreshToken,
         id_token: info?.id_token ?? info?.idToken,
@@ -87,14 +87,7 @@ export class AppComponent implements OnInit {
 
   private async syncTokensFromPlugin() {
     try {
-      const pluginTokens = await (window as any).Capacitor.Plugins.Background.getTokens();
-      if (pluginTokens?.accessToken) {
-        this.authService.setTokens({
-          access_token: pluginTokens.accessToken,
-          refresh_token: pluginTokens.refreshToken,
-        });
-        console.log('[LOGG] Synced tokens from background plugin');
-      }
+      await this.authService.syncTokensFromBackgroundPlugin();
     } catch (e) {
       console.log('[LOGG] Failed to sync tokens from background plugin:', e);
     }

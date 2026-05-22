@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { BehaviorSubject, from, Observable, of, take } from 'rxjs';
+import { BehaviorSubject, from, Observable, of, switchMap, take } from 'rxjs';
 import { isTokenExpired, isTokenExpiringSoon } from '../utils/token.util';
 import { Log } from '../utils/log.js';
 import { CapacitorHttp, HttpResponse } from '@capacitor/core';
@@ -33,10 +33,10 @@ export class AuthenticationService {
 
   private loginInProgress = false;
   private loginCooldownUntil = 0;
-  private refreshInFlight: Promise<any> | null = null;
+  private backgroundRefreshInFlight: Promise<boolean> | null = null;
   private refreshCycleInProgress = false;
   private refreshCycleTimeout: ReturnType<typeof setTimeout> | undefined;
-  private tokenRefreshInterval: ReturnType<typeof setInterval> | undefined;
+  private tokenSyncInterval: ReturnType<typeof setInterval> | undefined;
   private static readonly TOKEN_REFRESH_BUFFER_SEC = 300; // refresh 5 min before expiry
 
   public debugLog$ = new BehaviorSubject<string[]>(this.loadPersistedLogs());
@@ -118,7 +118,7 @@ export class AuthenticationService {
     this.restorePersistedTokens();
     this.setupDeepLinkListener();
     this.initDiscovery();
-    this.startProactiveTokenRefresh();
+    this.startBackgroundTokenSync();
   }
 
   /** Load tokens from storage into memory on cold start. */
@@ -131,17 +131,19 @@ export class AuthenticationService {
     if (id) this.idToken$.next(id);
   }
 
-  private startProactiveTokenRefresh() {
-    clearInterval(this.tokenRefreshInterval);
-    this.tokenRefreshInterval = setInterval(() => {
+  /** Sync from background plugin only — never call OAuth refresh from Ionic. */
+  private startBackgroundTokenSync() {
+    clearInterval(this.tokenSyncInterval);
+    this.tokenSyncInterval = setInterval(() => {
       if (this.loginInProgress) return;
-      const token = this.getToken();
-      if (!token || !localStorage.getItem('refresh_token')) return;
-      if (!isTokenExpiringSoon(token, AuthenticationService.TOKEN_REFRESH_BUFFER_SEC)) return;
-      this.addDebug('proactive refresh: token expiring soon');
-      this.ensureValidToken(true)
-        .pipe(take(1))
-        .subscribe();
+      if (!localStorage.getItem('refresh_token')) return;
+      void this.syncTokensFromBackgroundPlugin().then((valid) => {
+        if (valid) return;
+        const token = this.getToken();
+        if (!token || !isTokenExpiringSoon(token, AuthenticationService.TOKEN_REFRESH_BUFFER_SEC)) return;
+        this.addDebug('background sync: access expiring, requesting plugin refresh');
+        void this.requestBackgroundTokenRefresh();
+      });
     }, 60_000);
   }
 
@@ -169,27 +171,50 @@ export class AuthenticationService {
   }
 
   /** Accept OAuth snake_case or background-plugin camelCase payloads. */
-  setTokens(token: any) {
-    if (!token) return;
+  setTokens(token: any, options?: { silent?: boolean; source?: string }) {
+    const changed = this.writeTokens(token);
+    if (changed && !options?.silent) {
+      const access = token?.access_token ?? token?.accessToken;
+      const refresh = token?.refresh_token ?? token?.refreshToken;
+      const idToken = token?.id_token ?? token?.idToken ?? token?.id_token_hint;
+      const src = options?.source ? ` (${options.source})` : '';
+      this.addDebug(
+        'setTokens' + src + ': access=' + (!!access) + ' refresh=' + (!!refresh) + ' id=' + (!!idToken)
+      );
+    }
+  }
+
+  /** Apply tokens from background plugin; skip if unchanged to avoid refresh-token churn. */
+  applyTokensFromBackground(token: any) {
+    this.writeTokens(token);
+  }
+
+  private writeTokens(token: any): boolean {
+    if (!token) return false;
 
     const access = token.access_token ?? token.accessToken;
     const refresh = token.refresh_token ?? token.refreshToken;
     const idToken = token.id_token ?? token.idToken ?? token.id_token_hint;
+    let changed = false;
 
-    if (access) {
+    if (access && access !== this.getToken()) {
       this.accessToken$.next(access);
       localStorage.setItem('access_token', access);
+      changed = true;
     }
-    if (refresh) {
+    const storedRefresh = this.refreshToken$.value || localStorage.getItem('refresh_token') || '';
+    if (refresh && refresh !== storedRefresh) {
       this.refreshToken$.next(refresh);
       localStorage.setItem('refresh_token', refresh);
+      changed = true;
     }
-    if (idToken) {
+    const storedId = this.idToken$.value || localStorage.getItem('id_token') || '';
+    if (idToken && idToken !== storedId) {
       this.idToken$.next(idToken);
       localStorage.setItem('id_token', idToken);
+      changed = true;
     }
-
-    this.addDebug('setTokens: access=' + (!!access) + ' refresh=' + (!!refresh) + ' id=' + (!!idToken));
+    return changed;
   }
 
   clearTokens() {
@@ -231,69 +256,103 @@ export class AuthenticationService {
 
   
 
-  refreshToken(): Observable<any> {
-    const refresh_token =
-      this.refreshToken$.value || localStorage.getItem('refresh_token');
-    if (!refresh_token) {
-      this.addDebug('refreshToken: no refresh_token available');
-      return of(null);
-    }
-
-    // Deduplicate concurrent refresh calls
-    if (this.refreshInFlight) {
-      this.addDebug('refreshToken: reusing in-flight request');
-      return from(this.refreshInFlight);
-    }
-
-    this.addDebug('refreshToken: starting...');
-    const body = [
-      'grant_type=refresh_token',
-      `refresh_token=${encodeURIComponent(refresh_token)}`,
-      `client_id=${encodeURIComponent(this.clientId)}`,
-      `audience=${encodeURIComponent(this.audience)}`,
-    ].join('&');
-
-    this.refreshInFlight = CapacitorHttp.post({
-      url: this.tokenEndpoint,
-      data: body,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    }).then((response) => {
-      this.refreshInFlight = null;
-      this.addDebug('refreshToken: status=' + response.status);
-      if (response.status === 200 && response.data?.access_token) {
-        return response.data;
-      }
-      throw new Error('Token refresh failed: status=' + response.status + ' body=' + JSON.stringify(response.data)?.substring(0, 200));
-    }).catch((err) => {
-      this.refreshInFlight = null;
-      this.addDebug('refreshToken: FAILED: ' + (err?.message || JSON.stringify(err))?.substring(0, 200));
-      throw err;
-    });
-
-    return from(this.refreshInFlight);
+  /**
+   * @deprecated Ionic must not call OAuth refresh — delegates to the Android background plugin.
+   */
+  refreshToken(): Observable<{ access_token: string; refresh_token: string } | null> {
+    return from(this.requestBackgroundTokenRefresh()).pipe(
+      take(1),
+      switchMap((ok) => {
+        if (!ok) return of(null);
+        return of({
+          access_token: this.getToken(),
+          refresh_token: this.refreshToken$.value || localStorage.getItem('refresh_token') || '',
+        });
+      })
+    );
   }
 
-  /** Try to read fresher tokens from the Android background plugin before OAuth refresh. */
-  private async syncTokensFromBackgroundPlugin(): Promise<boolean> {
+  /** Ask the background plugin to refresh; only it may call /oauth/token with refresh_token. */
+  async requestBackgroundTokenRefresh(): Promise<boolean> {
+    if (this.backgroundRefreshInFlight) {
+      return this.backgroundRefreshInFlight;
+    }
+
+    this.backgroundRefreshInFlight = (async () => {
+      try {
+        const result = await this.bckg.requestTokenRefresh();
+        if (result?.accessToken) {
+          this.applyTokensFromBackground({
+            access_token: result.accessToken,
+            refresh_token: result.refreshToken,
+          });
+        }
+        const token = this.getToken();
+        const valid =
+          !!token &&
+          !isTokenExpired(token) &&
+          !isTokenExpiringSoon(token, AuthenticationService.TOKEN_REFRESH_BUFFER_SEC);
+        if (valid) {
+          this.addDebug('requestBackgroundTokenRefresh: OK');
+        } else {
+          this.addDebug('requestBackgroundTokenRefresh: still invalid after plugin refresh');
+        }
+        return valid;
+      } catch (err: any) {
+        this.addDebug(
+          'requestBackgroundTokenRefresh: FAILED ' + (err?.message || String(err))?.substring(0, 200)
+        );
+        return false;
+      } finally {
+        this.backgroundRefreshInFlight = null;
+      }
+    })();
+
+    return this.backgroundRefreshInFlight;
+  }
+
+  /** Read tokens from the background plugin (source of truth for refresh rotation). */
+  async syncTokensFromBackgroundPlugin(): Promise<boolean> {
     try {
-      const pluginTokens = await (window as any).Capacitor?.Plugins?.Background?.getTokens?.();
-      if (!pluginTokens?.accessToken) return false;
-      if (isTokenExpired(pluginTokens.accessToken)) return false;
-      this.setTokens({
+      const pluginTokens = await this.bckg.getTokens();
+      if (!pluginTokens?.accessToken && !pluginTokens?.refreshToken) return false;
+
+      const changed = this.writeTokens({
         access_token: pluginTokens.accessToken,
         refresh_token: pluginTokens.refreshToken,
       });
-      this.addDebug('ensureValidToken: synced fresh token from background plugin');
-      return true;
+      const token = this.getToken();
+      const valid =
+        !!token &&
+        !isTokenExpired(token) &&
+        !isTokenExpiringSoon(token, AuthenticationService.TOKEN_REFRESH_BUFFER_SEC);
+      if (changed && valid) {
+        this.addDebug('syncTokensFromBackgroundPlugin: applied fresher tokens');
+      }
+      return valid;
     } catch {
       return false;
     }
   }
 
-  private ensureValidToken(forceRefresh = false): Observable<boolean> {
-    const token = this.getToken();
+  private async resolveValidTokenFromBackground(forcePluginRefresh = false): Promise<boolean> {
+    if (await this.syncTokensFromBackgroundPlugin()) {
+      return true;
+    }
+
+    if (forcePluginRefresh || isTokenExpired(this.getToken()) ||
+      isTokenExpiringSoon(this.getToken(), AuthenticationService.TOKEN_REFRESH_BUFFER_SEC)) {
+      this.addDebug('ensureValidToken: requesting background plugin refresh (no Ionic OAuth)');
+      if (await this.requestBackgroundTokenRefresh()) {
+        return true;
+      }
+      return this.syncTokensFromBackgroundPlugin();
+    }
+
+    return false;
+  }
+
+  private ensureValidToken(forcePluginRefresh = false): Observable<boolean> {
     const refreshStored = !!(this.refreshToken$.value || localStorage.getItem('refresh_token'));
 
     if (!refreshStored) {
@@ -301,43 +360,21 @@ export class AuthenticationService {
       return of(false);
     }
 
-    const needsRefresh =
-      forceRefresh ||
-      isTokenExpired(token) ||
-      isTokenExpiringSoon(token, AuthenticationService.TOKEN_REFRESH_BUFFER_SEC);
-
-    if (!needsRefresh) {
+    const token = this.getToken();
+    if (
+      !forcePluginRefresh &&
+      token &&
+      !isTokenExpired(token) &&
+      !isTokenExpiringSoon(token, AuthenticationService.TOKEN_REFRESH_BUFFER_SEC)
+    ) {
       return of(true);
     }
 
     this.addDebug(
-      'ensureValidToken: refreshing (force=' + forceRefresh + ', expired=' + isTokenExpired(token) + ')...'
+      'ensureValidToken: need valid access (expired=' + isTokenExpired(token) + ', force=' + forcePluginRefresh + ')'
     );
 
-    return from(
-      this.syncTokensFromBackgroundPlugin().then((synced) => {
-        if (synced && !isTokenExpiringSoon(this.getToken(), AuthenticationService.TOKEN_REFRESH_BUFFER_SEC)) {
-          return true;
-        }
-        return this.refreshToken()
-          .pipe(take(1))
-          .toPromise()
-          .then((tokenData: any) => {
-            if (tokenData?.access_token) {
-              this.setTokens(tokenData);
-              this.bckg.setTokens(this.getTokens());
-              this.addDebug('ensureValidToken: refresh OK');
-              return true;
-            }
-            this.addDebug('ensureValidToken: no access_token in response');
-            return false;
-          })
-          .catch((err: any) => {
-            this.addDebug('ensureValidToken: refresh FAILED: ' + JSON.stringify(err)?.substring(0, 200));
-            return false;
-          });
-      })
-    );
+    return from(this.resolveValidTokenFromBackground(forcePluginRefresh));
   }
 
   doRefresh(event?: CustomEvent) {

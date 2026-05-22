@@ -39,13 +39,12 @@ export class TokenInterceptor implements HttpInterceptor {
     }
 
     return this.authService.refreshToken().pipe(
-      switchMap((res: any) => {
+      switchMap((res) => {
         if (!res?.access_token) {
-          return throwError(() => new Error('No access_token after refresh'));
+          return throwError(() => new Error('No access_token after background refresh'));
         }
 
-        this.authService.setTokens(res);
-        Log().info('Intercepted refresh token: ', res.access_token);
+        Log().info('Intercepted token after background refresh');
         const cloned = req.clone({
           setHeaders: { Authorization: `Bearer ${res.access_token}` },
         });

@@ -8,6 +8,8 @@ export interface BackgroundPlugin {
     requestPermissions(): Promise<{ granted: boolean }>;
     hasNotificationPermission(): Promise<{ granted: boolean }>;
     setTokens(options: { accessToken: string; refreshToken: string }): Promise<{ success: boolean }>;
+    getTokens(): Promise<{ accessToken: string; refreshToken: string }>;
+    requestTokenRefresh(): Promise<{ success: boolean; accessToken: string; refreshToken: string }>;
     startPolling(): Promise<void>;
     stopPolling(): Promise<void>;
 }
@@ -22,6 +24,14 @@ export class BackgroundWeb extends WebPlugin implements BackgroundPlugin {
     }
     setTokens(options: { accessToken: string; refreshToken: string; }): Promise<{ success: boolean; }> {
         return (window as any).Capacitor.Plugins.Background.setTokens(options);
+    }
+
+    getTokens(): Promise<{ accessToken: string; refreshToken: string }> {
+        return (window as any).Capacitor.Plugins.Background.getTokens();
+    }
+
+    requestTokenRefresh(): Promise<{ success: boolean; accessToken: string; refreshToken: string }> {
+        return (window as any).Capacitor.Plugins.Background.requestTokenRefresh();
     }
 
     showNotificationFromIonic(data: any): Promise<void> {
