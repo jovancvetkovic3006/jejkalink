@@ -7,14 +7,20 @@ export const routes: Routes = [
     component: TabsPage,
     children: [
       {
-        path: 'dashboard',
-        loadComponent: () =>
-          import('../dashboard/dashboard.page').then((m) => m.DashboardPage),
+        path: 'now',
+        loadComponent: () => import('../now/now.page').then((m) => m.NowPage),
       },
       {
-        path: 'chart',
-        loadComponent: () =>
-          import('../chart/chart.page').then((m) => m.ChartPage),
+        path: 'day',
+        loadComponent: () => import('../day/day.page').then((m) => m.DayPage),
+      },
+      {
+        path: 'trends',
+        loadComponent: () => import('../trends/trends.page').then((m) => m.TrendsPage),
+      },
+      {
+        path: 'alarms',
+        loadComponent: () => import('../alarms/alarms.page').then((m) => m.AlarmsPage),
       },
       {
         path: 'settings',
@@ -22,15 +28,25 @@ export const routes: Routes = [
           import('../settings/settings.page').then((m) => m.SettingsPage),
       },
       {
+        path: 'dashboard',
+        redirectTo: '/tabs/now',
+        pathMatch: 'full',
+      },
+      {
+        path: 'chart',
+        redirectTo: '/tabs/trends',
+        pathMatch: 'full',
+      },
+      {
         path: '',
-        redirectTo: '/tabs/dashboard',
+        redirectTo: '/tabs/now',
         pathMatch: 'full',
       },
     ],
   },
   {
     path: '',
-    redirectTo: '/tabs/dashboard',
+    redirectTo: '/tabs/now',
     pathMatch: 'full',
   },
 ];

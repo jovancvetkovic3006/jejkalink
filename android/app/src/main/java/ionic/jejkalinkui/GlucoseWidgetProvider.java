@@ -50,9 +50,10 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_status, status);
 
         // Color-coded background based on glucose level
-        if (sgValue > 0 && sgValue < 4.5) {
+        // mmol/L bands: low < 3.9, in-range 3.9–10.0, high > 10.0
+        if (sgValue > 0 && sgValue < 3.9) {
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background_red);
-        } else if (sgValue > 7.5) {
+        } else if (sgValue > 10.0) {
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background_orange);
         } else {
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background);

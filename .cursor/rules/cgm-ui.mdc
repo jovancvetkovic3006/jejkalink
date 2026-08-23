@@ -1,0 +1,66 @@
+---
+description: Design system and UI conventions. Applies when editing components, styles, or charts.
+globs: ["**/*.tsx", "**/*.jsx", "**/*.vue", "**/*.svelte", "**/*.css", "**/*.scss", "**/components/**", "**/ui/**"]
+---
+
+# UI rules
+
+Tokens live in `tokens.css`. Use the variables, never raw hex.
+
+## Palette intent
+
+- `--teal` in range · `--low` 3.0–3.9 · `--very-low` under 3.0 · `--amber` 10.0–13.9 ·
+  `--very-high` over 13.9
+- `--gap` is reserved for **absence of data**. Never use it to encode a value.
+- `--indigo` is interactive, insulin, and AI surfaces.
+
+## Typography
+
+- Display `Bricolage Grotesque`, body `Public Sans`, all numerals `IBM Plex Mono`.
+- Every glucose numeral uses `font-variant-numeric: tabular-nums`. Values must not
+  reflow as they update.
+- One decimal place, always.
+
+## CoverageStrip — required, not optional
+
+```
+props: { segments: [{ from, to, covered }], period: [start, end] }
+```
+
+A 5px track beneath **every chart and every aggregate metric block**. Covered runs
+`--teal`, gaps `--gap`. Caption below in mono 10px: period left, coverage right. When
+gaps exist, prefix the summary in `--low` — `1 gap · 68 min · 94%`.
+
+This is the component that makes the app trustworthy. Do not make it collapsible,
+optional, or conditional on there being gaps.
+
+## GlucoseChart
+
+- Target band `--band` from 3.9 to 10.0, behind gridlines.
+- Trace `--ink`, 1.9–2.2px, round caps and joins.
+- Below-range points get a 2.1px `--low` dot. Above-range get a smaller `--amber` dot at
+  reduced opacity. Highs are common, lows are what you scan for — visual weight should
+  reflect that asymmetry.
+- Gaps render as hatched fill with no trace, labelled `gap`.
+- Y-axis labels only at 3.9, 10.0, and the ceiling.
+
+## MetricGrid
+
+Two columns, 1px `--line` gutters. Cell is mono uppercase key (10px), tabular value
+(23px), delta or qualifier (10px). Delta colour is direction-dependent — the metric
+definition owns whether up is good, not the component.
+
+## AI-generated text
+
+- Always in the indigo card treatment, visually distinct from computed values.
+- Always timestamped.
+- Always one tap from the aggregates it was derived from.
+- Never inline with a number as though it were part of the data.
+
+## Copy
+
+- Sentence case. No title case anywhere in the UI.
+- Name things by what the user controls: "No data for 20 min", not "Stale threshold".
+- Buttons state what happens; the result echoes the verb.
+- Errors explain what happened and what to do. They do not apologise and are never vague.
+- Empty states are an invitation to act.

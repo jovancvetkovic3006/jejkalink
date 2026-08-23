@@ -15,6 +15,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthenticationService } from '../services/authentication.service';
+import { SgsHistoryService } from '../services/sgs-history.service';
 
 @Component({
   selector: 'app-settings',
@@ -38,21 +39,26 @@ import { AuthenticationService } from '../services/authentication.service';
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '0.1.0';
+  appVersion = '1.4.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;
   userName = '';
   userEmail = '';
   tokenStatus = '';
+  readingsCount = 0;
 
-  constructor(private readonly authService: AuthenticationService) {}
+  constructor(
+    private readonly authService: AuthenticationService,
+    private readonly history: SgsHistoryService
+  ) {}
 
   ngOnInit() {
     this.patientUsername =
       localStorage.getItem('patientUsername') || 'jejka3006';
     this.loadUserInfo();
     this.updateTokenStatus();
+    this.readingsCount = this.history.readings().length;
   }
 
   private loadUserInfo() {

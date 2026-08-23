@@ -1,0 +1,45 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="prevDay()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>{{ title }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="nextDay()" [disabled]="dayOffset === 0">
+        <ion-icon name="chevron-forward-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="screen">
+    <div class="card-surface chart-card">
+      <div class="chart">
+        <app-glucose-chart
+          [readings]="readings"
+          [startMs]="startMs"
+          [endMs]="endMs"
+        ></app-glucose-chart>
+      </div>
+      <app-coverage-strip
+        *ngIf="coverage"
+        [coverage]="coverage"
+        periodLabel="00:00–24:00"
+      ></app-coverage-strip>
+    </div>
+
+    <app-metric-grid [cells]="cells"></app-metric-grid>
+
+    <div class="card-surface log">
+      <div class="lbl">Dnevnik</div>
+      <div class="row" *ngFor="let e of dayEvents">
+        <div class="t">{{ e.timestamp | date: 'HH:mm' }}</div>
+        <div class="body">{{ e.label }}</div>
+      </div>
+      <div class="empty" *ngIf="dayEvents.length === 0">Nema unosa za ovaj dan.</div>
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,59 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Trendovi</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="screen">
+    <ion-segment [value]="days" (ionChange)="onPeriodChange($event)">
+      <ion-segment-button [value]="7"><ion-label>7d</ion-label></ion-segment-button>
+      <ion-segment-button [value]="14"><ion-label>14d</ion-label></ion-segment-button>
+      <ion-segment-button [value]="30"><ion-label>30d</ion-label></ion-segment-button>
+      <ion-segment-button [value]="90"><ion-label>90d</ion-label></ion-segment-button>
+    </ion-segment>
+
+    <div class="card-surface">
+      <div class="lbl">Opseg (raspodela)</div>
+      <div class="rb">
+        <i
+          *ngFor="let b of rangeBars"
+          [style.flex]="b.pct || 0.01"
+          [style.background]="b.color"
+          >{{ b.pct >= 8 ? b.pct + '%' : '' }}</i
+        >
+      </div>
+      <div class="rkey">
+        <div *ngFor="let b of rangeBars">
+          <s [style.background]="b.color"></s>
+          <span>{{ b.label }}</span>
+          <b class="numeral">{{ b.pct }}%</b>
+        </div>
+      </div>
+      <app-coverage-strip
+        *ngIf="coverage"
+        [coverage]="coverage"
+        [periodLabel]="days + ' dana'"
+      ></app-coverage-strip>
+    </div>
+
+    <app-metric-grid [cells]="cells"></app-metric-grid>
+
+    <div class="card-surface chart-card">
+      <div class="lbl">Pregled perioda</div>
+      <div class="chart">
+        <app-glucose-chart
+          [readings]="readings"
+          [startMs]="startMs"
+          [endMs]="endMs"
+        ></app-glucose-chart>
+      </div>
+    </div>
+
+    <div class="ai-card">
+      <div class="lbl">Nedeljni pregled</div>
+      <p>{{ weeklyRead }}</p>
+      <div class="ai-meta">Opisno · bez predloga doze</div>
+    </div>
+  </div>
+</ion-content>

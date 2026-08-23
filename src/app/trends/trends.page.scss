@@ -1,0 +1,83 @@
+.screen {
+  padding: var(--pad-screen);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.rb {
+  display: flex;
+  height: 26px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 9px;
+}
+
+.rb i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: #fff;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.rkey {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rkey div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.rkey s {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: block;
+  text-decoration: none;
+}
+
+.rkey b {
+  margin-left: auto;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chart-card .chart {
+  height: 200px;
+}
+
+.ai-card {
+  border: 1px solid var(--indigo-br);
+  background: var(--indigo-bg);
+  border-radius: var(--r-card);
+  padding: var(--pad-card);
+  border-left: 3px solid var(--indigo);
+}
+
+.ai-card p {
+  margin: 8px 0;
+  font-size: var(--t-body);
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.ai-meta {
+  font-family: var(--font-data);
+  font-size: 10px;
+  color: var(--indigo);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

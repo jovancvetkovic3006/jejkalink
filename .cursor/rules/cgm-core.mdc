@@ -1,0 +1,100 @@
+---
+description: Core domain rules for the CGM follower app. Units, formulas, gap handling, architecture, safety boundaries.
+alwaysApply: true
+---
+
+# Core rules
+
+Private, single-tenant follower app for one Medtronic CareLink account. Analytics and
+review only. It runs alongside the official apps, never replaces them, and never writes
+to a device.
+
+## Units — mmol/L, no exceptions
+
+Every glucose value is mmol/L. No unit toggle.
+
+- Display exactly one decimal place. `6` renders `6.0`.
+- Store as `numeric(4,1)` / `Decimal`. Never a binary float.
+- If CareLink returns mg/dL, convert at the collector boundary (`÷ 18.0182`). mg/dL must
+  not exist past that layer.
+- Rate of change is mmol/L per minute. `0.10` moderate, `0.15+` steep.
+
+When you see a bare number in existing code, check its unit before touching it. Values
+in the 70–180 band are almost certainly mg/dL and are a bug.
+
+## Thresholds
+
+| Bucket    | Range       |
+|-----------|-------------|
+| Very low  | < 3.0       |
+| Low       | 3.0 – 3.9   |
+| In range  | 3.9 – 10.0  |
+| High      | 10.0 – 13.9 |
+| Very high | > 13.9      |
+
+Tight range 3.9 – 7.8.
+
+## Formulas
+
+- **GMI:** `12.71 + 4.70587 × mean_mmol`. Do not convert to mg/dL and use that equation —
+  it is a different formula.
+- **CV:** `stdev / mean × 100`. Unitless. Target under 36%.
+- All percentages are computed over **covered** time and must be returned with their
+  coverage figure attached.
+
+## Architecture — four layers, kept separate
+
+1. **Collector** — polls CareLink, refreshes session, writes raw + normalized.
+2. **Store** — raw response blobs plus normalized `readings` and `events`.
+3. **Analytics** — pure functions `(readings, events, period) → numbers`. No I/O, no
+   network, no clock reads. This is the only place metrics are computed.
+4. **Surfaces** — UI, alarms, AI. Read-only consumers of layer 3.
+
+Never compute a metric in a component. If a screen needs a number, it comes from layer 3.
+
+## Collector rules
+
+- Poll every 5 min. Sensor writes every 5; faster gains nothing and looks anomalous.
+- Phase-align: observe actual reading timestamps, schedule ~30s after expected write,
+  self-correct on drift.
+- Persist refreshed tokens to disk immediately on refresh, not just in memory.
+- Exponential backoff; hard stop after N consecutive failures, then alert.
+- Upsert on `(patient_id, timestamp, reading_type)` — 24h windows overlap constantly.
+- Retain raw response bodies. Re-parsing history beats re-collecting it.
+
+## Time
+
+Store UTC **plus** the local UTC offset in effect at that moment. AGP buckets by
+time-of-day; keeping only one will smear overnight patterns across DST boundaries.
+
+## Gaps are data
+
+- Record gaps explicitly: sensor warmup, lost connection, pump disconnect.
+- Never interpolate across a gap. Never draw a line through one.
+- Never render a percentage without its coverage denominator in the same view.
+- 94% coverage and 60% coverage are not comparable and the UI must say so.
+
+## Alarms — backup path only
+
+Readings arrive 10–15 min after the sensor took them.
+
+- Evaluate against the reading's own timestamp, never fetch time.
+- **Stale-data alarm is the highest-priority rule.** Silence is ambiguous — "fine" and
+  "token expired four hours ago" look identical. No reading in 20 min is urgent.
+- Hysteresis: fire low at 3.9, clear at 4.4.
+- Urgent low (< 3.0) ignores snooze and re-fires.
+- Support projection alerting: `value + slope × lag`.
+- Separate overnight profile 22:00–07:00.
+- Delivery must bypass Do Not Disturb.
+- Log every fired alarm with its causing reading and allow real/false tagging.
+
+## Safety boundary — hard
+
+AI features are descriptive only. Patterns, correlations, questions for the care team.
+
+**Never** generate or suggest: insulin doses, correction factors, basal rates, carb
+ratios, or pump setting changes. If a prompt or feature drifts toward this, stop and
+flag it rather than implementing it.
+
+Never let a model compute a metric or decide whether an alarm fires. Deterministic code
+computes; the model only phrases.

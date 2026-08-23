@@ -1,0 +1,64 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Alarmi</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="screen">
+    <div class="caveat">
+      Ova aplikacija je rezervni put. Ne zamenjuje zvanične Medtronic alarme na pumpi
+      ili telefonu. Očitavanja stižu sa zakašnjenjem od 10–15 min.
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Pragovi</div>
+      <div class="step" *ngFor="let row of thresholdRows">
+        <span>{{ row.label }}</span>
+        <div class="ctrl">
+          <button type="button" (click)="step(row.key, -0.1)">−</button>
+          <b class="numeral">{{ settings[row.key] }}</b>
+          <button type="button" (click)="step(row.key, 0.1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Pravila</div>
+      <ion-list lines="none">
+        <ion-item>
+          <ion-label>Nema podataka 20 min</ion-label>
+          <ion-toggle [(ngModel)]="settings.staleEnabled" (ionChange)="save()"></ion-toggle>
+        </ion-item>
+        <ion-item>
+          <ion-label>Projekcija (vrednost + nagib)</ion-label>
+          <ion-toggle [(ngModel)]="settings.projectionEnabled" (ionChange)="save()"></ion-toggle>
+        </ion-item>
+        <ion-item>
+          <ion-label>Noćni profil 22–07</ion-label>
+          <ion-toggle [(ngModel)]="settings.overnightProfile" (ionChange)="save()"></ion-toggle>
+        </ion-item>
+        <ion-item>
+          <ion-label>Ponavljaj dok se ne razreši</ion-label>
+          <ion-toggle [(ngModel)]="settings.repeatUntilCleared" (ionChange)="save()"></ion-toggle>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Okidanja ove nedelje</div>
+      <div class="fire" *ngFor="let f of fired">
+        <div>
+          <div class="ft">{{ f.timestamp | date: 'dd.MM. HH:mm' }}</div>
+          <div>{{ f.label }}</div>
+        </div>
+        <div class="tags">
+          <ion-button size="small" fill="outline" (click)="tag(f.id, 'real')">Stvarno</ion-button>
+          <ion-button size="small" fill="clear" (click)="tag(f.id, 'false')">Lažno</ion-button>
+          <ion-note *ngIf="f.tag">{{ f.tag === 'real' ? 'stvarno' : 'lažno' }}</ion-note>
+        </div>
+      </div>
+      <div class="empty" *ngIf="fired.length === 0">Nema okidanja ove nedelje.</div>
+    </div>
+  </div>
+</ion-content>

@@ -30,6 +30,10 @@ import {
   codeOutline,
   chevronDownOutline,
   chevronUpOutline,
+  chevronBackOutline,
+  chevronForwardOutline,
+  calendarOutline,
+  notificationsOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -48,7 +52,8 @@ export class TabsPage {
       waterOutline, fitnessOutline, bluetoothOutline, hardwareChipOutline,
       warningOutline, settingsOutline, personOutline, saveOutline,
       informationCircleOutline, codeOutline,
-      chevronDownOutline, chevronUpOutline,
+      chevronDownOutline, chevronUpOutline, chevronBackOutline, chevronForwardOutline,
+      calendarOutline, notificationsOutline,
     });
   }
 }

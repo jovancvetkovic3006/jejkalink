@@ -1,0 +1,53 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Sada</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="screen">
+    <div class="card-surface hero-card">
+      <div class="hero">
+        <div class="val numeral" [style.color]="rangeColor">{{ value }}</div>
+        <div class="unit">{{ unit }}</div>
+        <div class="arrow">
+          <div class="trend-label">{{ trendLabel }}</div>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip ok" [style.color]="rangeColor">{{ rangeText }}</span>
+        <app-stale-chip [minutesAgo]="minutesAgo"></app-stale-chip>
+      </div>
+      <app-coverage-strip
+        *ngIf="coverage"
+        [coverage]="coverage"
+        [periodLabel]="periodLabel"
+      ></app-coverage-strip>
+    </div>
+
+    <div class="card-surface spark-card">
+      <div class="lbl">Poslednja 3 sata</div>
+      <div class="spark">
+        <app-glucose-chart
+          [readings]="readings"
+          [startMs]="sparkStart"
+          [endMs]="sparkEnd"
+          [sparkline]="true"
+        ></app-glucose-chart>
+      </div>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Nedavni događaji</div>
+      <div class="row" *ngFor="let e of events">
+        <div class="t">{{ e.timestamp | date: 'HH:mm' }}</div>
+        <div class="body">{{ e.label }}</div>
+      </div>
+      <div class="empty" *ngIf="events.length === 0">Nema događaja još.</div>
+    </div>
+  </div>
+</ion-content>

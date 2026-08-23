@@ -10,8 +10,9 @@ import {
 
 import { AuthenticationService } from './services/authentication.service';
 import { App } from '@capacitor/app';
-import { take } from 'rxjs';
 import { BackgroundWeb } from './services/background-web.service';
+import { SgsHistoryService } from './services/sgs-history.service';
+import { AlarmsService } from './services/alarms.service';
 
 @Component({
   selector: 'app-root',
@@ -30,12 +31,13 @@ export class AppComponent implements OnInit {
   constructor(
     private readonly authService: AuthenticationService,
     private readonly bckg: BackgroundWeb,
-    private readonly platform: Platform
+    private readonly platform: Platform,
+    private readonly history: SgsHistoryService,
+    private readonly alarms: AlarmsService
   ) {}
 
   async init() {
     await this.bckg.ensureNotificationPermission();
-    // Request full-screen intent permission (needed for lock screen notifications on Android 14+)
     try {
       await (window as any).Capacitor.Plugins.Background.requestFullScreenPermission();
     } catch (e) {
@@ -61,9 +63,6 @@ export class AppComponent implements OnInit {
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshFailed', async (info: any) => {
       console.log('[LOGG] Token refresh failed in background:', info);
-      // Don't try Ionic-side refresh here — it would race with background plugin
-      // and potentially invalidate rotating refresh tokens.
-      // doRefresh will handle re-login if needed when user opens the app.
     });
 
     await this.bckg.setTokens(this.authService.getTokens());
@@ -72,6 +71,10 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     void this.bootstrap();
+
+    this.history.allSgs$.subscribe((readings) => {
+      this.alarms.evaluate(readings);
+    });
 
     App.addListener('appStateChange', async ({ isActive }) => {
       if (isActive) {
@@ -98,5 +101,4 @@ export class AppComponent implements OnInit {
     await this.syncTokensFromPlugin();
     this.authService.doRefresh();
   }
-
 }

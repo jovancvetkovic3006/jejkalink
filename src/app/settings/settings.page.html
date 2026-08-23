@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar>
-    <ion-title>Podesavanja</ion-title>
+    <ion-title>Podešavanja</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -9,7 +9,7 @@
     <div class="settings-card">
       <div class="card-header">
         <ion-icon name="person-outline" color="primary"></ion-icon>
-        <span>Nalog</span>
+        <span>Veza</span>
       </div>
       <ion-list lines="none">
         <ion-item *ngIf="userName">
@@ -25,14 +25,22 @@
           <ion-note slot="end" [color]="tokenStatus === 'Istekao' ? 'danger' : 'success'">{{ tokenStatus }}</ion-note>
         </ion-item>
         <ion-item>
+          <ion-label>Jedinice</ion-label>
+          <ion-note slot="end">mmol/L</ion-note>
+        </ion-item>
+        <ion-item>
+          <ion-label>Očitavanja sačuvana</ion-label>
+          <ion-note slot="end">{{ readingsCount }}</ion-note>
+        </ion-item>
+        <ion-item>
           <ion-input
             label="Pacijent"
             labelPlacement="fixed"
             [(ngModel)]="patientUsername"
-            placeholder="Korisnicko ime"
+            placeholder="Korisničko ime"
             (ionBlur)="saveUsername()"
           ></ion-input>
-          <ion-note slot="end" color="success" *ngIf="saved">Sacuvano!</ion-note>
+          <ion-note slot="end" color="success" *ngIf="saved">Sačuvano</ion-note>
         </ion-item>
       </ion-list>
     </div>
@@ -60,10 +68,10 @@
         <span>Logovi ({{ logs.length }})</span>
         <ion-icon [name]="logsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'" color="medium" class="expand-icon"></ion-icon>
         <ion-button fill="clear" size="small" color="primary" (click)="sendLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
-          Posalji
+          Pošalji
         </ion-button>
         <ion-button fill="clear" size="small" color="medium" (click)="clearLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
-          Obrisi
+          Obriši
         </ion-button>
       </div>
       <div class="log-container" *ngIf="logsExpanded && logs.length > 0">

@@ -1,0 +1,43 @@
+.screen {
+  padding: var(--pad-screen);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.chart-card .chart {
+  height: 220px;
+}
+
+.log {
+  margin-top: 0;
+}
+
+.row {
+  display: flex;
+  gap: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.t {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--muted);
+  width: 46px;
+}
+
+.body {
+  font-size: var(--t-row);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: var(--t-sub);
+}

@@ -14,6 +14,7 @@ import {
 } from '@ionic/angular/standalone';
 import { AuthenticationService } from '../services/authentication.service';
 import { CommonModule } from '@angular/common';
+import { HIGH, LOW } from '../domain/glucose';
 
 @Component({
   selector: 'app-dashboard-tab',
@@ -68,9 +69,8 @@ export class DashboardPage {
   }
 
   getCurrentClass(current: number): string {
-    console.log('[LOG CURRENT]', current);
-    if (current < 4.5) return 'trend-down';
-    if (current <= 7.5) return 'trend-stable';
+    if (current < LOW) return 'trend-down';
+    if (current <= HIGH) return 'trend-stable';
     return 'trend-up';
   }
 }

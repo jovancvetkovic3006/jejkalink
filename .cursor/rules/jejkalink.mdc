@@ -1,0 +1,12 @@
+---
+description: JejkaLink UI language and product constraints
+alwaysApply: true
+---
+
+# JejkaLink project rules
+
+- User-facing copy is Serbian (Latin), locale `sr-Latn-RS`.
+- Glucose units are mmol/L only. Convert CareLink mg/dL at the collector boundary with `÷ 18.0182`.
+- Never suggest insulin doses, basal rates, carb ratios, or pump settings.
+- Prefer design tokens from `src/theme/tokens.css` over raw hex in new UI.
+- Analytics metrics are computed in `src/app/analytics/` only — not inside page components.

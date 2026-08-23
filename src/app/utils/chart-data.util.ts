@@ -1,5 +1,6 @@
 export interface SgPoint {
-  sg: number;
+  sg?: number;
+  mmol?: number;
   timestamp: string;
 }
 
@@ -16,4 +17,10 @@ export function downsampleSgPoints<T extends SgPoint>(points: T[], maxPoints: nu
     out.push(last);
   }
   return out;
+}
+
+export function readingMmol(p: SgPoint): number {
+  if (p.mmol != null && p.mmol > 0) return p.mmol;
+  if (p.sg != null && p.sg > 0) return p.sg / 18.0182;
+  return 0;
 }

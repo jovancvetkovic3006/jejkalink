@@ -8,6 +8,8 @@ import { CapacitorHttp, HttpResponse } from '@capacitor/core';
 import { BackgroundWeb } from './background-web.service';
 import { MedtronicDiscoveryService } from './medtronic-discovery.service';
 import { SgsHistoryService } from './sgs-history.service';
+import { EventsStore } from './events-store.service';
+import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
 
 export interface IUserInfo {
   name: string;
@@ -113,7 +115,8 @@ export class AuthenticationService {
   constructor(
     private readonly bckg: BackgroundWeb,
     private readonly discovery: MedtronicDiscoveryService,
-    private readonly sgsHistory: SgsHistoryService
+    private readonly sgsHistory: SgsHistoryService,
+    private readonly eventsStore: EventsStore
   ) {
     this.restorePersistedTokens();
     this.setupDeepLinkListener();
@@ -571,10 +574,12 @@ export class AuthenticationService {
     );
 
     this.sgsHistory.merge(data.sgs);
+    this.sgsHistory.saveRawResponse(recentData);
+    this.eventsStore.ingestCareLink(patientData);
 
     data.since = this.getTimeSinceLastGS(data);
     const unitsLeft = patientData.reservoirRemainingUnits || 0;
-    const glicemia: string | number = (this.getLastGlicemia(data).sg / 18).toFixed(1);
+    const glicemia: string | number = formatMmol(toMmol(this.getLastGlicemia(data).sg));
 
     const sensorState = patientData.lastSG?.sensorState || 'UNKNOWN';
 
@@ -602,7 +607,7 @@ export class AuthenticationService {
       data.senzor.push({ text: 'Senzor nije povezan', warn: true });
       for (const sg of data.sgs || []) {
         if (sg) {
-          const lastGlicemia = (this.getLastGlicemia(data)?.sg / 18).toFixed(1);
+          const lastGlicemia = formatMmol(toMmol(this.getLastGlicemia(data)?.sg));
           data.glicemia.push({ text: `Poslednja glikemija ${lastGlicemia}`, warn: false });
           data.senzor.push({ text: `Poslednja sinhronizacija ${lastTime}`, warn: false });
           break;
@@ -619,7 +624,8 @@ export class AuthenticationService {
     const trend_raw = patientData.lastSGTrend || '';
     const trend =
       trend_raw === 'DOWN' ? -1 : trend_raw === 'UP' ? 1 : 0;
-    const averageSG = ((patientData?.averageSG || 0) / 18).toFixed(1);
+    const meanMmol = toMmol(patientData?.averageSG || 0);
+    const gmi = formatMmol(gmiFromMean(meanMmol));
 
     let timeInRange = '-';
     if ('timeInRange' in patientData) {
@@ -676,7 +682,10 @@ export class AuthenticationService {
       data.pump.push({ text: 'Pumpica je suspendovana', warn: true });
     }
 
-    data.glicemia.push({ text: `HbA1c ${averageSG}`, warn: false });
+    data.glicemia.push({ text: `GMI ${gmi}%`, warn: false });
+    if (meanMmol > 0) {
+      data.glicemia.push({ text: `Prosek ${formatMmol(meanMmol)}`, warn: false });
+    }
 
     if ('timeInRange' in patientData) {
       timeInRange && data.glicemia.push({ text: `U normali je ${timeInRange}`, warn: false });

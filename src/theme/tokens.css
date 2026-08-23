@@ -1,0 +1,65 @@
+/* ─────────────────────────────────────────────
+   Design tokens — CGM follower app
+   Units are mmol/L throughout. Single source of truth.
+   ───────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --paper:    #F6F7F9;  /* app background */
+  --surface:  #FFFFFF;  /* cards */
+  --line:     #E3E7ED;  /* hairlines, card borders */
+  --gap:      #DDE2E9;  /* absence of data — never used for a value */
+
+  /* Ink */
+  --ink:      #15213B;  /* primary text, glucose trace */
+  --muted:    #707C91;  /* labels, captions, axis */
+
+  /* Clinical state — these five map 1:1 to the range buckets */
+  --very-low: #9B1B47;  /* under 3.0 */
+  --low:      #C2255C;  /* 3.0 – 3.9 */
+  --teal:     #0E9B8A;  /* 3.9 – 10.0 — in range */
+  --amber:    #C77C1E;  /* 10.0 – 13.9 */
+  --very-high:#9A5E10;  /* over 13.9 */
+  --band:     #E9F5F3;  /* target range shading on charts */
+
+  /* Interactive */
+  --indigo:   #3344CC;  /* actions, insulin, AI surfaces */
+  --indigo-bg:#F5F6FE;
+  --indigo-br:#CFD5F5;
+
+  /* Type */
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body:    "Public Sans", system-ui, sans-serif;
+  --font-data:    "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Type scale */
+  --t-hero:   62px;  /* current reading */
+  --t-metric: 23px;  /* metric grid values */
+  --t-title:  21px;  /* screen title */
+  --t-body:   15px;
+  --t-row:    13.5px;
+  --t-sub:    11.5px;
+  --t-label:  10px;  /* uppercase mono labels, .12em tracking */
+
+  /* Geometry */
+  --r-card:   14px;
+  --r-phone:  26px;
+  --r-pill:   99px;
+  --pad-screen: 18px;
+  --pad-card:   14px;
+}
+
+/* Rules that are not negotiable
+   ─────────────────────────────
+   1. All glucose numerals use --font-data with font-variant-numeric: tabular-nums.
+      Values must not reflow as they update.
+   2. --gap is reserved for missing data. Never use it to encode a value.
+   3. Every chart and every aggregate metric is accompanied by a coverage strip.
+   4. One decimal place for mmol/L. Always. 5.5 not 5.50, 6 renders as 6.0.
+*/
+
+.numeral {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
