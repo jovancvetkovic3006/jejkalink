@@ -1,9 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { GlassPanelComponent } from '../glass-panel/glass-panel.component';
 
 export interface MetricCell {
   key: string;
   value: string;
+  valueSuffix?: string;
+  valueColor?: string;
   delta?: string;
   deltaTone?: 'up' | 'down' | 'muted';
 }
@@ -11,22 +14,27 @@ export interface MetricCell {
 @Component({
   selector: 'app-metric-grid',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GlassPanelComponent],
   template: `
-    <div class="mgrid">
-      <div class="m" *ngFor="let cell of cells">
-        <div class="k">{{ cell.key }}</div>
-        <div class="v numeral">{{ cell.value }}</div>
-        <div
-          class="d"
-          *ngIf="cell.delta"
-          [class.up]="cell.deltaTone === 'up'"
-          [class.down]="cell.deltaTone === 'down'"
-        >
-          {{ cell.delta }}
+    <app-glass-panel [empty]="empty" [message]="emptyMessage">
+      <div class="mgrid">
+        <div class="m" *ngFor="let cell of cells">
+          <div class="k">{{ cell.key }}</div>
+          <div class="v numeral" [style.color]="cell.valueColor">
+            {{ cell.value
+            }}<span class="suf" *ngIf="cell.valueSuffix">{{ cell.valueSuffix }}</span>
+          </div>
+          <div
+            class="d"
+            *ngIf="cell.delta"
+            [class.up]="cell.deltaTone === 'up'"
+            [class.down]="cell.deltaTone === 'down'"
+          >
+            {{ cell.delta }}
+          </div>
         </div>
       </div>
-    </div>
+    </app-glass-panel>
   `,
   styles: [
     `
@@ -57,6 +65,9 @@ export interface MetricCell {
         margin-top: 3px;
         color: var(--ink);
       }
+      .suf {
+        font-size: 13px;
+      }
       .d {
         font-family: var(--font-data);
         font-size: 10px;
@@ -74,4 +85,6 @@ export interface MetricCell {
 })
 export class MetricGridComponent {
   @Input() cells: MetricCell[] = [];
+  @Input() empty = false;
+  @Input() emptyMessage = 'Još nema podataka za period';
 }

@@ -9,6 +9,7 @@ import { BackgroundWeb } from './background-web.service';
 import { MedtronicDiscoveryService } from './medtronic-discovery.service';
 import { SgsHistoryService } from './sgs-history.service';
 import { EventsStore } from './events-store.service';
+import { CollectorHealthService } from './collector-health.service';
 import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
 
 export interface IUserInfo {
@@ -116,7 +117,8 @@ export class AuthenticationService {
     private readonly bckg: BackgroundWeb,
     private readonly discovery: MedtronicDiscoveryService,
     private readonly sgsHistory: SgsHistoryService,
-    private readonly eventsStore: EventsStore
+    private readonly eventsStore: EventsStore,
+    private readonly collectorHealth: CollectorHealthService
   ) {
     this.restorePersistedTokens();
     this.setupDeepLinkListener();
@@ -442,6 +444,7 @@ export class AuthenticationService {
               });
             return;
           }
+          this.collectorHealth.recordSuccess();
           this.patientData$.next(this.processPatientData(response.data));
           Log().info('Re-fresh data sg: ', response.data?.patientData?.lastSG || {});
           Log().info('Re-fresh data sgs: ', response.data?.patientData?.sgs || []);
@@ -461,6 +464,7 @@ export class AuthenticationService {
           (event?.target as HTMLIonRefresherElement)?.complete();
         },
         error: (err: any) => {
+          this.collectorHealth.recordFailure();
           this.addDebug('fetchData: ERROR ' + JSON.stringify(err)?.substring(0, 200));
           if (!isRetry) {
             this.addDebug('fetchData: error on first try, refreshing token and retrying...');

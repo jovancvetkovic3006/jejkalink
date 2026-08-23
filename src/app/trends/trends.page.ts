@@ -1,21 +1,14 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonSegment,
-  IonSegmentButton,
-  IonLabel,
-} from '@ionic/angular/standalone';
+import { IonContent, IonSegment, IonSegmentButton, IonLabel } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { MetricGridComponent, MetricCell } from '../components/metric-grid/metric-grid.component';
-import { GlucoseChartComponent } from '../components/glucose-chart/glucose-chart.component';
-import { periodMetrics } from '../analytics';
+import { AgpChartComponent } from '../components/agp-chart/agp-chart.component';
+import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { agpBuckets, periodMetrics } from '../analytics';
 import { HIGH, LOW, VERY_HIGH, VERY_LOW } from '../domain/glucose';
 
 @Component({
@@ -25,29 +18,33 @@ import { HIGH, LOW, VERY_HIGH, VERY_LOW } from '../domain/glucose';
   imports: [
     CommonModule,
     FormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
     IonSegment,
     IonSegmentButton,
     IonLabel,
     CoverageStripComponent,
     MetricGridComponent,
-    GlucoseChartComponent,
+    AgpChartComponent,
+    ScreenHeaderComponent,
   ],
 })
 export class TrendsPage implements OnInit, OnDestroy {
   private sub?: Subscription;
   readings: SgReading[] = [];
-  days = 7;
+  days = 14;
   cells: MetricCell[] = [];
   coverage = null as ReturnType<typeof periodMetrics>['coverage'] | null;
-  startMs = 0;
-  endMs = 0;
+  periodStart = new Date();
+  periodEnd = new Date();
+  agpBuckets: ReturnType<typeof agpBuckets> = [];
   rangeBars: { label: string; pct: number; color: string }[] = [];
-  weeklyRead =
-    'Nedeljni pregled nije konfigurisan. Kada bude uključen, ovde će stajati opisni sažetak obrazaca — nikad predlog doze.';
+  metricsEmpty = true;
+  periodPill = '14 dana';
+  weeklyReadP1 =
+    'Nedeljni pregled nije konfigurisan. Kada bude uključen, ovde će stajati opisni sažetak obrazaca.';
+  weeklyReadP2 = 'Nikad predlog doze — samo opis i jedno pitanje za kliniku.';
+  weeklyReadQ =
+    'Pitanje za kliniku će se pojaviti ovde kada pregled bude aktivan.';
 
   constructor(private readonly history: SgsHistoryService) {}
 
@@ -70,13 +67,16 @@ export class TrendsPage implements OnInit, OnDestroy {
   private refresh() {
     const end = new Date();
     const start = new Date(end.getTime() - this.days * 24 * 60 * 60 * 1000);
-    this.startMs = start.getTime();
-    this.endMs = end.getTime();
+    this.periodStart = start;
+    this.periodEnd = end;
+    this.periodPill = `${this.days} dana`;
 
     const m = periodMetrics(this.readings, start, end);
     const prevStart = new Date(start.getTime() - this.days * 24 * 60 * 60 * 1000);
     const prev = periodMetrics(this.readings, prevStart, start);
     this.coverage = m.coverage;
+    this.metricsEmpty = m.count === 0;
+    this.agpBuckets = agpBuckets(this.readings, start, end);
 
     const delta = (cur: number, old: number, higherIsBetter: boolean) => {
       const d = Math.round((cur - old) * 10) / 10;
@@ -84,7 +84,7 @@ export class TrendsPage implements OnInit, OnDestroy {
       const sign = d > 0 ? '+' : '';
       const better = higherIsBetter ? d >= 0 : d <= 0;
       return {
-        delta: `${sign}${d}`,
+        delta: `${sign}${d} u odnosu na prethodni`,
         tone: (d === 0 ? 'muted' : better ? 'up' : 'down') as 'up' | 'down' | 'muted',
       };
     };
@@ -98,33 +98,60 @@ export class TrendsPage implements OnInit, OnDestroy {
         : { delta: undefined, tone: 'muted' as const };
 
     this.cells = [
-      { key: 'GMI', value: `${m.gmiLabel}%`, delta: gmiD.delta, deltaTone: gmiD.tone },
-      { key: 'CV', value: `${m.cvLabel}%` },
-      { key: 'Prosek', value: m.meanLabel, delta: meanD.delta, deltaTone: meanD.tone },
+      {
+        key: 'GMI',
+        value: m.gmiLabel,
+        valueSuffix: '%',
+        delta: gmiD.delta,
+        deltaTone: gmiD.tone,
+      },
+      {
+        key: 'CV',
+        value: m.cvLabel,
+        valueSuffix: '%',
+        delta: m.cv < 36 ? 'ispod 36%' : 'iznad 36%',
+        deltaTone: m.cv < 36 ? 'up' : 'down',
+      },
+      {
+        key: 'Prosek',
+        value: m.meanLabel,
+        delta: meanD.delta,
+        deltaTone: meanD.tone,
+      },
       {
         key: 'Noćni TIR',
-        value: m.overnightTirPct != null ? `${m.overnightTirPct}%` : '--',
-        delta: night.delta,
+        value: m.overnightTirPct != null ? String(m.overnightTirPct) : '--',
+        valueSuffix: m.overnightTirPct != null ? '%' : undefined,
+        delta: night.delta || '00:00–06:00',
         deltaTone: night.tone,
       },
-      { key: 'U opsegu', value: `${m.tirPct}%`, delta: tirD.delta, deltaTone: tirD.tone },
-      { key: 'Očitavanja', value: String(m.count) },
+      {
+        key: 'U opsegu',
+        value: String(m.tirPct),
+        valueSuffix: '%',
+        delta: tirD.delta,
+        deltaTone: tirD.tone,
+      },
+      {
+        key: 'Očitavanja',
+        value: String(m.count),
+      },
     ];
 
     const inPeriod = this.readings.filter((r) => {
       const t = new Date(r.timestamp).getTime();
-      return t >= this.startMs && t <= this.endMs && r.mmol > 0;
+      return t >= start.getTime() && t <= end.getTime() && r.mmol > 0;
     });
     const n = inPeriod.length || 1;
     const pct = (fn: (v: number) => boolean) =>
       Math.round((inPeriod.filter((r) => fn(r.mmol)).length / n) * 1000) / 10;
 
     this.rangeBars = [
-      { label: 'Veoma niska', pct: pct((v) => v < VERY_LOW), color: 'var(--very-low)' },
-      { label: 'Niska', pct: pct((v) => v >= VERY_LOW && v < LOW), color: 'var(--low)' },
-      { label: 'U opsegu', pct: pct((v) => v >= LOW && v <= HIGH), color: 'var(--teal)' },
-      { label: 'Visoka', pct: pct((v) => v > HIGH && v <= VERY_HIGH), color: 'var(--amber)' },
-      { label: 'Veoma visoka', pct: pct((v) => v > VERY_HIGH), color: 'var(--very-high)' },
+      { label: 'Veoma niska · ispod 3.0', pct: pct((v) => v < VERY_LOW), color: 'var(--very-low)' },
+      { label: 'Niska · 3.0–3.9', pct: pct((v) => v >= VERY_LOW && v < LOW), color: 'var(--low)' },
+      { label: 'U opsegu · 3.9–10.0', pct: pct((v) => v >= LOW && v <= HIGH), color: 'var(--teal)' },
+      { label: 'Visoka · 10.0–13.9', pct: pct((v) => v > HIGH && v <= VERY_HIGH), color: 'var(--amber)' },
+      { label: 'Veoma visoka · preko 13.9', pct: pct((v) => v > VERY_HIGH), color: 'var(--very-high)' },
     ];
   }
 }

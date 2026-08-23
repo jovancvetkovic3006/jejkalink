@@ -1,0 +1,170 @@
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Input,
+  OnChanges,
+  ViewChild,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
+import { AgpBucket } from '../../analytics/agp';
+import { HIGH, LOW } from '../../domain/glucose';
+import { GlassPanelComponent } from '../glass-panel/glass-panel.component';
+
+Chart.register(...registerables, annotationPlugin);
+
+@Component({
+  selector: 'app-agp-chart',
+  standalone: true,
+  imports: [CommonModule, GlassPanelComponent],
+  template: `
+    <app-glass-panel [empty]="!buckets.length" message="Potrebno je više dana podataka za AGP">
+      <div class="wrap">
+        <canvas #canvas></canvas>
+      </div>
+    </app-glass-panel>
+  `,
+  styles: [
+    `
+      .wrap {
+        height: 190px;
+        width: 100%;
+      }
+      canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+    `,
+  ],
+})
+export class AgpChartComponent implements AfterViewInit, OnChanges {
+  @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
+  @Input() buckets: AgpBucket[] = [];
+
+  private chart?: Chart;
+
+  ngAfterViewInit() {
+    this.render();
+  }
+
+  ngOnChanges() {
+    if (this.canvasRef) this.render();
+  }
+
+  private render() {
+    const canvas = this.canvasRef?.nativeElement;
+    if (!canvas || !this.buckets.length) {
+      if (this.chart) this.chart.destroy();
+      return;
+    }
+
+    const xs = this.buckets.map((b) => b.slotMin);
+    const median = this.buckets.map((b) => ({ x: b.slotMin, y: b.median }));
+    const p75 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p75 }));
+    const p25 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p25 }));
+    const p90 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p90 }));
+    const p10 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p10 }));
+
+    const cfg: ChartConfiguration = {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            data: p90 as any,
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: '+1',
+            backgroundColor: 'rgba(14, 155, 138, 0.08)',
+            parsing: false,
+          },
+          {
+            data: p10 as any,
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: false,
+            parsing: false,
+          },
+          {
+            data: p75 as any,
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: '+1',
+            backgroundColor: 'rgba(14, 155, 138, 0.15)',
+            parsing: false,
+          },
+          {
+            data: p25 as any,
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: false,
+            parsing: false,
+          },
+          {
+            data: median as any,
+            borderColor: '#15213B',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.35,
+            parsing: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          annotation: {
+            annotations: {
+              band: {
+                type: 'box',
+                yMin: LOW,
+                yMax: HIGH,
+                backgroundColor: '#E9F5F3',
+                borderWidth: 0,
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            min: 0,
+            max: 1440,
+            ticks: {
+              maxTicksLimit: 6,
+              color: '#707C91',
+              font: { size: 9, family: 'IBM Plex Mono' },
+              callback: (v) => {
+                const m = Number(v);
+                const h = Math.floor(m / 60);
+                return `${String(h).padStart(2, '0')}:00`;
+              },
+            },
+            grid: { color: 'rgba(0,0,0,0.05)' },
+          },
+          y: {
+            min: 2,
+            max: 16,
+            ticks: {
+              color: '#707C91',
+              font: { size: 10, family: 'IBM Plex Mono' },
+              callback: (v) => {
+                const n = Number(v);
+                if (n === LOW || n === HIGH || n === 16) return String(n);
+                return '';
+              },
+            },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          },
+        },
+      },
+    };
+
+    if (this.chart) this.chart.destroy();
+    this.chart = new Chart(canvas, cfg);
+  }
+}

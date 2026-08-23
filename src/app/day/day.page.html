@@ -1,45 +1,53 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-button (click)="prevDay()">
-        <ion-icon name="chevron-back-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-    <ion-title>{{ title }}</ion-title>
-    <ion-buttons slot="end">
-      <ion-button (click)="nextDay()" [disabled]="dayOffset === 0">
-        <ion-icon name="chevron-forward-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
-</ion-header>
+<app-screen-header
+  title="Dan"
+  [pill]="'‹ ' + datePill + ' ›'"
+  [showBack]="true"
+  [showForward]="true"
+  [forwardDisabled]="dayOffset === 0"
+  [onBack]="onPrev"
+  [onForward]="onNext"
+  statusRight="00:00–24:00"
+></app-screen-header>
 
 <ion-content>
   <div class="screen">
-    <div class="card-surface chart-card">
-      <div class="chart">
-        <app-glucose-chart
-          [readings]="readings"
-          [startMs]="startMs"
-          [endMs]="endMs"
-        ></app-glucose-chart>
-      </div>
+    <div class="card-surface flush chart-card">
+      <app-glass-panel [empty]="!readings.length" message="Nema očitavanja za ovaj dan">
+        <div class="chart">
+          <app-glucose-chart
+            [readings]="readings"
+            [startMs]="startMs"
+            [endMs]="endMs"
+            [boluses]="boluses"
+          ></app-glucose-chart>
+        </div>
+      </app-glass-panel>
       <app-coverage-strip
-        *ngIf="coverage"
         [coverage]="coverage"
+        [periodStart]="periodStart"
+        [periodEnd]="periodEnd"
         periodLabel="00:00–24:00"
       ></app-coverage-strip>
     </div>
 
-    <app-metric-grid [cells]="cells"></app-metric-grid>
+    <app-metric-grid
+      [cells]="cells"
+      [empty]="metricsEmpty"
+      emptyMessage="Nema pokrivenih očitavanja za ovaj dan"
+    ></app-metric-grid>
 
     <div class="card-surface log">
       <div class="lbl">Dnevnik</div>
-      <div class="row" *ngFor="let e of dayEvents">
-        <div class="t">{{ e.timestamp | date: 'HH:mm' }}</div>
-        <div class="body">{{ e.label }}</div>
-      </div>
-      <div class="empty" *ngIf="dayEvents.length === 0">Nema unosa za ovaj dan.</div>
+      <app-glass-panel [empty]="dayEvents.length === 0" message="Nema unosa za ovaj dan">
+        <app-event-row
+          *ngFor="let e of dayEvents"
+          [time]="eventTime(e)"
+          [title]="e.label"
+          [subtitle]="e.detail || ''"
+          [rightValue]="eventRight(e)"
+          [dotColor]="eventDot(e)"
+        ></app-event-row>
+      </app-glass-panel>
     </div>
   </div>
 </ion-content>

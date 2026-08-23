@@ -1,8 +1,8 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Trendovi</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-screen-header
+  title="Trendovi"
+  [pill]="periodPill"
+  statusRight="7 · 14 · 30 · 90"
+></app-screen-header>
 
 <ion-content>
   <div class="screen">
@@ -13,8 +13,19 @@
       <ion-segment-button [value]="90"><ion-label>90d</ion-label></ion-segment-button>
     </ion-segment>
 
+    <div class="card-surface flush agp-card">
+      <div class="lbl" style="padding-left: 4px">Tipičan dan · medijana i raspon</div>
+      <app-agp-chart [buckets]="agpBuckets"></app-agp-chart>
+      <app-coverage-strip
+        [coverage]="coverage"
+        [periodStart]="periodStart"
+        [periodEnd]="periodEnd"
+        [periodLabel]="periodPill"
+      ></app-coverage-strip>
+    </div>
+
     <div class="card-surface">
-      <div class="lbl">Opseg (raspodela)</div>
+      <div class="lbl">Vreme u opsegu</div>
       <div class="rb">
         <i
           *ngFor="let b of rangeBars"
@@ -30,30 +41,19 @@
           <b class="numeral">{{ b.pct }}%</b>
         </div>
       </div>
-      <app-coverage-strip
-        *ngIf="coverage"
-        [coverage]="coverage"
-        [periodLabel]="days + ' dana'"
-      ></app-coverage-strip>
     </div>
 
-    <app-metric-grid [cells]="cells"></app-metric-grid>
-
-    <div class="card-surface chart-card">
-      <div class="lbl">Pregled perioda</div>
-      <div class="chart">
-        <app-glucose-chart
-          [readings]="readings"
-          [startMs]="startMs"
-          [endMs]="endMs"
-        ></app-glucose-chart>
-      </div>
-    </div>
+    <app-metric-grid
+      [cells]="cells"
+      [empty]="metricsEmpty"
+      emptyMessage="Potrebno je više očitavanja za trendove"
+    ></app-metric-grid>
 
     <div class="ai-card">
       <div class="lbl">Nedeljni pregled</div>
-      <p>{{ weeklyRead }}</p>
-      <div class="ai-meta">Opisno · bez predloga doze</div>
+      <p>{{ weeklyReadP1 }}</p>
+      <p>{{ weeklyReadP2 }}</p>
+      <div class="q">{{ weeklyReadQ }}</div>
     </div>
   </div>
 </ion-content>

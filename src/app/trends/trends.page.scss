@@ -1,10 +1,5 @@
-.screen {
-  padding: var(--pad-screen);
-  background: var(--paper);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 100%;
+ion-segment {
+  margin-bottom: 12px;
 }
 
 .rb {
@@ -55,29 +50,6 @@
   font-weight: 600;
 }
 
-.chart-card .chart {
-  height: 200px;
-}
-
-.ai-card {
-  border: 1px solid var(--indigo-br);
-  background: var(--indigo-bg);
-  border-radius: var(--r-card);
-  padding: var(--pad-card);
-  border-left: 3px solid var(--indigo);
-}
-
-.ai-card p {
-  margin: 8px 0;
-  font-size: var(--t-body);
-  color: var(--ink);
-  line-height: 1.45;
-}
-
-.ai-meta {
-  font-family: var(--font-data);
-  font-size: 10px;
-  color: var(--indigo);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.agp-card {
+  margin-top: 0;
 }

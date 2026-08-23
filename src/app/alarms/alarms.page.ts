@@ -1,20 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonToggle,
-  IonItem,
-  IonLabel,
-  IonList,
-  IonButton,
-  IonNote,
-} from '@ionic/angular/standalone';
+import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { AlarmsService, AlarmSettings, FiredAlarm } from '../services/alarms.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
+import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { EventRowComponent } from '../components/event-row/event-row.component';
+import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
+import { LOW_CLEAR } from '../domain/glucose';
 
 @Component({
   selector: 'app-alarms-page',
@@ -22,27 +14,36 @@ import { SgsHistoryService } from '../services/sgs-history.service';
   styleUrls: ['alarms.page.scss'],
   imports: [
     CommonModule,
-    FormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
-    IonToggle,
-    IonItem,
-    IonLabel,
-    IonList,
-    IonButton,
-    IonNote,
+    ScreenHeaderComponent,
+    EventRowComponent,
+    GlassPanelComponent,
   ],
 })
 export class AlarmsPage implements OnInit {
   settings!: AlarmSettings;
   fired: FiredAlarm[] = [];
-  thresholdRows: { key: 'urgentLow' | 'low' | 'high' | 'fallingFast'; label: string }[] = [
-    { key: 'urgentLow', label: 'Hitna niska' },
-    { key: 'low', label: 'Niska' },
-    { key: 'high', label: 'Visoka' },
-    { key: 'fallingFast', label: 'Brzo padanje /min' },
+
+  thresholdRows: {
+    key: 'urgentLow' | 'low' | 'high' | 'fallingFast';
+    label: string;
+    hint: string;
+  }[] = [
+    { key: 'low', label: 'Niska', hint: `Razrešava se na ${LOW_CLEAR}` },
+    { key: 'urgentLow', label: 'Hitna niska', hint: 'Ne poštuje odloženo' },
+    { key: 'high', label: 'Visoka', hint: 'Iznad 10.0 mmol/L' },
+    { key: 'fallingFast', label: 'Brzo padanje', hint: 'mmol/L po minutu' },
+  ];
+
+  ruleRows: {
+    key: keyof AlarmSettings;
+    label: string;
+    hint: string;
+  }[] = [
+    { key: 'staleEnabled', label: 'Nema podataka 20 min', hint: 'Tretira se kao hitno' },
+    { key: 'projectionEnabled', label: 'Alarm na projekciju', hint: 'Koristi prognozu 15 min' },
+    { key: 'overnightProfile', label: 'Noćni profil', hint: '22:00–07:00' },
+    { key: 'repeatUntilCleared', label: 'Ponavljaj dok se ne razreši', hint: 'Svakih 15 min' },
   ];
 
   constructor(
@@ -61,12 +62,49 @@ export class AlarmsPage implements OnInit {
   }
 
   step(field: 'urgentLow' | 'low' | 'high' | 'fallingFast', delta: number) {
-    const cur = this.settings[field];
-    this.settings[field] = Math.round((cur + delta) * 10) / 10;
+    this.settings[field] = Math.round((this.settings[field] + delta) * 10) / 10;
     this.save();
+  }
+
+  toggleRule(key: keyof AlarmSettings) {
+    const cur = this.settings[key];
+    if (typeof cur === 'boolean') {
+      (this.settings as any)[key] = !cur;
+      this.save();
+    }
+  }
+
+  isRuleOn(key: keyof AlarmSettings): boolean {
+    return Boolean(this.settings[key]);
   }
 
   tag(id: string, tag: 'real' | 'false') {
     this.alarms.tag(id, tag);
+  }
+
+  firedDay(f: FiredAlarm): string {
+    return new Date(f.timestamp).toLocaleDateString('sr-Latn-RS', {
+      weekday: 'short',
+    });
+  }
+
+  firedTime(f: FiredAlarm): string {
+    return new Date(f.timestamp).toLocaleTimeString('sr-Latn-RS', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  firedSubtitle(f: FiredAlarm): string {
+    if (f.tag === 'real') return 'Označeno · stvarno';
+    if (f.tag === 'false') return 'Označeno · lažno';
+    return 'Označite ispod';
+  }
+
+  firedDot(f: FiredAlarm): string {
+    if (f.rule === 'stale') return 'var(--muted)';
+    if (f.rule.includes('low')) return 'var(--low)';
+    if (f.rule === 'projection') return 'var(--gap)';
+    return 'var(--amber)';
   }
 }

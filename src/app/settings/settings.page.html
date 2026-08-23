@@ -1,94 +1,164 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Podešavanja</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-screen-header
+  title="Podešavanja"
+  pill="Lokalno"
+  [statusRight]="'v' + appVersion"
+></app-screen-header>
 
-<ion-content fullscreen>
-  <div class="settings-container">
-    <div class="settings-card">
-      <div class="card-header">
-        <ion-icon name="person-outline" color="primary"></ion-icon>
-        <span>Veza</span>
+<ion-content>
+  <div class="screen">
+    <div class="card-surface">
+      <div class="lbl">Veza</div>
+      <div class="set">
+        <div class="body">
+          <div class="h">CareLink sesija</div>
+          <div class="s">{{ sessionDetail }}</div>
+        </div>
+        <span class="chip-pill ok" *ngIf="tokenStatus === 'Aktivan'">Aktivan</span>
+        <span class="chip-pill" *ngIf="tokenStatus !== 'Aktivan'">{{ tokenStatus }}</span>
       </div>
-      <ion-list lines="none">
-        <ion-item *ngIf="userName">
-          <ion-label>Ime</ion-label>
-          <ion-note slot="end">{{ userName }}</ion-note>
-        </ion-item>
-        <ion-item *ngIf="userEmail">
-          <ion-label>Email</ion-label>
-          <ion-note slot="end">{{ userEmail }}</ion-note>
-        </ion-item>
-        <ion-item *ngIf="tokenStatus">
-          <ion-label>Sesija</ion-label>
-          <ion-note slot="end" [color]="tokenStatus === 'Istekao' ? 'danger' : 'success'">{{ tokenStatus }}</ion-note>
-        </ion-item>
-        <ion-item>
-          <ion-label>Jedinice</ion-label>
-          <ion-note slot="end">mmol/L</ion-note>
-        </ion-item>
-        <ion-item>
-          <ion-label>Očitavanja sačuvana</ion-label>
-          <ion-note slot="end">{{ readingsCount }}</ion-note>
-        </ion-item>
-        <ion-item>
-          <ion-input
-            label="Pacijent"
-            labelPlacement="fixed"
-            [(ngModel)]="patientUsername"
-            placeholder="Korisničko ime"
-            (ionBlur)="saveUsername()"
-          ></ion-input>
-          <ion-note slot="end" color="success" *ngIf="saved">Sačuvano</ion-note>
-        </ion-item>
-      </ion-list>
+      <div class="set">
+        <div class="body">
+          <div class="h">Interval provere</div>
+          <div class="s">Usklađen sa senzorom na :02</div>
+        </div>
+        <span class="rt numeral">{{ pollInterval }}m</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Uzastopni neuspehi</div>
+          <div class="s">Backoff, zatim alarm</div>
+        </div>
+        <span class="rt numeral">{{ failures }}</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Pacijent</div>
+          <div class="s">CareLink korisničko ime</div>
+        </div>
+        <input
+          class="who-input"
+          [(ngModel)]="patientUsername"
+          (blur)="saveUsername()"
+          placeholder="username"
+        />
+        <span class="chip-pill ok" *ngIf="saved">Sačuvano</span>
+      </div>
+      <app-coverage-strip
+        [coverage]="uptimeCoverage"
+        [periodStart]="uptimeStart"
+        [periodEnd]="uptimeEnd"
+        periodLabel="Uptime kolektora · 30 dana"
+      ></app-coverage-strip>
     </div>
 
-    <div class="settings-card">
-      <div class="card-header">
-        <ion-icon name="information-circle-outline" color="secondary"></ion-icon>
-        <span>Aplikacija</span>
+    <div class="card-surface">
+      <div class="lbl">Podaci</div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Sačuvana očitavanja</div>
+          <div class="s">Lokalna istorija</div>
+        </div>
+        <span class="rt numeral">{{ readingsCount }}</span>
       </div>
-      <ion-list lines="none">
-        <ion-item>
-          <ion-label>Verzija</ion-label>
-          <ion-note slot="end">{{ appVersion }}</ion-note>
-        </ion-item>
-        <ion-item>
-          <ion-label>JejkaLink</ion-label>
-          <ion-note slot="end">Medtronic CarePartner</ion-note>
-        </ion-item>
-      </ion-list>
+      <div class="set">
+        <div class="body">
+          <div class="h">Uvezi CareLink CSV</div>
+          <div class="s">Dopuna pre prve provere</div>
+        </div>
+        <button type="button" class="chip-pill" (click)="importCsvHint()">Izaberi fajl</button>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Čuvaj sirove odgovore</div>
+          <div class="s">Za ponovno parsiranje</div>
+        </div>
+        <button
+          type="button"
+          class="sw"
+          [class.off]="!keepRaw"
+          (click)="toggleKeepRaw()"
+        ></button>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Izvoz za kliniku</div>
+          <div class="s">PDF · poslednjih 90 dana</div>
+        </div>
+        <button type="button" class="chip-pill" (click)="exportPdfHint()">Kreiraj</button>
+      </div>
     </div>
 
-    <div class="settings-card log-card" *ngIf="debugLog$ | async as logs">
-      <div class="card-header" (click)="logsExpanded = !logsExpanded">
-        <ion-icon name="code-outline" color="medium"></ion-icon>
-        <span>Logovi ({{ logs.length }})</span>
-        <ion-icon [name]="logsExpanded ? 'chevron-up-outline' : 'chevron-down-outline'" color="medium" class="expand-icon"></ion-icon>
-        <ion-button fill="clear" size="small" color="primary" (click)="sendLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
+    <div class="card-surface">
+      <div class="lbl">Prikaz</div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Jedinice</div>
+          <div class="s">Jedna decimala</div>
+        </div>
+        <span class="rt">mmol/L</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Ciljni opseg</div>
+          <div class="s">Senčenje na svakom grafiku</div>
+        </div>
+        <span class="rt">3.9 – 10.0</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Početak sedmice</div>
+        </div>
+        <button type="button" class="chip-pill" (click)="toggleWeekStart()">
+          {{ weekStartLabel() }}
+        </button>
+      </div>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Analiza</div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Nedeljni pregled</div>
+          <div class="s">Nedelja 20:00</div>
+        </div>
+        <button
+          type="button"
+          class="sw"
+          [class.off]="!weeklyReadEnabled"
+          (click)="toggleWeeklyRead()"
+        ></button>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Označi neuobičajene dane</div>
+          <div class="s">Samo kad se razlikuje</div>
+        </div>
+        <button
+          type="button"
+          class="sw"
+          [class.off]="!flagUnusualDays"
+          (click)="toggleUnusualDays()"
+        ></button>
+      </div>
+    </div>
+
+    <div class="card-surface log-card" *ngIf="debugLog$ | async as logs">
+      <div class="lbl" (click)="logsExpanded = !logsExpanded">
+        Logovi ({{ logs.length }})
+        <button type="button" class="chip-pill" *ngIf="logsExpanded" (click)="sendLogs(); $event.stopPropagation()">
           Pošalji
-        </ion-button>
-        <ion-button fill="clear" size="small" color="medium" (click)="clearLogs(); $event.stopPropagation()" class="clear-btn" *ngIf="logsExpanded">
+        </button>
+        <button type="button" class="chip-pill" *ngIf="logsExpanded" (click)="clearLogs(); $event.stopPropagation()">
           Obriši
-        </ion-button>
+        </button>
       </div>
       <div class="log-container" *ngIf="logsExpanded && logs.length > 0">
         <div class="log-entry" *ngFor="let log of logs">{{ log }}</div>
       </div>
-      <div class="log-empty" *ngIf="logsExpanded && logs.length === 0">
-        Nema logova
-      </div>
     </div>
 
-    <div class="settings-card danger-card">
-      <ion-list lines="none">
-        <ion-item button (click)="logout()" detail="false">
-          <ion-icon name="log-out-outline" slot="start" color="danger"></ion-icon>
-          <ion-label color="danger">Odjavi se</ion-label>
-        </ion-item>
-      </ion-list>
+    <div class="card-surface">
+      <button type="button" class="logout-btn" (click)="logout()">Odjavi se</button>
     </div>
   </div>
 </ion-content>

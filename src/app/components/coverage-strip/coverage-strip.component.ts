@@ -7,17 +7,17 @@ import { CoverageResult, formatCoverageCaptionSr } from '../../analytics';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="cov" *ngIf="coverage">
+    <div class="cov">
       <div class="track">
         <i
-          *ngFor="let s of coverage.segments"
+          *ngFor="let s of display.segments"
           [class.on]="s.covered"
           [style.flex]="segmentFlex(s)"
         ></i>
       </div>
       <div class="meta">
         <span>{{ periodLabel }}</span>
-        <em [class.warn]="coverage.gapCount > 0">{{ caption }}</em>
+        <em [class.warn]="display.gapCount > 0">{{ caption }}</em>
       </div>
     </div>
   `,
@@ -61,15 +61,33 @@ import { CoverageResult, formatCoverageCaptionSr } from '../../analytics';
 export class CoverageStripComponent {
   @Input() coverage: CoverageResult | null = null;
   @Input() periodLabel = '';
+  /** When coverage is null, show empty gap track for this period. */
+  @Input() periodStart?: Date;
+  @Input() periodEnd?: Date;
+
+  get display(): CoverageResult {
+    if (this.coverage) return this.coverage;
+    const start = this.periodStart || new Date();
+    const end = this.periodEnd || start;
+    const ms = Math.max(1, end.getTime() - start.getTime());
+    return {
+      segments: [{ from: start, to: end, covered: false }],
+      coveredMs: 0,
+      gapMs: ms,
+      gapCount: 1,
+      coveragePct: 0,
+      period: [start, end],
+    };
+  }
 
   get caption(): string {
-    return this.coverage ? formatCoverageCaptionSr(this.coverage) : '';
+    if (!this.coverage && !this.periodStart) return '—';
+    return formatCoverageCaptionSr(this.display);
   }
 
   segmentFlex(s: { from: Date; to: Date }): number {
-    if (!this.coverage) return 1;
     const total =
-      this.coverage.period[1].getTime() - this.coverage.period[0].getTime() || 1;
+      this.display.period[1].getTime() - this.display.period[0].getTime() || 1;
     return Math.max(0.5, s.to.getTime() - s.from.getTime()) / total;
   }
 }

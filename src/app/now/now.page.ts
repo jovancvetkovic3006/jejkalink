@@ -1,12 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonRefresher,
-  IonRefresherContent,
-} from '@ionic/angular/standalone';
+import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { AuthenticationService } from '../services/authentication.service';
@@ -14,7 +7,11 @@ import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { EventsStore, AppEvent } from '../services/events-store.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { StaleChipComponent } from '../components/stale-chip/stale-chip.component';
-import { GlucoseChartComponent } from '../components/glucose-chart/glucose-chart.component';
+import { GlucoseChartComponent, BolusMark } from '../components/glucose-chart/glucose-chart.component';
+import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { TrendArrowComponent } from '../components/trend-arrow/trend-arrow.component';
+import { EventRowComponent } from '../components/event-row/event-row.component';
+import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { detectGaps, CoverageResult } from '../analytics';
 import {
   formatMmol,
@@ -22,6 +19,7 @@ import {
   rangeColorVar,
   rangeLabelSr,
 } from '../domain/glucose';
+import { slopePerMin, projectMmol } from '../utils/glucose-slope.util';
 
 @Component({
   selector: 'app-now-page',
@@ -29,15 +27,16 @@ import {
   styleUrls: ['now.page.scss'],
   imports: [
     CommonModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
     IonRefresher,
     IonRefresherContent,
     CoverageStripComponent,
     StaleChipComponent,
     GlucoseChartComponent,
+    ScreenHeaderComponent,
+    TrendArrowComponent,
+    EventRowComponent,
+    GlassPanelComponent,
   ],
 })
 export class NowPage implements OnInit, OnDestroy {
@@ -46,16 +45,23 @@ export class NowPage implements OnInit, OnDestroy {
   readings: SgReading[] = [];
   events: AppEvent[] = [];
   value = '--';
+  hasReading = false;
   unit = 'mmol/L';
-  trendLabel = 'Miran';
   trend = 0;
   rangeText = '';
   rangeColor = 'var(--teal)';
+  trendColor = 'var(--teal)';
   minutesAgo: number | null = null;
   coverage: CoverageResult | null = null;
   sparkStart = 0;
   sparkEnd = 0;
-  periodLabel = 'danas';
+  periodLabel = 'Pokriće danas';
+  whoPill = '';
+  pollStatus = '';
+  projectionChip = '';
+  slopePerMin: number | null = null;
+  dayStart = new Date();
+  dayEnd = new Date();
 
   constructor(
     public auth: AuthenticationService,
@@ -81,29 +87,74 @@ export class NowPage implements OnInit, OnDestroy {
     this.auth.doRefresh(ev);
   }
 
+  eventTime(e: AppEvent): string {
+    return new Date(e.timestamp).toLocaleTimeString('sr-Latn-RS', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  eventDot(e: AppEvent): string {
+    return EventsStore.dotColor(e.kind);
+  }
+
   private refresh() {
     const now = Date.now();
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
+    this.dayStart = startOfDay;
+    this.dayEnd = new Date(now);
     this.coverage = detectGaps(this.readings, startOfDay, new Date(now));
     this.sparkEnd = now;
     this.sparkStart = now - 3 * 60 * 60 * 1000;
+    this.pollStatus = `provereno ${new Date().toLocaleTimeString('sr-Latn-RS', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const data = this.auth.patientData$.value;
+    this.trend = data?.trend ?? 0;
+    this.whoPill = this.buildWhoPill(data);
 
     const last = this.readings[this.readings.length - 1];
     if (!last) {
       this.value = '--';
+      this.hasReading = false;
       this.minutesAgo = null;
+      this.projectionChip = '';
+      this.slopePerMin = null;
       return;
     }
+
+    this.hasReading = true;
     this.value = formatMmol(last.mmol);
     const bucket = rangeBucket(last.mmol);
     this.rangeText = rangeLabelSr(bucket);
     this.rangeColor = rangeColorVar(bucket);
+    this.trendColor = rangeColorVar(bucket);
     this.minutesAgo = (now - new Date(last.timestamp).getTime()) / 60000;
 
-    const data = this.auth.patientData$.value;
-    this.trend = data?.trend ?? 0;
-    this.trendLabel =
-      this.trend === -1 ? 'Pada' : this.trend === 1 ? 'Raste' : 'Miran';
+    this.slopePerMin = slopePerMin(this.readings);
+    const projected = projectMmol(last.mmol, this.slopePerMin, 15);
+    this.projectionChip =
+      projected != null
+        ? `Projekcija ${formatMmol(projected)} za 15 min`
+        : '';
+  }
+
+  private buildWhoPill(data: any): string {
+    try {
+      const raw = localStorage.getItem('userInfo');
+      const user = raw ? JSON.parse(raw) : null;
+      const name =
+        user?.name?.split(' ')[0] ||
+        data?.senzor?.[0]?.text ||
+        localStorage.getItem('patientUsername') ||
+        '';
+      const pump =
+        data?.pump?.[0]?.text?.includes('Pumpica')
+          ? 'pumpica'
+          : 'CareLink';
+      return name ? `${name} · ${pump}` : pump;
+    } catch {
+      return '';
+    }
   }
 }

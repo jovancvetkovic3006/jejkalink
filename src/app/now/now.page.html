@@ -1,8 +1,8 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Sada</ion-title>
-  </ion-toolbar>
-</ion-header>
+<app-screen-header
+  title="Sada"
+  [pill]="whoPill"
+  [statusLeft]="pollStatus"
+></app-screen-header>
 
 <ion-content>
   <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
@@ -11,43 +11,55 @@
 
   <div class="screen">
     <div class="card-surface hero-card">
-      <div class="hero">
-        <div class="val numeral" [style.color]="rangeColor">{{ value }}</div>
-        <div class="unit">{{ unit }}</div>
-        <div class="arrow">
-          <div class="trend-label">{{ trendLabel }}</div>
+      <app-glass-panel [empty]="!hasReading" message="Nema očitavanja — povuci za osvežavanje">
+        <div class="hero">
+          <div class="val numeral" [style.color]="rangeColor">{{ value }}</div>
+          <div class="unit">{{ unit }}</div>
+          <app-trend-arrow
+            [trend]="trend"
+            [slopePerMin]="slopePerMin"
+            [color]="trendColor"
+          ></app-trend-arrow>
         </div>
-      </div>
-      <div class="chips">
-        <span class="chip ok" [style.color]="rangeColor">{{ rangeText }}</span>
-        <app-stale-chip [minutesAgo]="minutesAgo"></app-stale-chip>
-      </div>
+        <div class="chips">
+          <span class="chip ok" [style.color]="rangeColor">{{ rangeText }}</span>
+          <app-stale-chip [minutesAgo]="minutesAgo"></app-stale-chip>
+          <span class="chip" *ngIf="projectionChip">{{ projectionChip }}</span>
+        </div>
+      </app-glass-panel>
       <app-coverage-strip
-        *ngIf="coverage"
         [coverage]="coverage"
+        [periodStart]="dayStart"
+        [periodEnd]="dayEnd"
         [periodLabel]="periodLabel"
       ></app-coverage-strip>
     </div>
 
-    <div class="card-surface spark-card">
+    <div class="card-surface flush spark-card">
       <div class="lbl">Poslednja 3 sata</div>
-      <div class="spark">
-        <app-glucose-chart
-          [readings]="readings"
-          [startMs]="sparkStart"
-          [endMs]="sparkEnd"
-          [sparkline]="true"
-        ></app-glucose-chart>
-      </div>
+      <app-glass-panel [empty]="!readings.length" message="Graf će se pojaviti kada stignu očitavanja">
+        <div class="spark">
+          <app-glucose-chart
+            [readings]="readings"
+            [startMs]="sparkStart"
+            [endMs]="sparkEnd"
+            [sparkline]="true"
+          ></app-glucose-chart>
+        </div>
+      </app-glass-panel>
     </div>
 
     <div class="card-surface">
       <div class="lbl">Nedavni događaji</div>
-      <div class="row" *ngFor="let e of events">
-        <div class="t">{{ e.timestamp | date: 'HH:mm' }}</div>
-        <div class="body">{{ e.label }}</div>
-      </div>
-      <div class="empty" *ngIf="events.length === 0">Nema događaja još.</div>
+      <app-glass-panel [empty]="events.length === 0" message="Događaji se pojavljuju nakon sinhronizacije">
+        <app-event-row
+          *ngFor="let e of events"
+          [time]="eventTime(e)"
+          [title]="e.label"
+          [subtitle]="e.detail || ''"
+          [dotColor]="eventDot(e)"
+        ></app-event-row>
+      </app-glass-panel>
     </div>
   </div>
 </ion-content>

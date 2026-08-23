@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { toMmol } from '../domain/glucose';
+import { AppSettingsService } from './app-settings.service';
 
 export interface SgReading {
   /** Original CareLink mg/dL (if known). */
@@ -21,6 +22,8 @@ export class SgsHistoryService {
   private static readonly RAW_MAX_CHARS = 400_000;
 
   public allSgs$ = new BehaviorSubject<SgReading[]>(this.load());
+
+  constructor(private readonly appSettings: AppSettingsService) {}
 
   private load(): SgReading[] {
     try {
@@ -95,6 +98,7 @@ export class SgsHistoryService {
   }
 
   saveRawResponse(body: unknown) {
+    if (!this.appSettings.get().keepRaw) return;
     try {
       const str = typeof body === 'string' ? body : JSON.stringify(body);
       if (str.length > SgsHistoryService.RAW_MAX_CHARS) {

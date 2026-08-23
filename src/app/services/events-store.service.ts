@@ -87,6 +87,26 @@ export class EventsStore {
       }
     }
 
+    const markers =
+      patientData.markers ||
+      patientData.mealMarkers ||
+      patientData.bolusMarkers ||
+      [];
+    for (const m of markers) {
+      const amount = m.amount ?? m.bolusAmount ?? m.value;
+      const ts = m.timestamp || m.time || nowIso;
+      if (amount && Number(amount) > 0) {
+        const carbs = m.carbs ?? m.carbohydrates;
+        this.add({
+          kind: 'bolus',
+          timestamp: ts,
+          label: `Bolus ${Number(amount).toFixed(1)} j`,
+          detail: carbs ? `${carbs} g` : undefined,
+          units: Number(amount),
+        });
+      }
+    }
+
     this.add({
       kind: 'sync',
       timestamp: nowIso,
@@ -96,5 +116,34 @@ export class EventsStore {
 
   recent(limit = 20): AppEvent[] {
     return this.events$.value.slice(0, limit);
+  }
+
+  bolusesInRange(startMs: number, endMs: number): AppEvent[] {
+    return this.events$.value.filter(
+      (e) =>
+        e.kind === 'bolus' &&
+        e.units &&
+        new Date(e.timestamp).getTime() >= startMs &&
+        new Date(e.timestamp).getTime() <= endMs
+    );
+  }
+
+  static dotColor(kind: EventKind): string {
+    switch (kind) {
+      case 'bolus':
+        return 'var(--indigo)';
+      case 'alarm':
+        return 'var(--low)';
+      case 'sensor':
+        return 'var(--teal)';
+      case 'gap':
+        return 'var(--gap)';
+      case 'sync':
+        return 'var(--teal)';
+      case 'basal':
+        return 'var(--indigo)';
+      default:
+        return 'var(--muted)';
+    }
   }
 }
