@@ -1,21 +1,21 @@
-<app-screen-header
-  title="Dan"
-  [pill]="'‹ ' + datePill + ' ›'"
-  [showBack]="true"
-  [showForward]="true"
-  [forwardDisabled]="dayOffset === 0"
-  [onBack]="onPrev"
-  [onForward]="onNext"
-  statusRight="00:00–24:00"
-></app-screen-header>
-
 <ion-content>
   <div class="screen">
+    <app-page-tbar
+      title="Dan"
+      [pill]="datePill"
+      [showBack]="true"
+      [showForward]="true"
+      [forwardDisabled]="dayOffset === 0"
+      [onBack]="onPrev"
+      [onForward]="onNext"
+      statusRight="00:00–24:00"
+    ></app-page-tbar>
+
     <div class="card-surface flush chart-card">
-      <app-glass-panel [empty]="!readings.length" message="Nema očitavanja za ovaj dan">
+      <app-glass-panel [placeholder]="chartPlaceholder">
         <div class="chart">
           <app-glucose-chart
-            [readings]="readings"
+            [readings]="chartReadings"
             [startMs]="startMs"
             [endMs]="endMs"
             [boluses]="boluses"
@@ -31,16 +31,17 @@
     </div>
 
     <app-metric-grid
-      [cells]="cells"
+      [cells]="displayCells"
       [empty]="metricsEmpty"
+      [placeholder]="metricsPlaceholder"
       emptyMessage="Nema pokrivenih očitavanja za ovaj dan"
     ></app-metric-grid>
 
     <div class="card-surface log">
       <div class="lbl">Dnevnik</div>
-      <app-glass-panel [empty]="dayEvents.length === 0" message="Nema unosa za ovaj dan">
+      <app-glass-panel [placeholder]="eventsPlaceholder">
         <app-event-row
-          *ngFor="let e of dayEvents"
+          *ngFor="let e of displayEvents"
           [time]="eventTime(e)"
           [title]="e.label"
           [subtitle]="e.detail || ''"

@@ -6,7 +6,7 @@ import { AuthenticationService } from '../services/authentication.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
 import { AppSettingsService } from '../services/app-settings.service';
 import { CollectorHealthService } from '../services/collector-health.service';
-import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { detectGaps } from '../analytics';
 
@@ -18,13 +18,13 @@ import { detectGaps } from '../analytics';
     IonContent,
     FormsModule,
     CommonModule,
-    ScreenHeaderComponent,
+    PageTbarComponent,
     CoverageStripComponent,
   ],
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.5.0';
+  appVersion = '1.6.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;
@@ -136,6 +136,13 @@ export class SettingsPage implements OnInit {
   toggleWeekStart() {
     this.weekStart = this.weekStart === 'monday' ? 'sunday' : 'monday';
     this.appSettings.patch({ weekStart: this.weekStart });
+  }
+
+  stepPoll(delta: number) {
+    const next = Math.min(15, Math.max(5, this.pollInterval + delta));
+    if (next === this.pollInterval) return;
+    this.pollInterval = next;
+    this.appSettings.patch({ pollIntervalMin: next });
   }
 
   importCsvHint() {

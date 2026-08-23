@@ -16,7 +16,7 @@ export interface MetricCell {
   standalone: true,
   imports: [CommonModule, GlassPanelComponent],
   template: `
-    <app-glass-panel [empty]="empty" [message]="emptyMessage">
+    <app-glass-panel [placeholder]="placeholder || empty" [showMessage]="empty && !placeholder" [message]="emptyMessage">
       <div class="mgrid">
         <div class="m" *ngFor="let cell of cells">
           <div class="k">{{ cell.key }}</div>
@@ -46,6 +46,7 @@ export interface MetricCell {
         border: 1px solid var(--line);
         border-radius: var(--r-card);
         overflow: hidden;
+        margin-bottom: 12px;
       }
       .m {
         background: var(--surface);
@@ -86,5 +87,6 @@ export interface MetricCell {
 export class MetricGridComponent {
   @Input() cells: MetricCell[] = [];
   @Input() empty = false;
+  @Input() placeholder = false;
   @Input() emptyMessage = 'Još nema podataka za period';
 }

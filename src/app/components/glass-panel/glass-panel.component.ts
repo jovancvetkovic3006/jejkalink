@@ -8,15 +8,17 @@ import { CommonModule } from '@angular/common';
   template: `
     <div
       class="glass-wrap"
-      [class.glass-empty]="empty"
+      [class.glass-placeholder]="placeholder"
       [class.glass-loading]="loading"
     >
-      <div class="glass-content" [class.dimmed]="empty || loading">
+      <div class="glass-content" [class.dimmed]="placeholder || loading">
         <ng-content></ng-content>
       </div>
-      <div class="glass-overlay" *ngIf="empty || loading">
-        <div class="glass-shimmer" *ngIf="loading"></div>
+      <div class="glass-overlay" *ngIf="placeholder && showMessage">
         <span class="glass-msg">{{ message }}</span>
+      </div>
+      <div class="glass-shimmer-layer" *ngIf="loading">
+        <div class="glass-shimmer"></div>
       </div>
     </div>
   `,
@@ -25,10 +27,11 @@ import { CommonModule } from '@angular/common';
       .glass-wrap {
         position: relative;
         border-radius: inherit;
+        min-height: inherit;
       }
       .glass-content.dimmed {
-        filter: blur(5px);
-        opacity: 0.45;
+        filter: blur(6px);
+        opacity: 0.55;
         pointer-events: none;
         user-select: none;
       }
@@ -36,23 +39,29 @@ import { CommonModule } from '@angular/common';
         position: absolute;
         inset: 0;
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         justify-content: center;
+        padding-bottom: 8px;
         border-radius: inherit;
-        background: rgba(246, 247, 249, 0.55);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(227, 231, 237, 0.8);
+        background: rgba(246, 247, 249, 0.25);
+        pointer-events: none;
         z-index: 2;
       }
       .glass-msg {
         font-family: var(--font-data);
-        font-size: 11px;
+        font-size: 10px;
         color: var(--muted);
-        padding: 8px 12px;
-        text-align: center;
-        max-width: 90%;
-        line-height: 1.4;
+        padding: 4px 10px;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: var(--r-pill);
+        border: 1px solid var(--line);
+      }
+      .glass-shimmer-layer {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        overflow: hidden;
+        pointer-events: none;
       }
       .glass-shimmer {
         position: absolute;
@@ -77,7 +86,9 @@ import { CommonModule } from '@angular/common';
   ],
 })
 export class GlassPanelComponent {
-  @Input() empty = false;
+  /** Show blurred placeholder content underneath (content should be mock data). */
+  @Input() placeholder = false;
   @Input() loading = false;
-  @Input() message = 'Još nema podataka';
+  @Input() message = '';
+  @Input() showMessage = false;
 }

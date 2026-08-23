@@ -3,7 +3,7 @@ import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { AlarmsService, AlarmSettings, FiredAlarm } from '../services/alarms.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
-import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { EventRowComponent } from '../components/event-row/event-row.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { LOW_CLEAR } from '../domain/glucose';
@@ -15,7 +15,7 @@ import { LOW_CLEAR } from '../domain/glucose';
   imports: [
     CommonModule,
     IonContent,
-    ScreenHeaderComponent,
+    PageTbarComponent,
     EventRowComponent,
     GlassPanelComponent,
   ],

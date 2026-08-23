@@ -7,9 +7,48 @@ import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { MetricGridComponent, MetricCell } from '../components/metric-grid/metric-grid.component';
 import { AgpChartComponent } from '../components/agp-chart/agp-chart.component';
-import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
+import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { agpBuckets, periodMetrics } from '../analytics';
 import { HIGH, LOW, VERY_HIGH, VERY_LOW } from '../domain/glucose';
+
+const PLACEHOLDER_TREND_CELLS: MetricCell[] = [
+  {
+    key: 'GMI',
+    value: '6.8',
+    valueSuffix: '%',
+    delta: '+0.2 u odnosu na prethodni',
+    deltaTone: 'down',
+  },
+  {
+    key: 'CV',
+    value: '32',
+    valueSuffix: '%',
+    delta: 'ispod 36%',
+    deltaTone: 'up',
+  },
+  {
+    key: 'Prosek',
+    value: '6.4',
+    delta: '−0.1 u odnosu na prethodni',
+    deltaTone: 'up',
+  },
+  {
+    key: 'Noćni TIR',
+    value: '78',
+    valueSuffix: '%',
+    delta: '00:00–06:00',
+    deltaTone: 'muted',
+  },
+  {
+    key: 'U opsegu',
+    value: '72',
+    valueSuffix: '%',
+    delta: '+3 u odnosu na prethodni',
+    deltaTone: 'up',
+  },
+  { key: 'Očitavanja', value: '4032' },
+];
 
 @Component({
   selector: 'app-trends-page',
@@ -25,7 +64,8 @@ import { HIGH, LOW, VERY_HIGH, VERY_LOW } from '../domain/glucose';
     CoverageStripComponent,
     MetricGridComponent,
     AgpChartComponent,
-    ScreenHeaderComponent,
+    PageTbarComponent,
+    GlassPanelComponent,
   ],
 })
 export class TrendsPage implements OnInit, OnDestroy {
@@ -40,6 +80,9 @@ export class TrendsPage implements OnInit, OnDestroy {
   rangeBars: { label: string; pct: number; color: string }[] = [];
   metricsEmpty = true;
   periodPill = '14 dana';
+  agpPlaceholder = false;
+  displayCells: MetricCell[] = [];
+  metricsPlaceholder = false;
   weeklyReadP1 =
     'Nedeljni pregled nije konfigurisan. Kada bude uključen, ovde će stajati opisni sažetak obrazaca.';
   weeklyReadP2 = 'Nikad predlog doze — samo opis i jedno pitanje za kliniku.';
@@ -77,6 +120,7 @@ export class TrendsPage implements OnInit, OnDestroy {
     this.coverage = m.coverage;
     this.metricsEmpty = m.count === 0;
     this.agpBuckets = agpBuckets(this.readings, start, end);
+    this.agpPlaceholder = this.agpBuckets.length === 0;
 
     const delta = (cur: number, old: number, higherIsBetter: boolean) => {
       const d = Math.round((cur - old) * 10) / 10;
@@ -137,6 +181,9 @@ export class TrendsPage implements OnInit, OnDestroy {
         value: String(m.count),
       },
     ];
+
+    this.metricsPlaceholder = this.metricsEmpty;
+    this.displayCells = this.metricsPlaceholder ? PLACEHOLDER_TREND_CELLS : this.cells;
 
     const inPeriod = this.readings.filter((r) => {
       const t = new Date(r.timestamp).getTime();

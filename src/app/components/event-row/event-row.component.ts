@@ -25,9 +25,8 @@ import { CommonModule } from '@angular/common';
         padding: 10px 0;
         border-bottom: 1px solid var(--line);
       }
-      .row:last-child {
-        border-bottom: 0;
-        padding-bottom: 0;
+      .row:first-child {
+        padding-top: 0;
       }
       .t {
         font-family: var(--font-data);

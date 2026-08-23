@@ -1,11 +1,11 @@
-<app-screen-header
-  title="Podešavanja"
-  pill="Lokalno"
-  [statusRight]="'v' + appVersion"
-></app-screen-header>
-
 <ion-content>
   <div class="screen">
+    <app-page-tbar
+      title="Podešavanja"
+      pill="Lokalno"
+      [statusRight]="'v' + appVersion"
+    ></app-page-tbar>
+
     <div class="card-surface">
       <div class="lbl">Veza</div>
       <div class="set">
@@ -21,7 +21,11 @@
           <div class="h">Interval provere</div>
           <div class="s">Usklađen sa senzorom na :02</div>
         </div>
-        <span class="rt numeral">{{ pollInterval }}m</span>
+        <div class="stepper">
+          <button type="button" (click)="stepPoll(-1)" [disabled]="pollInterval <= 5">−</button>
+          <b class="numeral">{{ pollInterval }}</b>
+          <button type="button" (click)="stepPoll(1)" [disabled]="pollInterval >= 15">+</button>
+        </div>
       </div>
       <div class="set">
         <div class="body">

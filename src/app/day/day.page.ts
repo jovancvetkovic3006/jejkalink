@@ -7,11 +7,56 @@ import { EventsStore, AppEvent } from '../services/events-store.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { MetricGridComponent, MetricCell } from '../components/metric-grid/metric-grid.component';
 import { GlucoseChartComponent, BolusMark } from '../components/glucose-chart/glucose-chart.component';
-import { ScreenHeaderComponent } from '../components/screen-header/screen-header.component';
+import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { EventRowComponent } from '../components/event-row/event-row.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { periodMetrics } from '../analytics';
-import { LOW, HIGH } from '../domain/glucose';
+import { placeholderDayReadings } from '../utils/placeholder-data.util';
+
+const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
+  {
+    id: 'ph-d1',
+    kind: 'bolus',
+    timestamp: new Date().toISOString(),
+    label: 'Bolus 3.8 j',
+    detail: 'doručak',
+  },
+  {
+    id: 'ph-d2',
+    kind: 'sensor',
+    timestamp: new Date().toISOString(),
+    label: 'Obrok 45 g',
+    detail: '08:12',
+  },
+  {
+    id: 'ph-d3',
+    kind: 'gap',
+    timestamp: new Date().toISOString(),
+    label: 'Gubitak veze',
+    detail: '14 min',
+  },
+];
+
+const PLACEHOLDER_DAY_CELLS: MetricCell[] = [
+  { key: 'U opsegu', value: '72', valueSuffix: '%', delta: '3.9–10.0' },
+  { key: 'Prosek', value: '6.4', delta: 'mmol/L' },
+  {
+    key: 'Ispod 3.9',
+    value: '4',
+    valueSuffix: '%',
+    valueColor: 'var(--low)',
+    delta: '1% ispod 3.0',
+    deltaTone: 'down',
+  },
+  {
+    key: 'Iznad 10.0',
+    value: '18',
+    valueSuffix: '%',
+    valueColor: 'var(--amber)',
+    delta: '3% preko 13.9',
+    deltaTone: 'down',
+  },
+];
 
 @Component({
   selector: 'app-day-page',
@@ -23,7 +68,7 @@ import { LOW, HIGH } from '../domain/glucose';
     CoverageStripComponent,
     MetricGridComponent,
     GlucoseChartComponent,
-    ScreenHeaderComponent,
+    PageTbarComponent,
     EventRowComponent,
     GlassPanelComponent,
   ],
@@ -33,7 +78,6 @@ export class DayPage implements OnInit, OnDestroy {
   readings: SgReading[] = [];
   dayEvents: AppEvent[] = [];
   dayOffset = 0;
-  title = 'Dan';
   datePill = '';
   startMs = 0;
   endMs = 0;
@@ -43,6 +87,12 @@ export class DayPage implements OnInit, OnDestroy {
   coverage = null as ReturnType<typeof periodMetrics>['coverage'] | null;
   boluses: BolusMark[] = [];
   metricsEmpty = true;
+  chartReadings: SgReading[] = [];
+  chartPlaceholder = false;
+  displayEvents: AppEvent[] = [];
+  eventsPlaceholder = false;
+  displayCells: MetricCell[] = [];
+  metricsPlaceholder = false;
 
   constructor(
     private readonly history: SgsHistoryService,
@@ -88,7 +138,7 @@ export class DayPage implements OnInit, OnDestroy {
 
   eventRight(e: AppEvent): string {
     if (e.kind === 'gap') return '—';
-    const r = this.readings.find(
+    const r = this.chartReadings.find(
       (x) =>
         Math.abs(new Date(x.timestamp).getTime() - new Date(e.timestamp).getTime()) <
         5 * 60 * 1000
@@ -111,6 +161,16 @@ export class DayPage implements OnInit, OnDestroy {
       day: '2-digit',
       month: 'short',
     });
+
+    const inDay = this.readings.filter((r) => {
+      const t = new Date(r.timestamp).getTime();
+      return t >= this.startMs && t <= this.endMs;
+    });
+
+    this.chartPlaceholder = inDay.length === 0;
+    this.chartReadings = this.chartPlaceholder
+      ? placeholderDayReadings(this.startMs, this.endMs)
+      : inDay;
 
     const m = periodMetrics(this.readings, start, end);
     this.coverage = m.coverage;
@@ -145,6 +205,9 @@ export class DayPage implements OnInit, OnDestroy {
       },
     ];
 
+    this.metricsPlaceholder = this.metricsEmpty;
+    this.displayCells = this.metricsPlaceholder ? PLACEHOLDER_DAY_CELLS : this.cells;
+
     this.boluses = this.eventsStore
       .bolusesInRange(this.startMs, this.endMs)
       .map((b) => ({ timestamp: b.timestamp, units: b.units || 0 }));
@@ -153,5 +216,7 @@ export class DayPage implements OnInit, OnDestroy {
       const t = new Date(e.timestamp).getTime();
       return t >= this.startMs && t <= this.endMs;
     });
+    this.eventsPlaceholder = this.dayEvents.length === 0;
+    this.displayEvents = this.eventsPlaceholder ? PLACEHOLDER_DAY_EVENTS : this.dayEvents;
   }
 }

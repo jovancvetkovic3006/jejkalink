@@ -1,16 +1,16 @@
-<app-screen-header
-  title="Alarmi"
-  pill="rezervni put"
-  statusRight="10–15 min kašnjenje"
-></app-screen-header>
-
 <ion-content>
   <div class="screen">
+    <app-page-tbar
+      title="Alarmi"
+      pill="rezervni put"
+      statusRight="10–15 min kašnjenje"
+    ></app-page-tbar>
+
     <div class="caveat-card">
-      <div class="lbl">Drugi stav, ne prvi</div>
+      <div class="lbl">Rezervni alarm, ne glavni</div>
       <p>
-        Očitavanja stižu 10–15 minuta nakon senzora. Držite pumpu i CareLink alarme
-        uključene — ovi alarmi rade uz njih, nikad umesto njih.
+        Očitavanja stižu 10–15 minuta nakon senzora. Držite alarme na pumpi i CareLink-u
+        uključene — ovde se okidaju uz njih, nikad umesto njih.
       </p>
     </div>
 
@@ -47,7 +47,7 @@
 
     <div class="card-surface">
       <div class="lbl">Okidanja ove nedelje · {{ fired.length }}</div>
-      <app-glass-panel [empty]="fired.length === 0" message="Nema okidanja ove nedelje">
+      <app-glass-panel [showMessage]="fired.length === 0" message="Nema okidanja ove nedelje">
         <div class="fire-block" *ngFor="let f of fired">
           <app-event-row
             [time]="firedTime(f)"

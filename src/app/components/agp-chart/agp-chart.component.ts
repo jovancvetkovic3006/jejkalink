@@ -11,21 +11,15 @@ import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { AgpBucket } from '../../analytics/agp';
 import { HIGH, LOW } from '../../domain/glucose';
-import { GlassPanelComponent } from '../glass-panel/glass-panel.component';
+import { placeholderAgpBuckets } from '../../utils/placeholder-data.util';
 
 Chart.register(...registerables, annotationPlugin);
 
 @Component({
   selector: 'app-agp-chart',
   standalone: true,
-  imports: [CommonModule, GlassPanelComponent],
-  template: `
-    <app-glass-panel [empty]="!buckets.length" message="Potrebno je više dana podataka za AGP">
-      <div class="wrap">
-        <canvas #canvas></canvas>
-      </div>
-    </app-glass-panel>
-  `,
+  imports: [CommonModule],
+  template: `<div class="wrap"><canvas #canvas></canvas></div>`,
   styles: [
     `
       .wrap {
@@ -42,6 +36,7 @@ Chart.register(...registerables, annotationPlugin);
 export class AgpChartComponent implements AfterViewInit, OnChanges {
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
   @Input() buckets: AgpBucket[] = [];
+  @Input() usePlaceholder = false;
 
   private chart?: Chart;
 
@@ -53,19 +48,25 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
     if (this.canvasRef) this.render();
   }
 
+  private displayBuckets(): AgpBucket[] {
+    if (this.buckets.length) return this.buckets;
+    if (this.usePlaceholder) return placeholderAgpBuckets();
+    return [];
+  }
+
   private render() {
     const canvas = this.canvasRef?.nativeElement;
-    if (!canvas || !this.buckets.length) {
+    const data = this.displayBuckets();
+    if (!canvas || !data.length) {
       if (this.chart) this.chart.destroy();
       return;
     }
 
-    const xs = this.buckets.map((b) => b.slotMin);
-    const median = this.buckets.map((b) => ({ x: b.slotMin, y: b.median }));
-    const p75 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p75 }));
-    const p25 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p25 }));
-    const p90 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p90 }));
-    const p10 = this.buckets.map((b) => ({ x: b.slotMin, y: b.p10 }));
+    const median = data.map((b) => ({ x: b.slotMin, y: b.median }));
+    const p75 = data.map((b) => ({ x: b.slotMin, y: b.p75 }));
+    const p25 = data.map((b) => ({ x: b.slotMin, y: b.p25 }));
+    const p90 = data.map((b) => ({ x: b.slotMin, y: b.p90 }));
+    const p10 = data.map((b) => ({ x: b.slotMin, y: b.p10 }));
 
     const cfg: ChartConfiguration = {
       type: 'line',

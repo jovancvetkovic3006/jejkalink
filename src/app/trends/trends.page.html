@@ -1,11 +1,11 @@
-<app-screen-header
-  title="Trendovi"
-  [pill]="periodPill"
-  statusRight="7 · 14 · 30 · 90"
-></app-screen-header>
-
 <ion-content>
   <div class="screen">
+    <app-page-tbar
+      title="Trendovi"
+      [pill]="periodPill"
+      statusRight="7 · 14 · 30 · 90"
+    ></app-page-tbar>
+
     <ion-segment [value]="days" (ionChange)="onPeriodChange($event)">
       <ion-segment-button [value]="7"><ion-label>7d</ion-label></ion-segment-button>
       <ion-segment-button [value]="14"><ion-label>14d</ion-label></ion-segment-button>
@@ -15,7 +15,9 @@
 
     <div class="card-surface flush agp-card">
       <div class="lbl" style="padding-left: 4px">Tipičan dan · medijana i raspon</div>
-      <app-agp-chart [buckets]="agpBuckets"></app-agp-chart>
+      <app-glass-panel [placeholder]="agpPlaceholder">
+        <app-agp-chart [buckets]="agpBuckets" [usePlaceholder]="agpPlaceholder"></app-agp-chart>
+      </app-glass-panel>
       <app-coverage-strip
         [coverage]="coverage"
         [periodStart]="periodStart"
@@ -44,8 +46,9 @@
     </div>
 
     <app-metric-grid
-      [cells]="cells"
+      [cells]="displayCells"
       [empty]="metricsEmpty"
+      [placeholder]="metricsPlaceholder"
       emptyMessage="Potrebno je više očitavanja za trendove"
     ></app-metric-grid>
 

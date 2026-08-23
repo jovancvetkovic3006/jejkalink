@@ -1,17 +1,17 @@
-<app-screen-header
-  title="Sada"
-  [pill]="whoPill"
-  [statusLeft]="pollStatus"
-></app-screen-header>
-
 <ion-content>
   <ion-refresher slot="fixed" (ionRefresh)="doRefresh($event)">
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
   <div class="screen">
+    <app-page-tbar
+      title="Sada"
+      [pill]="whoPill"
+      [statusLeft]="pollStatus"
+    ></app-page-tbar>
+
     <div class="card-surface hero-card">
-      <app-glass-panel [empty]="!hasReading" message="Nema očitavanja — povuci za osvežavanje">
+      <app-glass-panel [placeholder]="heroPlaceholder">
         <div class="hero">
           <div class="val numeral" [style.color]="rangeColor">{{ value }}</div>
           <div class="unit">{{ unit }}</div>
@@ -37,10 +37,10 @@
 
     <div class="card-surface flush spark-card">
       <div class="lbl">Poslednja 3 sata</div>
-      <app-glass-panel [empty]="!readings.length" message="Graf će se pojaviti kada stignu očitavanja">
+      <app-glass-panel [placeholder]="sparkPlaceholder">
         <div class="spark">
           <app-glucose-chart
-            [readings]="readings"
+            [readings]="sparkReadings"
             [startMs]="sparkStart"
             [endMs]="sparkEnd"
             [sparkline]="true"
@@ -51,9 +51,9 @@
 
     <div class="card-surface">
       <div class="lbl">Nedavni događaji</div>
-      <app-glass-panel [empty]="events.length === 0" message="Događaji se pojavljuju nakon sinhronizacije">
+      <app-glass-panel [placeholder]="eventsPlaceholder">
         <app-event-row
-          *ngFor="let e of events"
+          *ngFor="let e of displayEvents"
           [time]="eventTime(e)"
           [title]="e.label"
           [subtitle]="e.detail || ''"

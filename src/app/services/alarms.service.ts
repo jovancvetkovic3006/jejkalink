@@ -8,6 +8,7 @@ import {
   VERY_LOW,
 } from '../domain/glucose';
 import { SgReading } from './sgs-history.service';
+import { formatStaleLabelSr } from '../utils/duration-format.util';
 
 export interface AlarmSettings {
   low: number;
@@ -121,7 +122,7 @@ export class AlarmsService {
     const ageMin = (Date.now() - new Date(last.timestamp).getTime()) / 60000;
 
     if (s.staleEnabled && ageMin >= STALE_URGENT_MIN) {
-      this.fire('stale', `Nema podataka ${Math.floor(ageMin)} min`, last);
+      this.fire('stale', formatStaleLabelSr(ageMin), last);
     }
 
     const mmol = last.mmol;
