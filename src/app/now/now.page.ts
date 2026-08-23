@@ -21,6 +21,7 @@ import {
 } from '../domain/glucose';
 import { slopePerMin, projectMmol } from '../utils/glucose-slope.util';
 import { placeholderSparklineReadings } from '../utils/placeholder-data.util';
+import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PLACEHOLDER_EVENTS: AppEvent[] = [
   {
@@ -62,6 +63,7 @@ const PLACEHOLDER_EVENTS: AppEvent[] = [
     TrendArrowComponent,
     EventRowComponent,
     GlassPanelComponent,
+    TabSwipeDirective,
   ],
 })
 export class NowPage implements OnInit, OnDestroy {

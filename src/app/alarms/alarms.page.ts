@@ -7,6 +7,7 @@ import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { EventRowComponent } from '../components/event-row/event-row.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { LOW_CLEAR } from '../domain/glucose';
+import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 @Component({
   selector: 'app-alarms-page',
@@ -18,6 +19,7 @@ import { LOW_CLEAR } from '../domain/glucose';
     PageTbarComponent,
     EventRowComponent,
     GlassPanelComponent,
+    TabSwipeDirective,
   ],
 })
 export class AlarmsPage implements OnInit {

@@ -11,6 +11,7 @@ import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { agpBuckets, periodMetrics } from '../analytics';
 import { HIGH, LOW, VERY_HIGH, VERY_LOW } from '../domain/glucose';
+import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PLACEHOLDER_TREND_CELLS: MetricCell[] = [
   {
@@ -66,6 +67,7 @@ const PLACEHOLDER_TREND_CELLS: MetricCell[] = [
     AgpChartComponent,
     PageTbarComponent,
     GlassPanelComponent,
+    TabSwipeDirective,
   ],
 })
 export class TrendsPage implements OnInit, OnDestroy {

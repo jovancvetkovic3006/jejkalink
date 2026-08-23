@@ -12,6 +12,7 @@ import { EventRowComponent } from '../components/event-row/event-row.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { periodMetrics } from '../analytics';
 import { placeholderDayReadings } from '../utils/placeholder-data.util';
+import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
   {
@@ -71,6 +72,7 @@ const PLACEHOLDER_DAY_CELLS: MetricCell[] = [
     PageTbarComponent,
     EventRowComponent,
     GlassPanelComponent,
+    TabSwipeDirective,
   ],
 })
 export class DayPage implements OnInit, OnDestroy {

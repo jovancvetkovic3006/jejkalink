@@ -9,6 +9,7 @@ import { CollectorHealthService } from '../services/collector-health.service';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { detectGaps } from '../analytics';
+import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 @Component({
   selector: 'app-settings',
@@ -20,6 +21,7 @@ import { detectGaps } from '../analytics';
     CommonModule,
     PageTbarComponent,
     CoverageStripComponent,
+    TabSwipeDirective,
   ],
 })
 export class SettingsPage implements OnInit {
