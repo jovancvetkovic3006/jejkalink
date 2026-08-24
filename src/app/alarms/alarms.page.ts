@@ -80,10 +80,6 @@ export class AlarmsPage implements OnInit {
     return Boolean(this.settings[key]);
   }
 
-  tag(id: string, tag: 'real' | 'false') {
-    this.alarms.tag(id, tag);
-  }
-
   firedDay(f: FiredAlarm): string {
     return new Date(f.timestamp).toLocaleDateString('en-GB', {
       weekday: 'short',
@@ -98,9 +94,13 @@ export class AlarmsPage implements OnInit {
   }
 
   firedSubtitle(f: FiredAlarm): string {
-    if (f.tag === 'real') return 'Tagged · real';
-    if (f.tag === 'false') return 'Tagged · false';
-    return 'Tag below';
+    if (f.rule === 'stale') return 'No fresh reading for 20 min';
+    if (f.rule === 'projection') return '15-min forecast crossed threshold';
+    if (f.rule === 'falling_fast') return 'Drop rate crossed the fast-fall threshold';
+    if (f.rule === 'urgent_low') return 'Urgent threshold crossed';
+    if (f.rule === 'low') return 'Low threshold crossed';
+    if (f.rule === 'high') return 'High threshold crossed';
+    return '';
   }
 
   firedDot(f: FiredAlarm): string {

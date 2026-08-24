@@ -174,14 +174,22 @@ export class NowPage implements OnInit, OnDestroy {
     this.targetLow = s.targetLow;
     this.targetHigh = s.targetHigh;
 
-    this.sparkPlaceholder = this.readings.length === 0;
+    this.sparkPlaceholder = !this.readings.some((reading) => {
+      const t = new Date(reading.timestamp).getTime();
+      return (
+        t >= this.sparkStart &&
+        t <= this.sparkEnd &&
+        Number.isFinite(reading.mmol) &&
+        reading.mmol > 0
+      );
+    });
     this.sparkReadings = this.sparkPlaceholder
       ? placeholderSparklineReadings(this.sparkStart, this.sparkEnd)
       : this.readings;
 
     const data = this.auth.patientData$.value;
     this.trend = data?.trend ?? 0;
-    this.whoPill = this.buildWhoPill(data);
+    this.whoPill = this.buildWhoPill();
 
     const last = this.readings[this.readings.length - 1];
     if (!last) {
@@ -212,16 +220,20 @@ export class NowPage implements OnInit, OnDestroy {
       projected != null ? `Projected ${formatMmol(projected)} in 15m` : '';
   }
 
-  private buildWhoPill(data: any): string {
+  private buildWhoPill(): string {
     try {
-      const raw = localStorage.getItem('userInfo');
-      const user = raw ? JSON.parse(raw) : null;
-      const name =
-        user?.name?.split(' ')[0] ||
-        localStorage.getItem('patientUsername') ||
-        '';
-      const pump = data?.pumpModel || '780G';
-      return name ? `${name} · ${pump}` : pump;
+      const patientUsername = localStorage.getItem('patientUsername') || '';
+      const base = patientUsername.trim();
+      if (!base) return '';
+
+      const cleaned = base
+        .replace(/[._-]+/g, ' ')
+        .replace(/\d+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const label = (cleaned || base).replace(/\b\w/g, (c) => c.toUpperCase());
+      return label;
     } catch {
       return '';
     }

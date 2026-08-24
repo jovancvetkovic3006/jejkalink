@@ -51,19 +51,14 @@
         [placeholder]="fired.length === 0"
         message="No firings this week"
       >
-        <div class="fire-block" *ngFor="let f of fired">
-          <app-event-row
-            [time]="firedTime(f)"
-            [title]="f.label"
-            [subtitle]="firedSubtitle(f)"
-            [rightValue]="firedDay(f)"
-            [dotColor]="firedDot(f)"
-          ></app-event-row>
-          <div class="tag-row">
-            <button type="button" class="chip-pill" (click)="tag(f.id, 'real')">Real</button>
-            <button type="button" class="chip-pill" (click)="tag(f.id, 'false')">False</button>
-          </div>
-        </div>
+        <app-event-row
+          *ngFor="let f of fired"
+          [time]="firedTime(f)"
+          [title]="f.label"
+          [subtitle]="firedSubtitle(f)"
+          [rightValue]="firedDay(f)"
+          [dotColor]="firedDot(f)"
+        ></app-event-row>
       </app-glass-panel>
     </div>
   </div>
