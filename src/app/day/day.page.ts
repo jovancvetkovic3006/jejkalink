@@ -81,6 +81,7 @@ export class DayPage implements OnInit, OnDestroy {
   dayEvents: AppEvent[] = [];
   dayOffset = 0;
   datePill = '';
+  dateStatus = '';
   startMs = 0;
   endMs = 0;
   periodStart = new Date();
@@ -163,6 +164,7 @@ export class DayPage implements OnInit, OnDestroy {
       day: '2-digit',
       month: 'short',
     });
+    this.dateStatus = this.datePill;
 
     const inDay = this.readings.filter((r) => {
       const t = new Date(r.timestamp).getTime();

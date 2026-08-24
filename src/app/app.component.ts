@@ -1,12 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import {
-  IonApp,
-  IonRouterOutlet,
-  IonToolbar,
-  IonHeader,
-  IonTitle,
-  Platform,
-} from '@ionic/angular/standalone';
+import { IonApp, IonRouterOutlet, Platform } from '@ionic/angular/standalone';
 
 import { AuthenticationService } from './services/authentication.service';
 import { App } from '@capacitor/app';
@@ -17,13 +10,7 @@ import { AlarmsService } from './services/alarms.service';
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [
-    IonTitle,
-    IonHeader,
-    IonToolbar,
-    IonApp,
-    IonRouterOutlet,
-  ],
+  imports: [IonApp, IonRouterOutlet],
 })
 export class AppComponent implements OnInit {
   timeoutId: ReturnType<typeof setTimeout> | undefined;

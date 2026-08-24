@@ -48,8 +48,10 @@ h1, h2, h3, .display {
   border-radius: var(--r-card);
   padding: var(--pad-card);
   margin-bottom: 12px;
-  box-shadow: 0 1px 2px rgba(21, 33, 59, 0.04),
-    0 14px 34px -18px rgba(21, 33, 59, 0.12);
+}
+
+ion-content {
+  --background: var(--paper);
 }
 
 .card-surface.flush {
@@ -58,6 +60,7 @@ h1, h2, h3, .display {
 
 .screen {
   padding: var(--pad-screen);
+  padding-top: calc(var(--pad-screen) + env(safe-area-inset-top, 0px));
   background: var(--paper);
   min-height: 100%;
 }
@@ -165,18 +168,24 @@ h1, h2, h3, .display {
   border: 1px solid var(--indigo-br);
   background: var(--indigo-bg);
   border-radius: var(--r-card);
-  padding: var(--pad-card);
-  border-left: 3px solid var(--indigo);
+  padding: 13px 14px;
   margin-top: 12px;
   margin-bottom: 12px;
 }
 .ai-card .lbl {
   color: var(--indigo);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
 }
 .ai-card p {
-  margin: 8px 0;
-  font-size: var(--t-body);
-  line-height: 1.45;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ai-card p + p {
+  margin-top: 8px;
 }
 .ai-card .q {
   color: var(--muted);

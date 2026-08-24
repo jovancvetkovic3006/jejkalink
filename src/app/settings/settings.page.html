@@ -23,7 +23,7 @@
         </div>
         <div class="stepper">
           <button type="button" (click)="stepPoll(-1)" [disabled]="pollInterval <= 5">−</button>
-          <b class="numeral">{{ pollInterval }}</b>
+          <b class="numeral">{{ pollInterval }}m</b>
           <button type="button" (click)="stepPoll(1)" [disabled]="pollInterval >= 15">+</button>
         </div>
       </div>

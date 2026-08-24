@@ -23,17 +23,15 @@ export interface BolusMark {
 
 function hatchPattern(): CanvasPattern | string {
   const c = document.createElement('canvas');
-  c.width = 8;
-  c.height = 8;
+  c.width = 5;
+  c.height = 5;
   const ctx = c.getContext('2d');
   if (!ctx) return 'rgba(221, 226, 233, 0.7)';
-  ctx.fillStyle = '#E8ECF1';
-  ctx.fillRect(0, 0, 8, 8);
-  ctx.strokeStyle = '#C5CDD8';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#DDE2E9';
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.moveTo(0, 8);
-  ctx.lineTo(8, 0);
+  ctx.moveTo(0, 5);
+  ctx.lineTo(5, 0);
   ctx.stroke();
   return ctx.createPattern(c, 'repeat') || 'rgba(221, 226, 233, 0.7)';
 }
@@ -97,7 +95,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       y: readingMmol(d),
     }));
 
-    const data: ({ x: number; y: number | null })[] = [];
+    const data: { x: number; y: number | null }[] = [];
     for (let i = 0; i < points.length; i++) {
       if (i > 0) {
         const gap = gaps.find(
@@ -132,15 +130,15 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         borderWidth: 0,
         label: {
           display: !this.sparkline,
-          content: 'praznina',
-          position: 'center',
+          content: 'gap',
+          position: 'start',
+          yAdjust: 8,
           color: '#707C91',
-          font: { size: 9, family: 'IBM Plex Mono' },
+          font: { size: 8.5, family: 'IBM Plex Mono' },
         },
       };
     }
 
-    const maxUnits = Math.max(1, ...this.boluses.map((b) => b.units));
     const bolusData = this.boluses
       .filter((b) => {
         const t = new Date(b.timestamp).getTime();
@@ -148,16 +146,17 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       })
       .map((b) => ({
         x: new Date(b.timestamp).getTime(),
-        y: 2 + (b.units / maxUnits) * 3.5,
+        y: Math.min(5.5, 2.2 + b.units * 0.45),
       }));
 
+    const lastIdx = data.length - 1;
     const datasets: ChartConfiguration['data']['datasets'] = [
       {
         type: 'bar',
         data: bolusData as any,
-        backgroundColor: '#3344CC',
-        borderRadius: 2,
-        barThickness: this.sparkline ? 3 : 5,
+        backgroundColor: 'rgba(51, 68, 204, 0.82)',
+        borderRadius: 1.6,
+        barThickness: this.sparkline ? 3 : 4.8,
         order: 2,
       },
       {
@@ -165,30 +164,61 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         data: data as any,
         borderColor: '#15213B',
         backgroundColor: '#15213B',
-        borderWidth: this.sparkline ? 1.9 : 2.1,
-        pointRadius: (ctx: { parsed?: { y?: number | null } }) => {
+        borderWidth: this.sparkline ? 2 : 1.9,
+        pointRadius: (ctx: { dataIndex?: number; parsed?: { y?: number | null } }) => {
           const y = ctx.parsed?.y;
           if (y == null) return 0;
+          if (this.sparkline && ctx.dataIndex === lastIdx) return 4;
           if (y < LOW) return 2.1;
-          if (y > HIGH) return 1.4;
+          if (y > HIGH) return 1.7;
           return 0;
         },
-        pointBackgroundColor: (ctx: { parsed?: { y?: number | null } }) => {
+        pointBackgroundColor: (ctx: {
+          dataIndex?: number;
+          parsed?: { y?: number | null };
+        }) => {
           const y = ctx.parsed?.y;
           if (y == null) return '#15213B';
+          if (this.sparkline && ctx.dataIndex === lastIdx) return '#0E9B8A';
           if (y < VERY_LOW) return '#9B1B47';
           if (y < LOW) return '#C2255C';
-          if (y > HIGH) return 'rgba(199, 124, 30, 0.7)';
+          if (y > HIGH) return 'rgba(199, 124, 30, 0.75)';
           return '#15213B';
         },
-        tension: 0.25,
+        pointBorderColor: '#fff',
+        pointBorderWidth: (ctx: { dataIndex?: number; parsed?: { y?: number | null } }) =>
+          this.sparkline && ctx.dataIndex === lastIdx ? 2 : 0,
+        tension: 0.2,
         spanGaps: false,
         parsing: false,
         order: 1,
       },
     ];
 
-    const yMax = this.sparkline ? undefined : 16;
+    const daySpan = this.endMs - this.startMs >= 20 * 60 * 60 * 1000;
+    const xTicks = daySpan
+      ? {
+          color: '#707C91',
+          font: { size: 8.5, family: 'IBM Plex Mono' },
+          autoSkip: false,
+          callback: (_v: string | number, i: number, ticks: { value: number }[]) => {
+            const hours = [0, 6, 12, 18, 24];
+            const t = ticks[i]?.value;
+            if (t == null) return '';
+            const h = Math.round(((t - this.startMs) / (this.endMs - this.startMs)) * 24);
+            return hours.includes(h) ? String(h).padStart(2, '0') : '';
+          },
+        }
+      : {
+          maxTicksLimit: 5,
+          color: '#707C91',
+          font: { size: 10, family: 'IBM Plex Mono' },
+          callback: (v: string | number) =>
+            new Date(Number(v)).toLocaleTimeString('sr-Latn-RS', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+        };
 
     const cfg: ChartConfiguration = {
       type: 'line',
@@ -224,32 +254,30 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
             min: this.startMs,
             max: this.endMs,
             display: !this.sparkline,
-            ticks: {
-              maxTicksLimit: 6,
-              color: '#707C91',
-              font: { size: 10, family: 'IBM Plex Mono' },
-              callback: (v) =>
-                new Date(Number(v)).toLocaleTimeString('sr-Latn-RS', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }),
-            },
-            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: xTicks as any,
+            grid: { color: 'rgba(227, 231, 237, 1)', drawTicks: false },
           },
           y: {
-            min: this.sparkline ? undefined : 2,
-            max: yMax,
-            display: !this.sparkline,
+            min: this.sparkline ? 2.5 : 2.5,
+            max: this.sparkline ? 15 : 16,
+            display: true,
             ticks: {
               color: '#707C91',
-              font: { size: 10, family: 'IBM Plex Mono' },
+              font: { size: 8.5, family: 'IBM Plex Mono' },
               callback: (v) => {
                 const n = Number(v);
-                if (n === LOW || n === HIGH || n === 16) return String(n);
+                if (n === LOW || n === HIGH) return n.toFixed(1);
+                if (!this.sparkline && (n === 15 || n === 16)) return '15';
                 return '';
               },
             },
-            grid: { color: 'rgba(0,0,0,0.06)' },
+            grid: {
+              color: (ctx) =>
+                ctx.tick.value === LOW || ctx.tick.value === HIGH
+                  ? 'rgba(227, 231, 237, 1)'
+                  : 'transparent',
+              drawTicks: false,
+            },
           },
         },
       },

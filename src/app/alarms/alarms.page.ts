@@ -33,7 +33,7 @@ export class AlarmsPage implements OnInit {
   }[] = [
     { key: 'low', label: 'Niska', hint: `Razrešava se na ${LOW_CLEAR}` },
     { key: 'urgentLow', label: 'Hitna niska', hint: 'Ne poštuje odloženo' },
-    { key: 'high', label: 'Visoka', hint: 'Iznad 10.0 mmol/L' },
+    { key: 'high', label: 'Visoka', hint: 'Posle 30 min iznad' },
     { key: 'fallingFast', label: 'Brzo padanje', hint: 'mmol/L po minutu' },
   ];
 
@@ -44,7 +44,7 @@ export class AlarmsPage implements OnInit {
   }[] = [
     { key: 'staleEnabled', label: 'Nema podataka 20 min', hint: 'Tretira se kao hitno' },
     { key: 'projectionEnabled', label: 'Alarm na projekciju', hint: 'Koristi prognozu 15 min' },
-    { key: 'overnightProfile', label: 'Noćni profil', hint: '22:00–07:00' },
+    { key: 'overnightProfile', label: 'Noćni profil', hint: '22:00–07:00 · niska na 4.2' },
     { key: 'repeatUntilCleared', label: 'Ponavljaj dok se ne razreši', hint: 'Svakih 15 min' },
   ];
 

@@ -132,5 +132,5 @@ export function formatCoverageCaptionSr(cov: CoverageResult): string {
   if (cov.gapCount > 0) {
     return `${cov.gapCount} praznina · ${gapMin} min · ${cov.coveragePct}%`;
   }
-  return `pokriće ${cov.coveragePct}%`;
+  return `${cov.coveragePct}%`;
 }

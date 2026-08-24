@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CoverageResult, formatCoverageCaptionSr } from '../../analytics';
+import { CoverageResult } from '../../analytics';
 
 @Component({
   selector: 'app-coverage-strip',
@@ -17,7 +17,11 @@ import { CoverageResult, formatCoverageCaptionSr } from '../../analytics';
       </div>
       <div class="meta">
         <span>{{ periodLabel }}</span>
-        <em [class.warn]="display.gapCount > 0">{{ caption }}</em>
+        <span>
+          <em *ngIf="display.gapCount > 0" class="warn">{{ gapPart }}</em>
+          <ng-container *ngIf="display.gapCount > 0"> · </ng-container>
+          {{ display.coveragePct }}%
+        </span>
       </div>
     </div>
   `,
@@ -61,7 +65,6 @@ import { CoverageResult, formatCoverageCaptionSr } from '../../analytics';
 export class CoverageStripComponent {
   @Input() coverage: CoverageResult | null = null;
   @Input() periodLabel = '';
-  /** When coverage is null, show empty gap track for this period. */
   @Input() periodStart?: Date;
   @Input() periodEnd?: Date;
 
@@ -80,9 +83,9 @@ export class CoverageStripComponent {
     };
   }
 
-  get caption(): string {
-    if (!this.coverage && !this.periodStart) return '—';
-    return formatCoverageCaptionSr(this.display);
+  get gapPart(): string {
+    const gapMin = Math.round(this.display.gapMs / 60000);
+    return `${this.display.gapCount} praznina · ${gapMin} min`;
   }
 
   segmentFlex(s: { from: Date; to: Date }): number {

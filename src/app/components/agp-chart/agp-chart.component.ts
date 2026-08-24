@@ -68,6 +68,8 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
     const p90 = data.map((b) => ({ x: b.slotMin, y: b.p90 }));
     const p10 = data.map((b) => ({ x: b.slotMin, y: b.p10 }));
 
+    const hourTicks = [0, 360, 720, 1080, 1440];
+
     const cfg: ChartConfiguration = {
       type: 'line',
       data: {
@@ -77,7 +79,7 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
             borderWidth: 0,
             pointRadius: 0,
             fill: '+1',
-            backgroundColor: 'rgba(14, 155, 138, 0.08)',
+            backgroundColor: 'rgba(21, 33, 59, 0.08)',
             parsing: false,
           },
           {
@@ -92,7 +94,7 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
             borderWidth: 0,
             pointRadius: 0,
             fill: '+1',
-            backgroundColor: 'rgba(14, 155, 138, 0.15)',
+            backgroundColor: 'rgba(21, 33, 59, 0.15)',
             parsing: false,
           },
           {
@@ -105,7 +107,7 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
           {
             data: median as any,
             borderColor: '#15213B',
-            borderWidth: 2,
+            borderWidth: 2.2,
             pointRadius: 0,
             tension: 0.35,
             parsing: false,
@@ -135,31 +137,40 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
             type: 'linear',
             min: 0,
             max: 1440,
+            afterBuildTicks: (axis) => {
+              axis.ticks = hourTicks.map((v) => ({ value: v }));
+            },
             ticks: {
-              maxTicksLimit: 6,
               color: '#707C91',
-              font: { size: 9, family: 'IBM Plex Mono' },
+              font: { size: 8.5, family: 'IBM Plex Mono' },
               callback: (v) => {
                 const m = Number(v);
-                const h = Math.floor(m / 60);
-                return `${String(h).padStart(2, '0')}:00`;
+                if (!hourTicks.includes(m)) return '';
+                return `${String(Math.floor(m / 60)).padStart(2, '0')}`;
               },
             },
-            grid: { color: 'rgba(0,0,0,0.05)' },
+            grid: { color: 'rgba(227, 231, 237, 1)', drawTicks: false },
           },
           y: {
-            min: 2,
+            min: 2.5,
             max: 16,
             ticks: {
               color: '#707C91',
-              font: { size: 10, family: 'IBM Plex Mono' },
+              font: { size: 8.5, family: 'IBM Plex Mono' },
               callback: (v) => {
                 const n = Number(v);
-                if (n === LOW || n === HIGH || n === 16) return String(n);
+                if (n === LOW || n === HIGH) return n.toFixed(1);
+                if (n === 15 || n === 16) return '15';
                 return '';
               },
             },
-            grid: { color: 'rgba(0,0,0,0.06)' },
+            grid: {
+              color: (ctx) =>
+                ctx.tick.value === LOW || ctx.tick.value === HIGH
+                  ? 'rgba(227, 231, 237, 1)'
+                  : 'transparent',
+              drawTicks: false,
+            },
           },
         },
       },

@@ -1,33 +1,42 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/**
+ * Mock-aligned page header: status row + tbar (title + who pill).
+ * Matches design/cgm-companion-mockups.html `.status` + `.tbar`.
+ */
 @Component({
   selector: 'app-page-tbar',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="page-top" *ngIf="statusLeft || statusRight">
-      <span>{{ statusLeft }}</span>
+    <div class="status">
+      <span>{{ statusLeft || clock }}</span>
       <span>{{ statusRight }}</span>
     </div>
     <div class="tbar">
       <h2>{{ title }}</h2>
-      <div class="tbar-end">
+      <div
+        class="who"
+        *ngIf="pill"
+        [class.interactive]="showBack || showForward"
+        (click)="onPillClick($event)"
+      >
         <button
           type="button"
-          class="nav-btn"
+          class="chev"
           *ngIf="showBack"
-          (click)="onBack?.()"
+          (click)="back($event)"
           aria-label="Prethodni"
         >
           ‹
         </button>
-        <div class="who" *ngIf="pill">{{ pill }}</div>
+        <span class="who-text">{{ pill }}</span>
         <button
           type="button"
-          class="nav-btn"
+          class="chev"
           *ngIf="showForward"
-          (click)="onForward?.()"
+          (click)="forward($event)"
           [disabled]="forwardDisabled"
           aria-label="Sledeći"
         >
@@ -38,10 +47,11 @@ import { CommonModule } from '@angular/common';
   `,
   styles: [
     `
-      .page-top {
+      .status {
         display: flex;
         justify-content: space-between;
-        padding: 12px 0 0;
+        align-items: center;
+        padding: 4px 0 0;
         font-family: var(--font-data);
         font-size: 10.5px;
         color: var(--muted);
@@ -50,7 +60,7 @@ import { CommonModule } from '@angular/common';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin: 10px 0 16px;
       }
       .tbar h2 {
         font-family: var(--font-display);
@@ -60,12 +70,10 @@ import { CommonModule } from '@angular/common';
         margin: 0;
         color: var(--ink);
       }
-      .tbar-end {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
       .who {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
         font-family: var(--font-data);
         font-size: 10.5px;
         color: var(--muted);
@@ -73,19 +81,25 @@ import { CommonModule } from '@angular/common';
         border-radius: var(--r-pill);
         padding: 3px 9px;
         white-space: nowrap;
+        max-width: 62%;
       }
-      .nav-btn {
-        width: 28px;
-        height: 28px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--surface);
+      .who.interactive {
+        padding: 2px 6px;
+      }
+      .who-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .chev {
+        border: 0;
+        background: transparent;
         color: var(--ink);
-        font-size: 16px;
+        font-size: 14px;
         line-height: 1;
+        padding: 0 2px;
         cursor: pointer;
       }
-      .nav-btn:disabled {
+      .chev:disabled {
         opacity: 0.35;
       }
     `,
@@ -101,4 +115,30 @@ export class PageTbarComponent {
   @Input() forwardDisabled = false;
   @Input() onBack?: () => void;
   @Input() onForward?: () => void;
+  /** Optional: tap on who pill (e.g. cycle period). */
+  @Input() onPill?: () => void;
+
+  get clock(): string {
+    return new Date().toLocaleTimeString('sr-Latn-RS', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  back(ev: Event) {
+    ev.stopPropagation();
+    this.onBack?.();
+  }
+
+  forward(ev: Event) {
+    ev.stopPropagation();
+    this.onForward?.();
+  }
+
+  onPillClick(ev: Event) {
+    if (!this.onPill) return;
+    if ((ev.target as HTMLElement).closest('.chev')) return;
+    this.onPill();
+  }
 }

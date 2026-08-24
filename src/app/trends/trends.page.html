@@ -4,14 +4,8 @@
       title="Trendovi"
       [pill]="periodPill"
       statusRight="7 · 14 · 30 · 90"
+      [onPill]="cyclePeriod"
     ></app-page-tbar>
-
-    <ion-segment [value]="days" (ionChange)="onPeriodChange($event)">
-      <ion-segment-button [value]="7"><ion-label>7d</ion-label></ion-segment-button>
-      <ion-segment-button [value]="14"><ion-label>14d</ion-label></ion-segment-button>
-      <ion-segment-button [value]="30"><ion-label>30d</ion-label></ion-segment-button>
-      <ion-segment-button [value]="90"><ion-label>90d</ion-label></ion-segment-button>
-    </ion-segment>
 
     <div class="card-surface flush agp-card">
       <div class="lbl" style="padding-left: 4px">Tipičan dan · medijana i raspon</div>
@@ -22,7 +16,7 @@
         [coverage]="coverage"
         [periodStart]="periodStart"
         [periodEnd]="periodEnd"
-        [periodLabel]="periodPill"
+        [periodLabel]="coveragePeriodLabel"
       ></app-coverage-strip>
     </div>
 
@@ -53,7 +47,20 @@
     ></app-metric-grid>
 
     <div class="ai-card">
-      <div class="lbl">Nedeljni pregled</div>
+      <div class="lbl">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+        >
+          <path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" />
+        </svg>
+        Nedeljni pregled
+      </div>
       <p>{{ weeklyReadP1 }}</p>
       <p>{{ weeklyReadP2 }}</p>
       <div class="q">{{ weeklyReadQ }}</div>

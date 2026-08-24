@@ -1,7 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { IonContent, IonSegment, IonSegmentButton, IonLabel } from '@ionic/angular/standalone';
+import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
@@ -13,42 +12,36 @@ import { agpBuckets, periodMetrics } from '../analytics';
 import { HIGH, LOW, VERY_HIGH, VERY_LOW } from '../domain/glucose';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
+const PERIODS = [7, 14, 30, 90] as const;
+
 const PLACEHOLDER_TREND_CELLS: MetricCell[] = [
   {
     key: 'GMI',
-    value: '6.8',
+    value: '7.2',
     valueSuffix: '%',
-    delta: '+0.2 u odnosu na prethodni',
-    deltaTone: 'down',
+    delta: '−0.2 u odnosu na prethodni',
+    deltaTone: 'up',
   },
   {
     key: 'CV',
-    value: '32',
+    value: '34',
     valueSuffix: '%',
-    delta: 'ispod 36%',
+    delta: 'stabilno · ispod 36',
     deltaTone: 'up',
   },
   {
     key: 'Prosek',
-    value: '6.4',
-    delta: '−0.1 u odnosu na prethodni',
-    deltaTone: 'up',
+    value: '8.1',
+    delta: '+0.4 u odnosu na prethodni',
+    deltaTone: 'down',
   },
   {
     key: 'Noćni TIR',
-    value: '78',
+    value: '79',
     valueSuffix: '%',
     delta: '00:00–06:00',
     deltaTone: 'muted',
   },
-  {
-    key: 'U opsegu',
-    value: '72',
-    valueSuffix: '%',
-    delta: '+3 u odnosu na prethodni',
-    deltaTone: 'up',
-  },
-  { key: 'Očitavanja', value: '4032' },
 ];
 
 @Component({
@@ -57,11 +50,7 @@ const PLACEHOLDER_TREND_CELLS: MetricCell[] = [
   styleUrls: ['trends.page.scss'],
   imports: [
     CommonModule,
-    FormsModule,
     IonContent,
-    IonSegment,
-    IonSegmentButton,
-    IonLabel,
     CoverageStripComponent,
     MetricGridComponent,
     AgpChartComponent,
@@ -82,6 +71,7 @@ export class TrendsPage implements OnInit, OnDestroy {
   rangeBars: { label: string; pct: number; color: string }[] = [];
   metricsEmpty = true;
   periodPill = '14 dana';
+  coveragePeriodLabel = '';
   agpPlaceholder = false;
   displayCells: MetricCell[] = [];
   metricsPlaceholder = false;
@@ -104,10 +94,11 @@ export class TrendsPage implements OnInit, OnDestroy {
     this.sub?.unsubscribe();
   }
 
-  onPeriodChange(ev: CustomEvent) {
-    this.days = Number(ev.detail.value) || 7;
+  cyclePeriod = () => {
+    const i = PERIODS.indexOf(this.days as (typeof PERIODS)[number]);
+    this.days = PERIODS[(i + 1) % PERIODS.length];
     this.refresh();
-  }
+  };
 
   private refresh() {
     const end = new Date();
@@ -115,6 +106,7 @@ export class TrendsPage implements OnInit, OnDestroy {
     this.periodStart = start;
     this.periodEnd = end;
     this.periodPill = `${this.days} dana`;
+    this.coveragePeriodLabel = `${fmtShort(start)} — ${fmtShort(end)}`;
 
     const m = periodMetrics(this.readings, start, end);
     const prevStart = new Date(start.getTime() - this.days * 24 * 60 * 60 * 1000);
@@ -126,7 +118,8 @@ export class TrendsPage implements OnInit, OnDestroy {
 
     const delta = (cur: number, old: number, higherIsBetter: boolean) => {
       const d = Math.round((cur - old) * 10) / 10;
-      if (!old && !cur) return { delta: undefined as string | undefined, tone: 'muted' as const };
+      if (!old && !cur)
+        return { delta: undefined as string | undefined, tone: 'muted' as const };
       const sign = d > 0 ? '+' : '';
       const better = higherIsBetter ? d >= 0 : d <= 0;
       return {
@@ -135,13 +128,8 @@ export class TrendsPage implements OnInit, OnDestroy {
       };
     };
 
-    const tirD = delta(m.tirPct, prev.tirPct, true);
     const gmiD = delta(m.gmi, prev.gmi, false);
     const meanD = delta(m.mean, prev.mean, false);
-    const night =
-      m.overnightTirPct != null
-        ? delta(m.overnightTirPct, prev.overnightTirPct ?? 0, true)
-        : { delta: undefined, tone: 'muted' as const };
 
     this.cells = [
       {
@@ -155,7 +143,7 @@ export class TrendsPage implements OnInit, OnDestroy {
         key: 'CV',
         value: m.cvLabel,
         valueSuffix: '%',
-        delta: m.cv < 36 ? 'ispod 36%' : 'iznad 36%',
+        delta: m.cv < 36 ? 'stabilno · ispod 36' : 'iznad 36%',
         deltaTone: m.cv < 36 ? 'up' : 'down',
       },
       {
@@ -168,19 +156,8 @@ export class TrendsPage implements OnInit, OnDestroy {
         key: 'Noćni TIR',
         value: m.overnightTirPct != null ? String(m.overnightTirPct) : '--',
         valueSuffix: m.overnightTirPct != null ? '%' : undefined,
-        delta: night.delta || '00:00–06:00',
-        deltaTone: night.tone,
-      },
-      {
-        key: 'U opsegu',
-        value: String(m.tirPct),
-        valueSuffix: '%',
-        delta: tirD.delta,
-        deltaTone: tirD.tone,
-      },
-      {
-        key: 'Očitavanja',
-        value: String(m.count),
+        delta: '00:00–06:00',
+        deltaTone: 'muted',
       },
     ];
 
@@ -196,11 +173,35 @@ export class TrendsPage implements OnInit, OnDestroy {
       Math.round((inPeriod.filter((r) => fn(r.mmol)).length / n) * 1000) / 10;
 
     this.rangeBars = [
-      { label: 'Veoma niska · ispod 3.0', pct: pct((v) => v < VERY_LOW), color: 'var(--very-low)' },
-      { label: 'Niska · 3.0–3.9', pct: pct((v) => v >= VERY_LOW && v < LOW), color: 'var(--low)' },
-      { label: 'U opsegu · 3.9–10.0', pct: pct((v) => v >= LOW && v <= HIGH), color: 'var(--teal)' },
-      { label: 'Visoka · 10.0–13.9', pct: pct((v) => v > HIGH && v <= VERY_HIGH), color: 'var(--amber)' },
-      { label: 'Veoma visoka · preko 13.9', pct: pct((v) => v > VERY_HIGH), color: 'var(--very-high)' },
+      {
+        label: 'Veoma niska · ispod 3.0',
+        pct: pct((v) => v < VERY_LOW),
+        color: 'var(--very-low)',
+      },
+      {
+        label: 'Niska · 3.0–3.9',
+        pct: pct((v) => v >= VERY_LOW && v < LOW),
+        color: 'var(--low)',
+      },
+      {
+        label: 'U opsegu · 3.9–10.0',
+        pct: pct((v) => v >= LOW && v <= HIGH),
+        color: 'var(--teal)',
+      },
+      {
+        label: 'Visoka · 10.0–13.9',
+        pct: pct((v) => v > HIGH && v <= VERY_HIGH),
+        color: 'var(--amber)',
+      },
+      {
+        label: 'Veoma visoka · preko 13.9',
+        pct: pct((v) => v > VERY_HIGH),
+        color: 'var(--very-high)',
+      },
     ];
   }
+}
+
+function fmtShort(d: Date): string {
+  return d.toLocaleDateString('sr-Latn-RS', { day: 'numeric', month: 'short' });
 }

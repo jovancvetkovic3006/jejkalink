@@ -49,7 +49,7 @@ export class StaleChipComponent implements OnChanges {
       return;
     }
     const mins = Math.max(0, Math.floor(m));
-    this.label = formatDurationSr(mins);
+    this.label = `očitano ${formatDurationSr(mins)}`;
     if (mins >= STALE_URGENT_MIN) this.tone = 'urgent';
     else if (mins >= STALE_WARN_MIN) this.tone = 'warn';
     else this.tone = 'ok';
