@@ -1,5 +1,6 @@
 import { periodMetrics } from './metrics';
 import { detectGaps } from './coverage';
+import { detectHypoEpisodes, postMealRises } from './episodes';
 import { SgReading } from '../services/sgs-history.service';
 
 function reading(mmol: number, iso: string): SgReading {
@@ -42,5 +43,33 @@ describe('analytics', () => {
     const m = periodMetrics(readings, dayStart, dayEnd);
     expect(m.belowPct).toBe(100);
     expect(m.veryLowPct).toBeGreaterThan(0);
+  });
+
+  it('detects hypo episodes', () => {
+    const readings: SgReading[] = [
+      reading(5.0, '2026-05-01T08:00:00'),
+      reading(3.5, '2026-05-01T08:05:00'),
+      reading(3.2, '2026-05-01T08:10:00'),
+      reading(4.5, '2026-05-01T08:15:00'),
+    ];
+    const eps = detectHypoEpisodes(readings, dayStart, dayEnd);
+    expect(eps.length).toBe(1);
+    expect(eps[0].nadirMmol).toBeLessThanOrEqual(3.2);
+  });
+
+  it('computes post-meal rise', () => {
+    const readings: SgReading[] = [
+      reading(5.0, '2026-05-01T12:00:00'),
+      reading(6.5, '2026-05-01T12:30:00'),
+      reading(9.0, '2026-05-01T13:00:00'),
+      reading(8.0, '2026-05-01T13:30:00'),
+    ];
+    const rises = postMealRises(
+      readings,
+      [{ timestamp: '2026-05-01T12:00:00' }],
+      10.0
+    );
+    expect(rises.length).toBe(1);
+    expect(rises[0].riseMmol).toBeGreaterThan(3);
   });
 });

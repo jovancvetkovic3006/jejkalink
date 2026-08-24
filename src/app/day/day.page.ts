@@ -2,9 +2,15 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { FormsModule } from '@angular/forms';
 import { combineLatest, Subscription } from 'rxjs';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { EventsStore, AppEvent } from '../services/events-store.service';
+import {
+  AnnotationsStore,
+  AnnotationTag,
+  ANNOTATION_TAGS,
+} from '../services/annotations-store.service';
 import { AppSettingsService } from '../services/app-settings.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { MetricGridComponent, MetricCell } from '../components/metric-grid/metric-grid.component';
@@ -46,6 +52,7 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
   styleUrls: ['day.page.scss'],
   imports: [
     CommonModule,
+    FormsModule,
     ScrollingModule,
     IonContent,
     CoverageStripComponent,
@@ -81,10 +88,14 @@ export class DayPage implements OnInit, OnDestroy {
   metricsPlaceholder = false;
   targetLow = 3.9;
   targetHigh = 10.0;
+  noteText = '';
+  noteTag: AnnotationTag = 'other';
+  tagOptions = ANNOTATION_TAGS;
 
   constructor(
     private readonly history: SgsHistoryService,
     private readonly eventsStore: EventsStore,
+    private readonly annotations: AnnotationsStore,
     private readonly appSettings: AppSettingsService
   ) {}
 
@@ -92,10 +103,8 @@ export class DayPage implements OnInit, OnDestroy {
     this.sub = combineLatest([
       this.history.allSgs$,
       this.eventsStore.events$,
-    ]).subscribe(([sgs]) => {
-      this.readings = sgs;
-      this.refresh();
-    });
+      this.annotations.annotations$,
+    ]).subscribe(() => this.refresh());
   }
 
   ngOnDestroy() {
@@ -117,6 +126,27 @@ export class DayPage implements OnInit, OnDestroy {
   onPrev = () => this.prevDay();
   onNext = () => this.nextDay();
 
+  selectTag(tag: AnnotationTag) {
+    this.noteTag = tag;
+  }
+
+  addNote() {
+    if (!this.noteText.trim()) return;
+    const ts = new Date(this.endMs);
+    ts.setHours(12, 0, 0, 0);
+    if (this.dayOffset === 0) {
+      ts.setTime(Math.min(Date.now(), this.endMs));
+    }
+    this.annotations.add(this.noteText, this.noteTag, ts.toISOString());
+    this.noteText = '';
+    this.refresh();
+  }
+
+  removeNote(id: string) {
+    this.annotations.remove(id);
+    this.refresh();
+  }
+
   eventTime(e: AppEvent): string {
     return new Date(e.timestamp).toLocaleTimeString('en-GB', {
       hour: '2-digit',
@@ -129,13 +159,21 @@ export class DayPage implements OnInit, OnDestroy {
   }
 
   eventRight(e: AppEvent): string {
-    if (e.kind === 'gap') return '—';
+    if (e.kind === 'gap' || e.kind === 'note') return '—';
     const r = this.chartReadings.find(
       (x) =>
         Math.abs(new Date(x.timestamp).getTime() - new Date(e.timestamp).getTime()) <
         5 * 60 * 1000
     );
     return r ? r.mmol.toFixed(1) : '';
+  }
+
+  isNote(e: AppEvent): boolean {
+    return e.kind === 'note';
+  }
+
+  noteId(e: AppEvent): string {
+    return e.id.replace(/^note-/, '');
   }
 
   trackEvent = (_: number, e: AppEvent) => e.id;
@@ -222,11 +260,7 @@ export class DayPage implements OnInit, OnDestroy {
         valueSuffix: '%',
         delta: rangeLabel,
       },
-      {
-        key: 'Mean',
-        value: m.meanLabel,
-        delta: 'mmol/L',
-      },
+      { key: 'Mean', value: m.meanLabel, delta: 'mmol/L' },
       {
         key: `Below ${this.targetLow.toFixed(1)}`,
         value: String(m.belowPct),
@@ -256,10 +290,22 @@ export class DayPage implements OnInit, OnDestroy {
       this.eventsStore.syncGapsForRange(inDay, this.startMs, this.endMs);
     }
 
-    this.dayEvents = this.eventsStore.events$.value.filter((e) => {
-      const t = new Date(e.timestamp).getTime();
-      return t >= this.startMs && t <= this.endMs;
-    });
+    const notes: AppEvent[] = this.annotations.inRange(this.startMs, this.endMs).map(
+      (a) => ({
+        id: `note-${a.id}`,
+        kind: 'note' as const,
+        timestamp: a.timestamp,
+        label: AnnotationsStore.tagLabel(a.tag),
+        detail: a.text,
+      })
+    );
+
+    this.dayEvents = [
+      ...this.eventsStore.eventsInRange(this.startMs, this.endMs),
+      ...notes,
+    ].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
     this.eventsPlaceholder = this.dayEvents.length === 0;
     this.displayEvents = this.eventsPlaceholder ? PLACEHOLDER_DAY_EVENTS : this.dayEvents;
   }

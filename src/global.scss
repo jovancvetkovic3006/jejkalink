@@ -187,6 +187,47 @@ ion-content {
 .ai-card p + p {
   margin-top: 8px;
 }
+.ai-card .pattern-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-card .pattern-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ai-card .pattern-time {
+  font-family: var(--font-data);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ai-card .pattern-kind {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.ai-card .pattern-kind.high {
+  color: var(--high);
+  background: color-mix(in srgb, var(--high) 12%, transparent);
+}
+.ai-card .pattern-kind.low {
+  color: var(--low);
+  background: color-mix(in srgb, var(--low) 12%, transparent);
+}
+.ai-card .pattern-detail {
+  color: var(--muted);
+  font-family: var(--font-data);
+}
 .ai-card .q {
   color: var(--muted);
   font-size: 12px;

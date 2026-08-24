@@ -6,3 +6,67 @@
   height: min(320px, 45vh);
   width: 100%;
 }
+
+.note-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-chip {
+  font-family: var(--font-data);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tag-chip.on {
+  border-color: var(--indigo-br);
+  background: var(--indigo-bg);
+  color: var(--indigo);
+}
+
+.note-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.note-input {
+  flex: 1;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 0;
+}
+
+.log-row-wrap {
+  position: relative;
+}
+
+.note-remove {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+}

@@ -9,5 +9,17 @@ export { periodMetrics } from './metrics';
 export type { PeriodMetrics, MetricTargets } from './metrics';
 export { buildWeeklyRead } from './weekly-read';
 export type { WeeklyReadCopy } from './weekly-read';
+export { detectTrendPatterns, formatTrendPattern } from './trend-patterns';
+export type { TrendPattern } from './trend-patterns';
 export { agpBuckets } from './agp';
 export type { AgpBucket } from './agp';
+export {
+  detectHypoEpisodes,
+  detectVeryLowEpisodes,
+  postMealRises,
+  summarizePostMealRises,
+  formatHypoEpisode,
+} from './episodes';
+export type { HypoEpisode, PostMealRise, BolusAnchor } from './episodes';
+export { splitByDayType, hourlyTirBySlot } from './day-split';
+export type { DaySplitMetrics, HourlyTir } from './day-split';

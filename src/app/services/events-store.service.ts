@@ -10,6 +10,8 @@ export type EventKind =
   | 'sync'
   | 'alarm'
   | 'gap'
+  | 'meal'
+  | 'note'
   | 'other';
 
 export interface AppEvent {
@@ -90,6 +92,59 @@ export class EventsStore {
           detail: 'Pump auto-suspend',
         });
       }
+      if (
+        b?.type === 'AUTO_MODE' ||
+        b?.type === 'SMARTGUARD' ||
+        b?.type === 'AUTO_MODE_ACTIVE'
+      ) {
+        this.add({
+          kind: 'basal',
+          timestamp: nowIso,
+          id: `mode-${Math.floor(Date.now() / (15 * 60 * 1000))}`,
+          label: 'Auto mode active',
+          detail: b.type === 'SMARTGUARD' ? 'SmartGuard' : 'Automated insulin delivery',
+        });
+      }
+    }
+
+    if (patientData.pumpSuspended) {
+      this.add({
+        kind: 'alarm',
+        timestamp: nowIso,
+        id: `suspend-${Math.floor(Date.now() / (15 * 60 * 1000))}`,
+        label: 'Pump suspended',
+        detail: 'Delivery paused',
+      });
+    }
+
+    const sensorState = patientData.lastSG?.sensorState || patientData.sensorState;
+    if (sensorState === 'WARMUP' || sensorState === 'WARM_UP') {
+      this.add({
+        kind: 'sensor',
+        timestamp: patientData.lastSG?.timestamp || nowIso,
+        id: `warmup-${Math.floor(Date.now() / (30 * 60 * 1000))}`,
+        label: 'Sensor warmup',
+        detail: 'Readings may be unavailable',
+      });
+    }
+    if (sensorState === 'CHANGE_SENSOR') {
+      this.add({
+        kind: 'sensor',
+        timestamp: patientData.lastSG?.timestamp || nowIso,
+        label: 'Replace sensor',
+        detail: 'Sensor end of life',
+      });
+    }
+
+    const calMin = patientData.timeToNextCalibrationMinutes;
+    if (calMin != null && calMin > 0 && calMin <= 120) {
+      this.add({
+        kind: 'sensor',
+        timestamp: nowIso,
+        id: `cal-${Math.floor(Date.now() / (60 * 60 * 1000))}`,
+        label: 'Calibration due soon',
+        detail: `In ${Math.floor(calMin / 60)}h ${calMin % 60}m`,
+      });
     }
 
     const markers =
@@ -99,10 +154,11 @@ export class EventsStore {
       [];
     for (const m of markers) {
       const amount = m.amount ?? m.bolusAmount ?? m.value;
+      const carbs = m.carbs ?? m.carbohydrates;
       const ts = m.timestamp || m.time || nowIso;
+      const meal = m.meal ?? m.mealType ?? m.foodType;
+
       if (amount && Number(amount) > 0) {
-        const carbs = m.carbs ?? m.carbohydrates;
-        const meal = m.meal ?? m.mealType ?? m.foodType;
         const detailParts: string[] = [];
         if (carbs) detailParts.push(`${carbs} g carbs`);
         if (meal) detailParts.push(String(meal).toLowerCase());
@@ -112,6 +168,15 @@ export class EventsStore {
           label: `Bolus ${Number(amount).toFixed(1)} u`,
           detail: detailParts.length ? detailParts.join(' · ') : undefined,
           units: Number(amount),
+        });
+      } else if (carbs && Number(carbs) > 0) {
+        const detailParts: string[] = [`${carbs} g carbs`];
+        if (meal) detailParts.push(String(meal).toLowerCase());
+        this.add({
+          kind: 'meal',
+          timestamp: ts,
+          label: 'Carbs logged',
+          detail: detailParts.join(' · '),
         });
       }
     }
@@ -131,6 +196,17 @@ export class EventsStore {
 
   recent(limit = 20): AppEvent[] {
     return this.events$.value.slice(0, limit);
+  }
+
+  eventsInRange(startMs: number, endMs: number): AppEvent[] {
+    return this.events$.value
+      .filter((e) => {
+        const t = new Date(e.timestamp).getTime();
+        return t >= startMs && t <= endMs;
+      })
+      .sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
   }
 
   bolusesInRange(startMs: number, endMs: number): AppEvent[] {
@@ -179,6 +255,10 @@ export class EventsStore {
       case 'sync':
         return 'var(--teal)';
       case 'basal':
+        return 'var(--indigo)';
+      case 'meal':
+        return 'var(--amber)';
+      case 'note':
         return 'var(--indigo)';
       default:
         return 'var(--muted)';

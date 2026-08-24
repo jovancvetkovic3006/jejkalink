@@ -36,6 +36,7 @@ Chart.register(...registerables, annotationPlugin);
 export class AgpChartComponent implements AfterViewInit, OnChanges {
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
   @Input() buckets: AgpBucket[] = [];
+  @Input() compareBuckets: AgpBucket[] = [];
   @Input() usePlaceholder = false;
   @Input() targetLow = LOW;
   @Input() targetHigh = HIGH;
@@ -65,6 +66,9 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
     }
 
     const median = data.map((b) => ({ x: b.slotMin, y: b.median }));
+    const compareData = this.compareBuckets.length
+      ? this.compareBuckets.map((b) => ({ x: b.slotMin, y: b.median }))
+      : [];
     const p75 = data.map((b) => ({ x: b.slotMin, y: b.p75 }));
     const p25 = data.map((b) => ({ x: b.slotMin, y: b.p25 }));
     const p90 = data.map((b) => ({ x: b.slotMin, y: b.p90 }));
@@ -72,24 +76,21 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
 
     const hourTicks = [0, 360, 720, 1080, 1440];
 
-    const cfg: ChartConfiguration = {
-      type: 'line',
-      data: {
-        datasets: [
+    const datasets: ChartConfiguration['data']['datasets'] = [
           {
             data: p90 as any,
             borderWidth: 0,
             pointRadius: 0,
             fill: '+1',
             backgroundColor: 'rgba(21, 33, 59, 0.08)',
-            parsing: false,
+            parsing: false as const,
           },
           {
             data: p10 as any,
             borderWidth: 0,
             pointRadius: 0,
             fill: false,
-            parsing: false,
+            parsing: false as const,
           },
           {
             data: p75 as any,
@@ -97,14 +98,14 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
             pointRadius: 0,
             fill: '+1',
             backgroundColor: 'rgba(21, 33, 59, 0.15)',
-            parsing: false,
+            parsing: false as const,
           },
           {
             data: p25 as any,
             borderWidth: 0,
             pointRadius: 0,
             fill: false,
-            parsing: false,
+            parsing: false as const,
           },
           {
             data: median as any,
@@ -112,9 +113,25 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
             borderWidth: 2.2,
             pointRadius: 0,
             tension: 0.35,
-            parsing: false,
+            parsing: false as const,
           },
-        ],
+        ];
+    if (compareData.length) {
+      datasets.push({
+        data: compareData as any,
+        borderColor: 'rgba(112, 124, 145, 0.85)',
+        borderWidth: 1.6,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        tension: 0.35,
+        parsing: false as const,
+      });
+    }
+
+    const cfg: ChartConfiguration = {
+      type: 'line',
+      data: {
+        datasets,
       },
       options: {
         responsive: true,

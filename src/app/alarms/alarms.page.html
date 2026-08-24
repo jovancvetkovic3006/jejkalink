@@ -46,6 +46,22 @@
     </div>
 
     <div class="card-surface">
+      <div class="lbl">Snooze</div>
+      <p class="snooze-note">
+        Pauses low, high, projection, and falling-fast alerts. Urgent low and stale data
+        still fire.
+      </p>
+      <div class="snooze-row" *ngIf="snoozeMin > 0">
+        <span>Snoozed · {{ snoozeMin }} min left</span>
+        <button type="button" class="chip-pill" (click)="clearSnooze()">Clear</button>
+      </div>
+      <div class="snooze-row" *ngIf="snoozeMin === 0">
+        <button type="button" class="chip-pill" (click)="snooze(20)">20 min</button>
+        <button type="button" class="chip-pill" (click)="snooze(60)">1 hour</button>
+      </div>
+    </div>
+
+    <div class="card-surface">
       <div class="lbl">Fired this week · {{ fired.length }}</div>
       <app-glass-panel
         [placeholder]="firedPlaceholder"
@@ -53,17 +69,39 @@
       >
         <cdk-virtual-scroll-viewport
           *ngIf="!firedPlaceholder; else firedPh"
-          itemSize="56"
+          itemSize="72"
           class="virt-fired"
         >
-          <app-event-row
+          <div
             *cdkVirtualFor="let f of displayFired; trackBy: trackFired"
-            [time]="firedTime(f)"
-            [title]="f.label"
-            [subtitle]="firedSubtitle(f)"
-            [rightValue]="firedDay(f)"
-            [dotColor]="firedDot(f)"
-          ></app-event-row>
+            class="fired-row"
+          >
+            <app-event-row
+              [time]="firedTime(f)"
+              [title]="f.label"
+              [subtitle]="firedSubtitle(f)"
+              [rightValue]="firedDay(f)"
+              [dotColor]="firedDot(f)"
+            ></app-event-row>
+            <div class="tag-row">
+              <button
+                type="button"
+                class="tag-btn"
+                [class.on]="f.tag === 'real'"
+                (click)="tagAlarm(f.id, 'real')"
+              >
+                Real
+              </button>
+              <button
+                type="button"
+                class="tag-btn"
+                [class.on]="f.tag === 'false'"
+                (click)="tagAlarm(f.id, 'false')"
+              >
+                False
+              </button>
+            </div>
+          </div>
         </cdk-virtual-scroll-viewport>
         <ng-template #firedPh>
           <app-event-row

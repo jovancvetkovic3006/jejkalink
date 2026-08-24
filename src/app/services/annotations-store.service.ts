@@ -1,13 +1,31 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
+export type AnnotationTag =
+  | 'meal'
+  | 'exercise'
+  | 'illness'
+  | 'stress'
+  | 'site'
+  | 'other';
+
 export interface Annotation {
   id: string;
   timestamp: string;
   text: string;
+  tag: AnnotationTag;
 }
 
-/** Carepartner notes for weekly read / clinic context (descriptive only). */
+export const ANNOTATION_TAGS: { id: AnnotationTag; label: string }[] = [
+  { id: 'meal', label: 'Meal' },
+  { id: 'exercise', label: 'Exercise' },
+  { id: 'illness', label: 'Illness' },
+  { id: 'stress', label: 'Stress' },
+  { id: 'site', label: 'Site change' },
+  { id: 'other', label: 'Other' },
+];
+
+/** Carepartner notes for day log / clinic context (descriptive only). */
 @Injectable({ providedIn: 'root' })
 export class AnnotationsStore {
   private static readonly KEY = 'annotations_v1';
@@ -18,7 +36,11 @@ export class AnnotationsStore {
   private load(): Annotation[] {
     try {
       const raw = localStorage.getItem(AnnotationsStore.KEY);
-      return raw ? JSON.parse(raw) : [];
+      const list: Annotation[] = raw ? JSON.parse(raw) : [];
+      return list.map((a) => ({
+        ...a,
+        tag: a.tag || 'other',
+      }));
     } catch {
       return [];
     }
@@ -29,13 +51,14 @@ export class AnnotationsStore {
     this.annotations$.next(list.slice(0, AnnotationsStore.MAX));
   }
 
-  add(text: string, timestamp = new Date().toISOString()) {
+  add(text: string, tag: AnnotationTag = 'other', timestamp = new Date().toISOString()) {
     const trimmed = text.trim();
     if (!trimmed) return;
     const entry: Annotation = {
       id: `ann-${Date.now()}`,
       timestamp,
       text: trimmed.slice(0, 500),
+      tag,
     };
     this.persist([entry, ...this.load()]);
   }
@@ -45,9 +68,17 @@ export class AnnotationsStore {
   }
 
   inRange(startMs: number, endMs: number): Annotation[] {
-    return this.load().filter((a) => {
-      const t = new Date(a.timestamp).getTime();
-      return t >= startMs && t <= endMs;
-    });
+    return this.load()
+      .filter((a) => {
+        const t = new Date(a.timestamp).getTime();
+        return t >= startMs && t <= endMs;
+      })
+      .sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+  }
+
+  static tagLabel(tag: AnnotationTag): string {
+    return ANNOTATION_TAGS.find((t) => t.id === tag)?.label || 'Note';
   }
 }

@@ -10,7 +10,9 @@ import { CollectorHealthService } from '../services/collector-health.service';
 import { CollectorConfigService } from '../services/collector-config.service';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
-import { detectGaps, periodMetrics } from '../analytics';
+import { detectGaps, periodMetrics, detectTrendPatterns, splitByDayType, detectHypoEpisodes, postMealRises, summarizePostMealRises } from '../analytics';
+import { EventsStore } from '../services/events-store.service';
+import { AnnotationsStore } from '../services/annotations-store.service';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 import { parseCareLinkCsv, csvImportSummary } from '../utils/carelink-csv.util';
 import {
@@ -34,7 +36,7 @@ import {
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.14.0';
+  appVersion = '1.15.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;
@@ -62,7 +64,9 @@ export class SettingsPage implements OnInit {
     private readonly history: SgsHistoryService,
     private readonly appSettings: AppSettingsService,
     private readonly collectorHealth: CollectorHealthService,
-    private readonly collectorConfig: CollectorConfigService
+    private readonly collectorConfig: CollectorConfigService,
+    private readonly eventsStore: EventsStore,
+    private readonly annotations: AnnotationsStore
   ) {}
 
   ngOnInit() {
@@ -234,12 +238,43 @@ export class SettingsPage implements OnInit {
     }
     const patient =
       this.patientUsername.trim() || localStorage.getItem('patientUsername') || 'Patient';
+
+    const patterns = detectTrendPatterns(
+      ranged,
+      start,
+      end,
+      this.targetLow,
+      this.targetHigh
+    );
+    const hypos = detectHypoEpisodes(ranged, start, end, this.targetLow);
+    const daySplit = splitByDayType(ranged, start, end, {
+      low: this.targetLow,
+      high: this.targetHigh,
+    });
+    const bolusAnchors = this.eventsStore
+      .bolusesInRange(start.getTime(), end.getTime())
+      .map((b) => ({ timestamp: b.timestamp, units: b.units }));
+    const pm = summarizePostMealRises(
+      postMealRises(ranged, bolusAnchors, this.targetHigh)
+    );
+    const postMealSummary =
+      pm.count > 0
+        ? `${pm.count} bolus windows · median peak +${pm.medianRiseMmol} mmol at ${pm.medianPeakMin} min`
+        : undefined;
+
     const html = buildClinicReportHtml({
       patientLabel: patient,
       periodLabel: `${start.toLocaleDateString('en-GB')} — ${end.toLocaleDateString('en-GB')}`,
       metrics: m,
       targetLow: this.targetLow,
       targetHigh: this.targetHigh,
+      extras: {
+        patterns,
+        hypos,
+        daySplit,
+        postMealSummary,
+        annotations: this.annotations.inRange(start.getTime(), end.getTime()),
+      },
     });
     const stamp = end.toISOString().slice(0, 10);
     downloadHtmlReport(`jejkalink-clinic-${stamp}.html`, html);

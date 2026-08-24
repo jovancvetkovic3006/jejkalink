@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { Subscription } from 'rxjs';
 import { AlarmsService, AlarmSettings, FiredAlarm } from '../services/alarms.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
@@ -48,11 +49,13 @@ const PLACEHOLDER_FIRED: FiredAlarm[] = [
     TabSwipeDirective,
   ],
 })
-export class AlarmsPage implements OnInit {
+export class AlarmsPage implements OnInit, OnDestroy {
   settings!: AlarmSettings;
   fired: FiredAlarm[] = [];
   displayFired: FiredAlarm[] = [];
   firedPlaceholder = false;
+  snoozeMin = 0;
+  private snoozeSub?: Subscription;
 
   thresholdRows: {
     key: 'urgentLow' | 'low' | 'high' | 'fallingFast';
@@ -83,12 +86,18 @@ export class AlarmsPage implements OnInit {
 
   ngOnInit() {
     this.settings = { ...this.alarms.settings$.value };
+    this.refreshSnooze();
+    this.snoozeSub = this.alarms.snoozeUntilMs$.subscribe(() => this.refreshSnooze());
     this.alarms.fired$.subscribe(() => {
       this.fired = this.alarms.firedThisWeek();
       this.firedPlaceholder = this.fired.length === 0;
       this.displayFired = this.firedPlaceholder ? PLACEHOLDER_FIRED : this.fired;
     });
     this.alarms.evaluate(this.history.readings());
+  }
+
+  ngOnDestroy() {
+    this.snoozeSub?.unsubscribe();
   }
 
   save() {
@@ -112,6 +121,25 @@ export class AlarmsPage implements OnInit {
     return Boolean(this.settings[key]);
   }
 
+  snooze(minutes: number) {
+    this.alarms.snooze(minutes);
+    this.refreshSnooze();
+  }
+
+  clearSnooze() {
+    this.alarms.clearSnooze();
+    this.refreshSnooze();
+  }
+
+  tagAlarm(id: string, tag: 'real' | 'false') {
+    if (this.firedPlaceholder) return;
+    this.alarms.tag(id, tag);
+  }
+
+  private refreshSnooze() {
+    this.snoozeMin = this.alarms.snoozeRemainingMin();
+  }
+
   firedDay(f: FiredAlarm): string {
     return new Date(f.timestamp).toLocaleDateString('en-GB', {
       weekday: 'short',
@@ -126,13 +154,15 @@ export class AlarmsPage implements OnInit {
   }
 
   firedSubtitle(f: FiredAlarm): string {
-    if (f.rule === 'stale') return 'No fresh reading for 20 min';
-    if (f.rule === 'projection') return '15-min forecast crossed threshold';
-    if (f.rule === 'falling_fast') return 'Drop rate crossed the fast-fall threshold';
-    if (f.rule === 'urgent_low') return 'Urgent threshold crossed';
-    if (f.rule === 'low') return 'Low threshold crossed';
-    if (f.rule === 'high') return 'High threshold crossed';
-    return '';
+    const tag =
+      f.tag === 'real' ? ' · real' : f.tag === 'false' ? ' · false alarm' : '';
+    if (f.rule === 'stale') return `No fresh reading for 20 min${tag}`;
+    if (f.rule === 'projection') return `15-min forecast crossed threshold${tag}`;
+    if (f.rule === 'falling_fast') return `Drop rate crossed the fast-fall threshold${tag}`;
+    if (f.rule === 'urgent_low') return `Urgent threshold crossed${tag}`;
+    if (f.rule === 'low') return `Low threshold crossed${tag}`;
+    if (f.rule === 'high') return `High threshold crossed${tag}`;
+    return tag.slice(3) || '';
   }
 
   firedDot(f: FiredAlarm): string {

@@ -44,6 +44,8 @@ const DEFAULTS: AlarmSettings = {
   repeatUntilCleared: true,
 };
 
+const SNOOZE_KEY = 'alarm_snooze_until_v1';
+
 const OVERNIGHT_LOW = 4.2;
 const HIGH_HOLD_MIN = 30;
 const DEDUPE_MS = 15 * 60 * 1000;
@@ -55,6 +57,7 @@ export class AlarmsService {
 
   public settings$ = new BehaviorSubject<AlarmSettings>(this.loadSettings());
   public fired$ = new BehaviorSubject<FiredAlarm[]>(this.loadFired());
+  public snoozeUntilMs$ = new BehaviorSubject<number | null>(this.loadSnooze());
 
   private lowActive = false;
   private lastFireKey = '';
@@ -80,6 +83,50 @@ export class AlarmsService {
     } catch {
       return [];
     }
+  }
+
+  private loadSnooze(): number | null {
+    try {
+      const raw = localStorage.getItem(SNOOZE_KEY);
+      if (!raw) return null;
+      const ms = Number(raw);
+      return ms > Date.now() ? ms : null;
+    } catch {
+      return null;
+    }
+  }
+
+  snooze(minutes: number) {
+    const until = Date.now() + minutes * 60 * 1000;
+    localStorage.setItem(SNOOZE_KEY, String(until));
+    this.snoozeUntilMs$.next(until);
+  }
+
+  clearSnooze() {
+    localStorage.removeItem(SNOOZE_KEY);
+    this.snoozeUntilMs$.next(null);
+  }
+
+  isSnoozed(): boolean {
+    const until = this.snoozeUntilMs$.value;
+    if (!until) return false;
+    if (until <= Date.now()) {
+      this.clearSnooze();
+      return false;
+    }
+    return true;
+  }
+
+  snoozeRemainingMin(): number {
+    const until = this.snoozeUntilMs$.value;
+    if (!until) return 0;
+    return Math.max(0, Math.ceil((until - Date.now()) / 60000));
+  }
+
+  /** Urgent low and stale always fire; other rules respect snooze. */
+  private snoozeBlocks(rule: string): boolean {
+    if (!this.isSnoozed()) return false;
+    return rule !== 'urgent_low' && rule !== 'stale';
   }
 
   saveSettings(patch: Partial<AlarmSettings>) {
@@ -132,6 +179,7 @@ export class AlarmsService {
     reading?: SgReading,
     opts?: { critical?: boolean; body?: string }
   ) {
+    if (this.snoozeBlocks(rule)) return;
     const key = `${rule}-${reading?.timestamp || ''}-${label}`;
     if (key === this.lastFireKey) return;
     if (!this.shouldNotify(rule)) return;

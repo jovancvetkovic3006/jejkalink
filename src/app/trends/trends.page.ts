@@ -9,8 +9,9 @@ import { MetricGridComponent, MetricCell } from '../components/metric-grid/metri
 import { AgpChartComponent } from '../components/agp-chart/agp-chart.component';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
-import { agpBuckets, periodMetrics, buildWeeklyRead, alignTrendPeriod, isUnusualDay } from '../analytics';
-import { VERY_HIGH, VERY_LOW, LOW, TIGHT_HIGH } from '../domain/glucose';
+import { agpBuckets, periodMetrics, buildWeeklyRead, alignTrendPeriod, isUnusualDay, splitByDayType, detectHypoEpisodes, postMealRises, summarizePostMealRises } from '../analytics';
+import { VERY_HIGH, VERY_LOW } from '../domain/glucose';
+import { EventsStore } from '../services/events-store.service';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PERIODS = [7, 14, 30, 90] as const;
@@ -55,10 +56,18 @@ export class TrendsPage implements OnInit, OnDestroy {
   weeklyReadP2 = '';
   weeklyReadQ = '';
   weeklyReadEnabled = false;
+  trendPatterns: { timeLabel: string; kind: 'high' | 'low'; detail: string }[] = [];
+  agpCompareBuckets: ReturnType<typeof agpBuckets> = [];
+  showAgpCompare = true;
+  weekdayTir = '';
+  weekendTir = '';
+  episodeSummary = '';
+  postMealSummary = '';
 
   constructor(
     private readonly history: SgsHistoryService,
-    private readonly appSettings: AppSettingsService
+    private readonly appSettings: AppSettingsService,
+    private readonly eventsStore: EventsStore
   ) {}
 
   ngOnInit() {
@@ -106,6 +115,7 @@ export class TrendsPage implements OnInit, OnDestroy {
     this.coverage = m.coverage;
     this.metricsEmpty = m.count === 0;
     this.agpBuckets = agpBuckets(ranged, start, aligned.end);
+    this.agpCompareBuckets = agpBuckets(prevRanged, prevStart, start);
     this.agpPlaceholder = this.agpBuckets.length === 0;
 
     if (s.flagUnusualDays && m.count > 0) {
@@ -171,20 +181,72 @@ export class TrendsPage implements OnInit, OnDestroy {
       },
     ];
 
-    const read = buildWeeklyRead(m, this.days, this.weeklyReadEnabled);
+    const split = splitByDayType(ranged, start, aligned.end, {
+      low: this.targetLow,
+      high: this.targetHigh,
+    });
+    if (split.weekday.count > 0) {
+      this.weekdayTir = `${split.weekdayLabel} TIR ${split.weekday.tirPct}% · mean ${split.weekday.meanLabel}`;
+    } else {
+      this.weekdayTir = `${split.weekdayLabel} — no data`;
+    }
+    if (split.weekend.count > 0) {
+      this.weekendTir = `${split.weekendLabel} TIR ${split.weekend.tirPct}% · mean ${split.weekend.meanLabel}`;
+    } else {
+      this.weekendTir = `${split.weekendLabel} — no data`;
+    }
+
+    const hypos = detectHypoEpisodes(ranged, start, aligned.end, this.targetLow);
+    if (hypos.length) {
+      const totalMin = hypos.reduce((a, e) => a + e.durationMin, 0);
+      this.episodeSummary = `${hypos.length} low episode${hypos.length > 1 ? 's' : ''} · ${totalMin} min below ${this.targetLow.toFixed(1)}`;
+    } else {
+      this.episodeSummary = `No episodes below ${this.targetLow.toFixed(1)} mmol/L`;
+    }
+
+    const bolusAnchors = this.eventsStore
+      .bolusesInRange(start.getTime(), aligned.end.getTime())
+      .map((b) => ({ timestamp: b.timestamp, units: b.units }));
+    const rises = postMealRises(ranged, bolusAnchors, this.targetHigh);
+    const pm = summarizePostMealRises(rises);
+    if (pm.count > 0) {
+      this.postMealSummary = `${pm.count} bolus windows · median peak +${pm.medianRiseMmol} mmol at ${pm.medianPeakMin} min${
+        pm.medianBackMin != null ? ` · back in range ~${pm.medianBackMin} min` : ''
+      }`;
+    } else {
+      this.postMealSummary = 'No bolus markers in period for post-meal stats';
+    }
+
+    const read = buildWeeklyRead(
+      m,
+      this.days,
+      this.weeklyReadEnabled,
+      ranged,
+      start,
+      aligned.end,
+      this.targetLow,
+      this.targetHigh
+    );
     if (read) {
       this.weeklyReadP1 = read.p1;
       this.weeklyReadP2 = read.p2;
       this.weeklyReadQ = read.q;
+      this.trendPatterns = read.patterns.map((p) => ({
+        timeLabel: p.timeLabel,
+        kind: p.kind,
+        detail: `${p.daysAffected}/${p.totalDays} days · ${p.typicalMmol.toFixed(1)} mmol/L`,
+      }));
     } else if (!this.weeklyReadEnabled) {
       this.weeklyReadP1 =
         'Enable weekly read in Settings to see a descriptive summary from your metrics.';
       this.weeklyReadP2 = '';
       this.weeklyReadQ = '';
+      this.trendPatterns = [];
     } else {
       this.weeklyReadP1 = 'Not enough covered data for a weekly read yet.';
       this.weeklyReadP2 = '';
       this.weeklyReadQ = '';
+      this.trendPatterns = [];
     }
 
     const placeholderCells: MetricCell[] = [
@@ -222,40 +284,33 @@ export class TrendsPage implements OnInit, OnDestroy {
 
     const low = this.targetLow;
     const high = this.targetHigh;
-    const inPeriod = ranged.filter((r) => r.mmol > 0);
-    const n = inPeriod.length || 1;
-    const pct = (fn: (v: number) => boolean) =>
-      Math.round((inPeriod.filter((r) => fn(r.mmol)).length / n) * 1000) / 10;
+    const lowOnly = Math.max(0, Math.round((m.belowPct - m.veryLowPct) * 10) / 10);
+    const highOnly = Math.max(0, Math.round((m.abovePct - m.veryHighPct) * 10) / 10);
 
     this.rangeBars = [
       {
         label: 'Very low · under 3.0',
-        pct: pct((v) => v < VERY_LOW),
+        pct: m.veryLowPct,
         color: 'var(--very-low)',
       },
       {
         label: `Low · 3.0–${low.toFixed(1)}`,
-        pct: pct((v) => v >= VERY_LOW && v < low),
+        pct: lowOnly,
         color: 'var(--low)',
       },
       {
         label: `In range · ${low.toFixed(1)}–${high.toFixed(1)}`,
-        pct: pct((v) => v >= low && v <= high),
+        pct: m.tirPct,
         color: 'var(--teal)',
       },
       {
-        label: `Tight · ${LOW.toFixed(1)}–${TIGHT_HIGH.toFixed(1)}`,
-        pct: pct((v) => v >= LOW && v <= TIGHT_HIGH),
-        color: 'var(--indigo)',
-      },
-      {
         label: `High · ${high.toFixed(1)}–13.9`,
-        pct: pct((v) => v > high && v <= VERY_HIGH),
+        pct: highOnly,
         color: 'var(--amber)',
       },
       {
         label: 'Very high · over 13.9',
-        pct: pct((v) => v > VERY_HIGH),
+        pct: m.veryHighPct,
         color: 'var(--very-high)',
       },
     ];

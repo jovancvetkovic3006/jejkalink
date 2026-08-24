@@ -23,7 +23,7 @@ function percentile(sorted: number[], p: number): number {
 }
 
 /** Local wall-clock minutes at capture using stored utcOffsetMin (DST-safe). */
-function captureLocalSlotMin(r: SgReading): number {
+export function slotMinForReading(r: SgReading): number {
   const ts = new Date(r.timestamp).getTime();
   const offsetMin =
     r.utcOffsetMin ?? -new Date(r.timestamp).getTimezoneOffset();
@@ -31,6 +31,10 @@ function captureLocalSlotMin(r: SgReading): number {
   const d = new Date(localMs);
   const totalMin = d.getUTCHours() * 60 + d.getUTCMinutes();
   return Math.floor(totalMin / SLOT_MIN) * SLOT_MIN;
+}
+
+function captureLocalSlotMin(r: SgReading): number {
+  return slotMinForReading(r);
 }
 
 /** AGP buckets by capture-time local clock for readings in period. */

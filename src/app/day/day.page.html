@@ -47,6 +47,34 @@
     ></app-metric-grid>
 
     <div class="card-surface log">
+      <div class="lbl">Add note</div>
+      <div class="note-bar">
+        <div class="tag-row">
+          <button
+            type="button"
+            *ngFor="let t of tagOptions"
+            class="tag-chip"
+            [class.on]="noteTag === t.id"
+            (click)="selectTag(t.id)"
+          >
+            {{ t.label }}
+          </button>
+        </div>
+        <div class="note-input-row">
+          <input
+            type="text"
+            class="note-input"
+            [(ngModel)]="noteText"
+            placeholder="What happened today?"
+            maxlength="500"
+            (keyup.enter)="addNote()"
+          />
+          <button type="button" class="chip-pill" (click)="addNote()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-surface log">
       <div class="lbl">Day log</div>
       <app-glass-panel [placeholder]="eventsPlaceholder" message="No data yet">
         <cdk-virtual-scroll-viewport
@@ -54,14 +82,27 @@
           itemSize="56"
           class="virt-log"
         >
-          <app-event-row
+          <div
             *cdkVirtualFor="let e of displayEvents; trackBy: trackEvent"
-            [time]="eventTime(e)"
-            [title]="e.label"
-            [subtitle]="e.detail || ''"
-            [rightValue]="eventRight(e)"
-            [dotColor]="eventDot(e)"
-          ></app-event-row>
+            class="log-row-wrap"
+          >
+            <app-event-row
+              [time]="eventTime(e)"
+              [title]="e.label"
+              [subtitle]="e.detail || ''"
+              [rightValue]="eventRight(e)"
+              [dotColor]="eventDot(e)"
+            ></app-event-row>
+            <button
+              *ngIf="isNote(e)"
+              type="button"
+              class="note-remove"
+              (click)="removeNote(noteId(e))"
+              aria-label="Remove note"
+            >
+              ×
+            </button>
+          </div>
         </cdk-virtual-scroll-viewport>
         <ng-template #dayLogPh>
           <app-event-row
