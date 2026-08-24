@@ -132,6 +132,26 @@ export class DataRetentionService {
     return mb < 0.1 ? '< 0.1 MB' : `${mb.toFixed(1)} MB`;
   }
 
+  /** Wipe local CGM data; keeps sign-in and app settings. */
+  clearLocalData(opts: {
+    history: { clearAll(): void };
+    events: { clearAll(): void };
+    annotations: { clearAll(): void };
+    apiCapture: { clear(): void };
+    auth: { clearDebugLogs(): void };
+  }) {
+    opts.history.clearAll();
+    opts.events.clearAll();
+    opts.annotations.clearAll();
+    opts.apiCapture.clear();
+    opts.auth.clearDebugLogs();
+    localStorage.removeItem(ARCHIVES_KEY);
+    localStorage.removeItem(ARCHIVE_META_KEY);
+    localStorage.removeItem('fired_alarms_v1');
+    localStorage.removeItem('alarm_snooze_until');
+    this.clearStorageWarning();
+  }
+
   private loadMeta(): ArchiveMeta {
     try {
       const raw = localStorage.getItem(ARCHIVE_META_KEY);

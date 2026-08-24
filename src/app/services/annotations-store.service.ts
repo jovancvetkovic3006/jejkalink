@@ -81,4 +81,9 @@ export class AnnotationsStore {
   static tagLabel(tag: AnnotationTag): string {
     return ANNOTATION_TAGS.find((t) => t.id === tag)?.label || 'Note';
   }
+
+  clearAll() {
+    localStorage.removeItem(AnnotationsStore.KEY);
+    this.annotations$.next([]);
+  }
 }

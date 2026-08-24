@@ -22,11 +22,43 @@ import {
   DataRetentionService,
   HOT_RETENTION_DAYS,
 } from '../services/data-retention.service';
+import { ApiCaptureService } from '../services/api-capture.service';
 import {
   buildArchiveHtml,
   buildArchiveJson,
   downloadTextFile,
 } from '../utils/archive-export.util';
+
+const GLOSSARY: { term: string; meaning: string }[] = [
+  {
+    term: 'TIR',
+    meaning: 'Time in range — % of readings between your target low and high.',
+  },
+  {
+    term: 'Tight TIR',
+    meaning: 'Time in the tighter 3.9–7.8 mmol/L band.',
+  },
+  {
+    term: 'GMI',
+    meaning: 'Glucose Management Indicator — estimated average glucose as a % (like HbA1c).',
+  },
+  {
+    term: 'CV',
+    meaning: 'Coefficient of variation — how much glucose swings; aim under 36%.',
+  },
+  {
+    term: 'Mean',
+    meaning: 'Average glucose for the period, in mmol/L.',
+  },
+  {
+    term: 'AGP',
+    meaning: 'Ambulatory Glucose Profile — typical day pattern by time of day.',
+  },
+  {
+    term: 'Coverage',
+    meaning: '% of the period with sensor data (gaps excluded from percentages).',
+  },
+];
 
 @Component({
   selector: 'app-settings',
@@ -43,10 +75,15 @@ import {
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.17.0';
+  appVersion = '1.18.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
+  apiCaptures$ = this.apiCapture.captures$;
   logsExpanded = false;
+  apiExpanded = false;
+  glossaryExpanded = false;
+  glossary = GLOSSARY;
+  clearStatus = '';
   userName = '';
   tokenStatus = 'Unknown';
   sessionDetail = '';
@@ -81,7 +118,8 @@ export class SettingsPage implements OnInit {
     private readonly collectorConfig: CollectorConfigService,
     private readonly eventsStore: EventsStore,
     private readonly annotations: AnnotationsStore,
-    private readonly retention: DataRetentionService
+    private readonly retention: DataRetentionService,
+    private readonly apiCapture: ApiCaptureService
   ) {}
 
   ngOnInit() {
@@ -337,13 +375,42 @@ export class SettingsPage implements OnInit {
   }
 
   clearLogs() {
-    localStorage.removeItem('debug_logs');
-    this.authService.debugLog$.next([]);
+    this.authService.clearDebugLogs();
   }
 
   sendLogs() {
     this.authService.sendLogsViaEmail();
   }
 
+  clearApiCaptures() {
+    this.apiCapture.clear();
+  }
+
+  sendApiCaptures() {
+    this.authService.sendApiCapturesViaEmail(this.apiCapture);
+  }
+
+  clearLocalData() {
+    if (
+      !confirm(
+        'Clear all local readings, events, notes, archives, and API captures? Sign-in and settings are kept.'
+      )
+    ) {
+      return;
+    }
+    this.retention.clearLocalData({
+      history: this.history,
+      events: this.eventsStore,
+      annotations: this.annotations,
+      apiCapture: this.apiCapture,
+      auth: this.authService,
+    });
+    this.readingsCount = 0;
+    this.refreshRetention();
+    this.clearStatus = 'Local data cleared';
+  }
+
   trackLog = (index: number, log: string) => `${index}:${log.slice(0, 24)}`;
+
+  trackCapture = (index: number, c: { ts: number }) => `${index}:${c.ts}`;
 }

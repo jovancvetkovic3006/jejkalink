@@ -113,16 +113,19 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
   @Input() boluses: BolusMark[] = [];
   @Input() targetLow = LOW;
   @Input() targetHigh = HIGH;
+  /** Default label when not scrubbing (e.g. latest reading). */
+  @Input() lastReadingLabel = '';
   /** Default label above the chart; updates while scrubbing. */
   @Input() title = '';
   @Input() showTitle = true;
+  @Input() highlightLast = true;
 
   displayTitle = '';
   private chart?: Chart;
   private scrubbing = false;
   private readonly onPointerLeave = () => {
     this.scrubbing = false;
-    this.setDisplayTitle(this.title);
+    this.setDisplayTitle(this.defaultTitle());
   };
 
   constructor(
@@ -131,7 +134,11 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
   ) {}
 
   get titleEnabled(): boolean {
-    return this.showTitle && (!!this.title || !!this.displayTitle);
+    return this.showTitle && (!!this.title || !!this.displayTitle || !!this.lastReadingLabel);
+  }
+
+  private defaultTitle(): string {
+    return this.lastReadingLabel || this.title;
   }
 
   ngAfterViewInit() {
@@ -140,7 +147,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
 
   ngOnChanges() {
     if (!this.scrubbing) {
-      this.displayTitle = this.title;
+      this.displayTitle = this.defaultTitle();
     }
     if (this.canvasRef) this.render();
   }
@@ -175,7 +182,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
     if (!canvas || !this.startMs || !this.endMs) return;
 
     if (!this.scrubbing) {
-      this.displayTitle = this.title;
+      this.displayTitle = this.defaultTitle();
     }
 
     const slice = this.readings.filter((r) => {
@@ -256,6 +263,12 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       }));
 
     const lastIdx = data.length - 1;
+    const lastRealIdx = (() => {
+      for (let i = data.length - 1; i >= 0; i--) {
+        if (data[i].y != null) return i;
+      }
+      return -1;
+    })();
     const lineDatasetIndex = 1;
     const datasets: ChartConfiguration['data']['datasets'] = [
       {
@@ -275,10 +288,10 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         pointRadius: (ctx: { dataIndex?: number; parsed?: { y?: number | null } }) => {
           const y = ctx.parsed?.y;
           if (y == null) return 0;
-          if (this.sparkline && ctx.dataIndex === lastIdx) return 4;
+          if (this.highlightLast && ctx.dataIndex === lastRealIdx) return this.sparkline ? 4.5 : 4;
           if (y < low) return 2.1;
           if (y > high) return 1.7;
-          return 0;
+          return this.sparkline ? 0 : 0;
         },
         pointBackgroundColor: (ctx: {
           dataIndex?: number;
@@ -286,7 +299,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         }) => {
           const y = ctx.parsed?.y;
           if (y == null) return '#15213B';
-          if (this.sparkline && ctx.dataIndex === lastIdx) return '#0E9B8A';
+          if (this.highlightLast && ctx.dataIndex === lastRealIdx) return '#0E9B8A';
           if (y < VERY_LOW) return '#9B1B47';
           if (y < low) return '#C2255C';
           if (y > high) return 'rgba(199, 124, 30, 0.75)';
@@ -294,7 +307,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         },
         pointBorderColor: '#fff',
         pointBorderWidth: (ctx: { dataIndex?: number; parsed?: { y?: number | null } }) =>
-          this.sparkline && ctx.dataIndex === lastIdx ? 2 : 0,
+          this.highlightLast && ctx.dataIndex === lastRealIdx ? 2 : 0,
         tension: 0.2,
         spanGaps: false,
         parsing: false,
@@ -391,8 +404,8 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         },
         layout: {
           padding: this.sparkline
-            ? { top: 4, bottom: 4, left: 0, right: 0 }
-            : { top: 0, bottom: 0, left: 0, right: 0 },
+            ? { top: 4, bottom: 4, left: 0, right: 10 }
+            : { top: 0, bottom: 0, left: 0, right: 4 },
         },
       },
     };

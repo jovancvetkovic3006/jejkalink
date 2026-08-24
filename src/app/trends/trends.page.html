@@ -1,110 +1,120 @@
-<ion-content appTabSwipe>
-  <div class="screen">
-    <app-page-tbar
-      title="Trends"
-      [pill]="periodPill"
-      statusRight="7 · 14 · 30 · 90"
-      [onPill]="cyclePeriod"
-    ></app-page-tbar>
-
-    <div class="card-surface flush agp-card">
-      <div class="lbl agp-lbl">
-        <span>Typical day · median &amp; spread</span>
-        <button type="button" class="compare-toggle" (click)="showAgpCompare = !showAgpCompare">
-          {{ showAgpCompare ? 'Compare on' : 'Compare off' }}
-        </button>
-      </div>
-      <p class="agp-hint" *ngIf="showAgpCompare && !agpPlaceholder">
-        Dashed line = previous {{ days }} days
-      </p>
-      <app-glass-panel [placeholder]="agpPlaceholder" message="No data yet">
-        <app-agp-chart
-          [buckets]="agpBuckets"
-          [compareBuckets]="showAgpCompare ? agpCompareBuckets : []"
-          [usePlaceholder]="agpPlaceholder"
-          [targetLow]="targetLow"
-          [targetHigh]="targetHigh"
-        ></app-agp-chart>
-        <app-coverage-strip
-          [coverage]="coverage"
-          [periodStart]="periodStart"
-          [periodEnd]="periodEnd"
-          [periodLabel]="coveragePeriodLabel"
-        ></app-coverage-strip>
-      </app-glass-panel>
-    </div>
-
-    <div class="card-surface split-card" *ngIf="!metricsEmpty">
-      <div class="lbl">Weekday vs weekend</div>
-      <div class="split-row">
-        <span>{{ weekdayTir }}</span>
-      </div>
-      <div class="split-row">
-        <span>{{ weekendTir }}</span>
-      </div>
-    </div>
-
-    <div class="card-surface insight-card" *ngIf="!metricsEmpty">
-      <div class="lbl">Episodes &amp; meals</div>
-      <p class="insight-line">{{ episodeSummary }}</p>
-      <p class="insight-line">{{ postMealSummary }}</p>
-    </div>
-
-    <div class="card-surface">
-      <div class="lbl">Time in range</div>
-      <app-glass-panel [placeholder]="rangePlaceholder" message="No data yet">
-        <div class="rb">
-          <i
-            *ngFor="let b of displayRangeBars"
-            [style.flex]="b.pct || 0.01"
-            [style.background]="b.color"
-            >{{ b.pct >= 8 ? b.pct + '%' : '' }}</i
-          >
-        </div>
-        <div class="rkey">
-          <div *ngFor="let b of displayRangeBars">
-            <s [style.background]="b.color"></s>
-            <span>{{ b.label }}</span>
-            <b class="numeral">{{ b.pct }}%</b>
-          </div>
-        </div>
-      </app-glass-panel>
-    </div>
-
-    <app-metric-grid
-      [cells]="displayCells"
-      [empty]="metricsEmpty"
-      [placeholder]="metricsPlaceholder"
-      emptyMessage="No data yet"
-    ></app-metric-grid>
-
-    <div class="ai-card" *ngIf="weeklyReadEnabled">
-      <div class="lbl">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.2"
-          stroke-linecap="round"
-        >
-          <path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" />
-        </svg>
-        Weekly read
-      </div>
-      <p>{{ weeklyReadP1 }}</p>
-      <p>{{ weeklyReadP2 }}</p>
-      <ul class="pattern-list" *ngIf="trendPatterns.length">
-        <li *ngFor="let p of trendPatterns">
-          <span class="pattern-time">{{ p.timeLabel }}</span>
-          <span class="pattern-kind" [class.high]="p.kind === 'high'" [class.low]="p.kind === 'low'">{{
-            p.kind === 'high' ? 'High' : 'Low'
-          }}</span>
-          <span class="pattern-detail">{{ p.detail }}</span>
-        </li>
-      </ul>
-      <div class="q">{{ weeklyReadQ }}</div>
-    </div>
-  </div>
-</ion-content>
+<ion-content appTabSwipe>
+  <div class="screen">
+    <app-page-tbar
+      title="Trends"
+      [pill]="periodPill"
+      statusRight="7 · 14 · 30 · 90"
+      [onPill]="cyclePeriod"
+    ></app-page-tbar>
+
+    <div class="card-surface flush agp-card">
+      <div class="lbl agp-lbl">
+        <span>Typical day · median &amp; spread</span>
+        <button type="button" class="compare-toggle" (click)="showAgpCompare = !showAgpCompare">
+          {{ showAgpCompare ? 'Compare on' : 'Compare off' }}
+        </button>
+      </div>
+      <p class="agp-hint" *ngIf="!agpPlaceholder">
+        Each point is the middle glucose for that time of day across {{ days }} days. The shaded band
+        shows where most readings fell (10th–90th percentile). The solid line is the typical level;
+        compare with the dashed line from the previous {{ days }} days when Compare is on.
+      </p>
+      <app-glass-panel [placeholder]="agpPlaceholder" message="No data yet">
+        <app-agp-chart
+          [buckets]="agpBuckets"
+          [compareBuckets]="showAgpCompare ? agpCompareBuckets : []"
+          [usePlaceholder]="agpPlaceholder"
+          [targetLow]="targetLow"
+          [targetHigh]="targetHigh"
+        ></app-agp-chart>
+        <app-glucose-range-strip
+          [readings]="trendReadings"
+          [periodStart]="periodStart"
+          [periodEnd]="periodEnd"
+          [periodLabel]="coveragePeriodLabel"
+          [targetLow]="targetLow"
+          [targetHigh]="targetHigh"
+        ></app-glucose-range-strip>
+        <app-coverage-strip
+          [coverage]="coverage"
+          [periodStart]="periodStart"
+          [periodEnd]="periodEnd"
+          periodLabel="Sensor coverage · teal = data, grey = gaps"
+        ></app-coverage-strip>
+      </app-glass-panel>
+    </div>
+
+    <div class="card-surface split-card" *ngIf="!metricsEmpty">
+      <div class="lbl">Weekday vs weekend</div>
+      <div class="split-row">
+        <span>{{ weekdayTir }}</span>
+      </div>
+      <div class="split-row">
+        <span>{{ weekendTir }}</span>
+      </div>
+    </div>
+
+    <div class="card-surface insight-card" *ngIf="!metricsEmpty">
+      <div class="lbl">Episodes &amp; meals</div>
+      <p class="insight-line">{{ episodeSummary }}</p>
+      <p class="insight-line">{{ postMealSummary }}</p>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Time in range</div>
+      <app-glass-panel [placeholder]="rangePlaceholder" message="No data yet">
+        <div class="rb">
+          <i
+            *ngFor="let b of displayRangeBars"
+            [style.flex]="b.pct || 0.01"
+            [style.background]="b.color"
+            >{{ b.pct >= 8 ? b.pct + '%' : '' }}</i
+          >
+        </div>
+        <div class="rkey">
+          <div *ngFor="let b of displayRangeBars">
+            <s [style.background]="b.color"></s>
+            <span>{{ b.label }}</span>
+            <b class="numeral">{{ b.pct }}%</b>
+          </div>
+        </div>
+      </app-glass-panel>
+    </div>
+
+    <app-metric-grid
+      [cells]="displayCells"
+      [empty]="metricsEmpty"
+      [placeholder]="metricsPlaceholder"
+      emptyMessage="No data yet"
+    ></app-metric-grid>
+
+    <div class="ai-card" *ngIf="weeklyReadEnabled">
+      <div class="lbl">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+        >
+          <path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" />
+        </svg>
+        Weekly read
+      </div>
+      <p>{{ weeklyReadP1 }}</p>
+      <p>{{ weeklyReadP2 }}</p>
+      <ul class="pattern-list" *ngIf="trendPatterns.length">
+        <li *ngFor="let p of trendPatterns">
+          <span class="pattern-time">{{ p.timeLabel }}</span>
+          <span class="pattern-kind" [class.high]="p.kind === 'high'" [class.low]="p.kind === 'low'">{{
+            p.kind === 'high' ? 'High' : 'Low'
+          }}</span>
+          <span class="pattern-detail">{{ p.detail }}</span>
+        </li>
+      </ul>
+      <div class="q">{{ weeklyReadQ }}</div>
+    </div>
+  </div>
+</ion-content>

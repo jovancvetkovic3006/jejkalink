@@ -9,9 +9,11 @@ import { MetricGridComponent, MetricCell } from '../components/metric-grid/metri
 import { AgpChartComponent } from '../components/agp-chart/agp-chart.component';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
+import { GlucoseRangeStripComponent } from '../components/glucose-range-strip/glucose-range-strip.component';
 import { agpBuckets, periodMetrics, buildWeeklyRead, alignTrendPeriod, isUnusualDay, splitByDayType, detectHypoEpisodes, postMealRises, summarizePostMealRises } from '../analytics';
 import { VERY_HIGH, VERY_LOW } from '../domain/glucose';
 import { EventsStore } from '../services/events-store.service';
+import { formatMinutesLong } from '../utils/duration-format.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PERIODS = [7, 14, 30, 90] as const;
@@ -28,12 +30,14 @@ const PERIODS = [7, 14, 30, 90] as const;
     AgpChartComponent,
     PageTbarComponent,
     GlassPanelComponent,
+    GlucoseRangeStripComponent,
     TabSwipeDirective,
   ],
 })
 export class TrendsPage implements OnInit, OnDestroy {
   private sub?: Subscription;
   readings: SgReading[] = [];
+  trendReadings: SgReading[] = [];
   days = 14;
   cells: MetricCell[] = [];
   coverage = null as ReturnType<typeof periodMetrics>['coverage'] | null;
@@ -102,6 +106,7 @@ export class TrendsPage implements OnInit, OnDestroy {
     this.coveragePeriodLabel = `${fmtShort(start)} — ${fmtShort(aligned.end)}`;
 
     const ranged = this.history.readingsInRange(start.getTime(), end.getTime());
+    this.trendReadings = ranged;
     const m = periodMetrics(ranged, start, end, {
       low: this.targetLow,
       high: this.targetHigh,
@@ -199,7 +204,7 @@ export class TrendsPage implements OnInit, OnDestroy {
     const hypos = detectHypoEpisodes(ranged, start, aligned.end, this.targetLow);
     if (hypos.length) {
       const totalMin = hypos.reduce((a, e) => a + e.durationMin, 0);
-      this.episodeSummary = `${hypos.length} low episode${hypos.length > 1 ? 's' : ''} · ${totalMin} min below ${this.targetLow.toFixed(1)}`;
+      this.episodeSummary = `${hypos.length} low episode${hypos.length > 1 ? 's' : ''} · ${formatMinutesLong(totalMin)} below ${this.targetLow.toFixed(1)}`;
     } else {
       this.episodeSummary = `No episodes below ${this.targetLow.toFixed(1)} mmol/L`;
     }
@@ -210,9 +215,11 @@ export class TrendsPage implements OnInit, OnDestroy {
     const rises = postMealRises(ranged, bolusAnchors, this.targetHigh);
     const pm = summarizePostMealRises(rises);
     if (pm.count > 0) {
-      this.postMealSummary = `${pm.count} bolus windows · median peak +${pm.medianRiseMmol} mmol at ${pm.medianPeakMin} min${
-        pm.medianBackMin != null ? ` · back in range ~${pm.medianBackMin} min` : ''
-      }`;
+      const backPart =
+        pm.medianBackMin != null
+          ? ` · back in range ~${formatMinutesLong(pm.medianBackMin)}`
+          : '';
+      this.postMealSummary = `${pm.count} bolus windows · median peak +${pm.medianRiseMmol} mmol at ${formatMinutesLong(pm.medianPeakMin)}${backPart}`;
     } else {
       this.postMealSummary = 'No bolus markers in period for post-meal stats';
     }

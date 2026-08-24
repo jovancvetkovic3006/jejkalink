@@ -19,6 +19,10 @@ import { EventRowComponent } from '../components/event-row/event-row.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
 import { periodMetrics, isUnusualDay } from '../analytics';
 import { placeholderDayReadings } from '../utils/placeholder-data.util';
+import {
+  effectiveChartWindow,
+  formatReadingScrubLabel,
+} from '../utils/chart-window.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
@@ -70,6 +74,9 @@ export class DayPage implements OnInit, OnDestroy {
   datePill = '';
   dateStatus = '';
   chartTitle = 'Glucose';
+  chartLabel = '';
+  chartStartMs = 0;
+  chartEndMs = 0;
   startMs = 0;
   endMs = 0;
   periodStart = new Date();
@@ -190,6 +197,15 @@ export class DayPage implements OnInit, OnDestroy {
     this.endMs = end.getTime();
     this.periodStart = start;
     this.periodEnd = end;
+    const daySpanMs = this.endMs - this.startMs;
+    const window = effectiveChartWindow(
+      this.history.readings(),
+      this.startMs,
+      this.endMs,
+      daySpanMs
+    );
+    this.chartStartMs = window.startMs;
+    this.chartEndMs = window.endMs;
     this.datePill = start.toLocaleDateString('en-GB', {
       weekday: 'short',
       day: '2-digit',
@@ -202,8 +218,11 @@ export class DayPage implements OnInit, OnDestroy {
 
     this.chartPlaceholder = inDay.length === 0;
     this.chartReadings = this.chartPlaceholder
-      ? placeholderDayReadings(this.startMs, this.endMs)
+      ? placeholderDayReadings(this.chartStartMs, this.chartEndMs)
       : inDay;
+
+    const lastInDay = inDay[inDay.length - 1];
+    this.chartLabel = lastInDay ? formatReadingScrubLabel(lastInDay) : this.chartTitle;
 
     const m = periodMetrics(inDay, start, end, {
       low: this.targetLow,
@@ -302,7 +321,7 @@ export class DayPage implements OnInit, OnDestroy {
       ...this.eventsStore.eventsInRange(this.startMs, this.endMs),
       ...notes,
     ].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
     this.eventsPlaceholder = this.dayEvents.length === 0;
     this.displayEvents = this.eventsPlaceholder ? PLACEHOLDER_DAY_EVENTS : this.dayEvents;

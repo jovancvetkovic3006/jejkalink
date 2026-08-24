@@ -22,12 +22,12 @@
         <div class="chart">
           <app-glucose-chart
             [readings]="chartReadings"
-            [startMs]="startMs"
-            [endMs]="endMs"
+            [startMs]="chartStartMs"
+            [endMs]="chartEndMs"
             [boluses]="boluses"
             [targetLow]="targetLow"
             [targetHigh]="targetHigh"
-            [title]="chartTitle"
+            [lastReadingLabel]="chartLabel"
           ></app-glucose-chart>
         </div>
         <app-coverage-strip

@@ -16,7 +16,7 @@ export interface WeeklyReadCopy {
 
 /**
  * Descriptive weekly read from period metrics + time-of-day patterns.
- * Pure code — no LLM, no API key. Optional LLM could phrase this later.
+ * Plain language — no LLM required.
  */
 export function buildWeeklyRead(
   metrics: PeriodMetrics,
@@ -33,8 +33,8 @@ export function buildWeeklyRead(
   const cov = metrics.coverage.coveragePct;
   const covNote =
     cov < 70
-      ? `Coverage was ${cov}% — percentages may not represent a full ${days}-day picture.`
-      : `Coverage ${cov}% over the period.`;
+      ? `The sensor was only working about ${cov}% of the time, so these percentages may not tell the full ${days}-day story.`
+      : `The sensor was working ${cov}% of the time in this period.`;
 
   let patterns: TrendPattern[] = [];
   if (readings.length && periodStart && periodEnd) {
@@ -52,40 +52,40 @@ export function buildWeeklyRead(
     const high = patterns.filter((p) => p.kind === 'high').slice(0, 2);
     const low = patterns.filter((p) => p.kind === 'low').slice(0, 2);
     const lines = [...high, ...low].map(formatTrendPattern);
-    patternLine = `Recurring windows: ${lines.join('; ')}.`;
+    patternLine = `Glucose often repeated the same pattern at certain times: ${lines.join('; ')}.`;
   } else if (metrics.veryLowPct >= 5) {
-    patternLine = `Very low time (< 3.0) was ${metrics.veryLowPct}% of covered time — no single time-of-day cluster stood out.`;
+    patternLine = `Very low readings (under 3.0) happened ${metrics.veryLowPct}% of the time — spread across the day rather than one time slot.`;
   } else if (metrics.belowPct >= 15) {
-    patternLine = `Below-range time was ${metrics.belowPct}% of covered time — spread across the day rather than one slot.`;
+    patternLine = `Readings below your target happened ${metrics.belowPct}% of the time — spread across the day.`;
   } else if (metrics.abovePct >= 25) {
-    patternLine = `Above-range time was ${metrics.abovePct}% of covered time — spread across the day rather than one slot.`;
+    patternLine = `Readings above your target happened ${metrics.abovePct}% of the time — spread across the day.`;
   } else if (metrics.tirPct >= 70) {
-    patternLine = `Time in range was ${metrics.tirPct}% (mean ${metrics.meanLabel} mmol/L) with no strong recurring high/low windows.`;
+    patternLine = `${metrics.tirPct}% of readings were in your target range (average ${metrics.meanLabel} mmol/L) with no strong repeating high or low windows.`;
   } else {
-    patternLine = `Mean ${metrics.meanLabel} mmol/L with ${metrics.tirPct}% time in range.`;
+    patternLine = `Average glucose was ${metrics.meanLabel} mmol/L with ${metrics.tirPct}% in your target range.`;
   }
 
   const tight =
     metrics.tightTirPct > 0
-      ? `Tight range (3.9–7.8) was ${metrics.tightTirPct}% of covered time.`
+      ? `In the tighter 3.9–7.8 band, ${metrics.tightTirPct}% of readings were in range.`
       : '';
 
   const overnight =
     metrics.overnightTirPct != null
-      ? `Overnight TIR (22:00–07:00) was ${metrics.overnightTirPct}%.`
-      : 'Overnight window had limited data.';
+      ? `Overnight (22:00–07:00), ${metrics.overnightTirPct}% of readings were in range.`
+      : 'Not enough overnight data to summarise.';
 
   const cvNote =
     metrics.cv >= 36
-      ? `Variability (CV ${metrics.cvLabel}%) was above the usual 36% target.`
-      : `Variability (CV ${metrics.cvLabel}%) stayed under 36%.`;
+      ? `Glucose swung up and down more than usual (variability ${metrics.cvLabel}% — aim is under 36%).`
+      : `Glucose stayed fairly steady (variability ${metrics.cvLabel}%, under the 36% aim).`;
 
   const q =
     patterns.some((p) => p.kind === 'low')
-      ? 'Worth asking the clinic: do the recurring low windows match meals, activity, or overnight basal patterns on your reports?'
+      ? 'Worth asking your care team: do the recurring low times match meals, activity, or sleep on your pump reports?'
       : patterns.some((p) => p.kind === 'high')
-        ? 'Worth asking the clinic: do the recurring high windows match meals or post-meal timing on your reports?'
-        : 'Worth asking the clinic: does this pattern match what you see on pump/CGM reports for the same period?';
+        ? 'Worth asking your care team: do the recurring high times match meals or timing on your pump reports?'
+        : 'Worth asking your care team: does this match what you see on your pump or CGM reports for the same dates?';
 
   return {
     p1: `${patternLine} ${overnight}${tight ? ' ' + tight : ''}`,

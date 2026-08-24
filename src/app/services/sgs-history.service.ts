@@ -178,6 +178,14 @@ export class SgsHistoryService {
     if (lo >= hi) return [];
     return all.slice(lo, hi);
   }
+
+  clearAll() {
+    localStorage.removeItem(SgsHistoryService.STORAGE_KEY);
+    localStorage.removeItem(SgsHistoryService.LEGACY_KEY);
+    localStorage.removeItem(SgsHistoryService.RAW_KEY);
+    localStorage.removeItem(SgsHistoryService.RAW_LEGACY_KEY);
+    this.allSgs$.next([]);
+  }
 }
 
 function readingMs(r: SgReading): number {

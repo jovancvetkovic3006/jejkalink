@@ -60,3 +60,63 @@
   border-bottom: 1px solid var(--line);
   margin-bottom: 4px;
 }
+
+.chip-pill.warn {
+  border-color: #f5c2d1;
+  color: var(--low);
+  background: #fff5f8;
+}
+
+.glossary-lbl {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.glossary-lbl .chev {
+  font-family: var(--font-data);
+  color: var(--muted);
+}
+
+.glossary {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.glossary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.glossary-row b {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--ink);
+}
+
+.glossary-row span {
+  color: var(--muted);
+}
+
+.cap-label {
+  color: #80cbc4;
+  margin-right: 8px;
+}
+
+.cap-ts {
+  color: #78909c;
+  font-size: 9px;
+}
+
+.cap-body {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 9px;
+  color: #cfd8dc;
+}

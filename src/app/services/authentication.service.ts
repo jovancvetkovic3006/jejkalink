@@ -10,6 +10,7 @@ import { MedtronicDiscoveryService } from './medtronic-discovery.service';
 import { SgsHistoryService } from './sgs-history.service';
 import { EventsStore } from './events-store.service';
 import { CollectorHealthService } from './collector-health.service';
+import { ApiCaptureService } from './api-capture.service';
 import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
 
 export interface IUserInfo {
@@ -118,7 +119,8 @@ export class AuthenticationService {
     private readonly discovery: MedtronicDiscoveryService,
     private readonly sgsHistory: SgsHistoryService,
     private readonly eventsStore: EventsStore,
-    private readonly collectorHealth: CollectorHealthService
+    private readonly collectorHealth: CollectorHealthService,
+    private readonly apiCapture: ApiCaptureService
   ) {
     this.restorePersistedTokens();
     this.setupDeepLinkListener();
@@ -504,6 +506,10 @@ export class AuthenticationService {
       this.addDebug('ingestCareLinkPayload: missing patientData');
       return false;
     }
+    this.apiCapture.record(
+      'CareLink display/message',
+      typeof raw === 'string' ? raw : body
+    );
     this.collectorHealth.recordSuccess();
     this.patientData$.next(this.processPatientData(body));
     this.addDebug(
@@ -879,6 +885,21 @@ export class AuthenticationService {
     const logs = this.debugLog$.value.join('\n');
     const subject = encodeURIComponent('JejkaLink Debug Logs - ' + new Date().toLocaleString());
     const body = encodeURIComponent(logs);
+    const mailto = `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`;
+    window.open(mailto, '_system');
+  }
+
+  clearDebugLogs() {
+    localStorage.removeItem(AuthenticationService.LOG_STORAGE_KEY);
+    this.debugLog$.next([]);
+  }
+
+  sendApiCapturesViaEmail(captures: { formatForEmail(): string }) {
+    const text = captures.formatForEmail();
+    const subject = encodeURIComponent(
+      'JejkaLink API payloads - ' + new Date().toLocaleString()
+    );
+    const body = encodeURIComponent(text || '(no captures)');
     const mailto = `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`;
     window.open(mailto, '_system');
   }

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { detectGaps } from '../analytics/coverage';
 import { SgReading } from './sgs-history.service';
+import { formatMinutesLong } from '../utils/duration-format.util';
 
 export type EventKind =
   | 'bolus'
@@ -198,6 +199,16 @@ export class EventsStore {
     return this.events$.value.slice(0, limit);
   }
 
+  /** Newest-first feed for Now — hides routine sync unless little else to show. */
+  recentForDisplay(limit = 8): AppEvent[] {
+    const all = [...this.events$.value].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    const notable = all.filter((e) => e.kind !== 'sync');
+    const pool = notable.length >= 3 ? notable : all;
+    return pool.slice(0, limit);
+  }
+
   eventsInRange(startMs: number, endMs: number): AppEvent[] {
     return this.events$.value
       .filter((e) => {
@@ -207,6 +218,11 @@ export class EventsStore {
       .sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
+  }
+
+  clearAll() {
+    localStorage.removeItem(EventsStore.STORAGE_KEY);
+    this.events$.next([]);
   }
 
   bolusesInRange(startMs: number, endMs: number): AppEvent[] {
@@ -234,7 +250,7 @@ export class EventsStore {
         kind: 'gap',
         timestamp: seg.from.toISOString(),
         label: 'Signal lost',
-        detail: `${durMin} min · until ${seg.to.toLocaleTimeString('en-GB', {
+        detail: `${formatMinutesLong(durMin)} · until ${seg.to.toLocaleTimeString('en-GB', {
           hour: '2-digit',
           minute: '2-digit',
         })}`,

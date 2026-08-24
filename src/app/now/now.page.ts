@@ -24,6 +24,10 @@ import {
 import { slopePerMin, projectMmol } from '../utils/glucose-slope.util';
 import { placeholderSparklineReadings } from '../utils/placeholder-data.util';
 import { formatPolledAgoEn } from '../utils/duration-format.util';
+import {
+  effectiveChartWindow,
+  formatReadingScrubLabel,
+} from '../utils/chart-window.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PLACEHOLDER_EVENTS: AppEvent[] = [
@@ -95,6 +99,7 @@ export class NowPage implements OnInit, OnDestroy {
   dayEnd = new Date();
   sparkReadings: SgReading[] = [];
   sparkPlaceholder = false;
+  sparkChartLabel = '';
   displayEvents: AppEvent[] = [];
   eventsPlaceholder = false;
   heroPlaceholder = false;
@@ -118,12 +123,15 @@ export class NowPage implements OnInit, OnDestroy {
       this.refresh();
     });
     this.patientSub = this.auth.patientData$.subscribe(() => this.refresh());
-    this.eventsStore.events$.subscribe((e) => {
-      this.events = e.slice(0, 8);
+    this.eventsStore.events$.subscribe(() => {
+      this.events = this.eventsStore.recentForDisplay(8);
       this.syncEventsDisplay();
     });
     this.collector.lastOkAt$.subscribe(() => this.updatePollStatus());
-    this.pollTick = setInterval(() => this.updatePollStatus(), 30_000);
+    this.pollTick = setInterval(() => {
+      this.updatePollStatus();
+      this.updateProjection();
+    }, 30_000);
   }
 
   ngOnDestroy() {
@@ -158,6 +166,25 @@ export class NowPage implements OnInit, OnDestroy {
       mins == null ? 'not polled yet' : formatPolledAgoEn(mins);
   }
 
+  private updateProjection() {
+    if (!this.hasReading) return;
+    const last = this.readings[this.readings.length - 1];
+    if (!last) return;
+    const minsSince =
+      (Date.now() - new Date(last.timestamp).getTime()) / 60000;
+    this.minutesAgo = minsSince;
+    const slope = slopePerMin(this.readings);
+    this.slopePerMin = slope;
+    const lagMin = Math.max(0, 15 - minsSince);
+    const projected = projectMmol(last.mmol, slope, lagMin);
+    this.projectionChip =
+      projected != null && lagMin > 0
+        ? `Projected ${formatMmol(projected)} in ${Math.ceil(lagMin)}m`
+        : projected != null
+          ? `Projected ${formatMmol(projected)} now`
+          : '';
+  }
+
   private refresh() {
     const nowMs = Date.now();
     const now = new Date(nowMs);
@@ -166,8 +193,16 @@ export class NowPage implements OnInit, OnDestroy {
     this.dayStart = startOfDay;
     this.dayEnd = now;
     this.coverage = detectGaps(this.readings, startOfDay, now);
-    this.sparkEnd = nowMs;
-    this.sparkStart = nowMs - 3 * 60 * 60 * 1000;
+    const fullEnd = nowMs;
+    const fullStart = nowMs - 3 * 60 * 60 * 1000;
+    const window = effectiveChartWindow(
+      this.readings,
+      fullStart,
+      fullEnd,
+      3 * 60 * 60 * 1000
+    );
+    this.sparkStart = window.startMs;
+    this.sparkEnd = window.endMs;
     this.updatePollStatus();
 
     const s = this.appSettings.get();
@@ -215,9 +250,8 @@ export class NowPage implements OnInit, OnDestroy {
     this.minutesAgo = (nowMs - new Date(last.timestamp).getTime()) / 60000;
 
     this.slopePerMin = slopePerMin(this.readings);
-    const projected = projectMmol(last.mmol, this.slopePerMin, 15);
-    this.projectionChip =
-      projected != null ? `Projected ${formatMmol(projected)} in 15m` : '';
+    this.sparkChartLabel = formatReadingScrubLabel(last);
+    this.updateProjection();
   }
 
   private buildWhoPill(): string {

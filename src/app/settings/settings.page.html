@@ -126,6 +126,14 @@
         <button type="button" class="chip-pill" (click)="exportPdfHint()">Create</button>
         <span class="s" *ngIf="exportStatus">{{ exportStatus }}</span>
       </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Clear local data</div>
+          <div class="s">Readings, events, notes, archives — keeps sign-in</div>
+        </div>
+        <button type="button" class="chip-pill warn" (click)="clearLocalData()">Clear</button>
+        <span class="s" *ngIf="clearStatus">{{ clearStatus }}</span>
+      </div>
     </div>
 
     <div class="card-surface">
@@ -194,6 +202,50 @@
           [class.off]="!flagUnusualDays"
           (click)="toggleUnusualDays()"
         ></button>
+      </div>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl glossary-lbl" (click)="glossaryExpanded = !glossaryExpanded">
+        Terms &amp; abbreviations
+        <span class="chev">{{ glossaryExpanded ? '−' : '+' }}</span>
+      </div>
+      <div class="glossary" *ngIf="glossaryExpanded">
+        <div class="glossary-row" *ngFor="let g of glossary">
+          <b>{{ g.term }}</b>
+          <span>{{ g.meaning }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-surface log-card" *ngIf="apiCaptures$ | async as captures">
+      <div class="lbl" (click)="apiExpanded = !apiExpanded">
+        API payloads ({{ captures.length }})
+        <button
+          type="button"
+          class="chip-pill"
+          *ngIf="apiExpanded"
+          (click)="sendApiCaptures(); $event.stopPropagation()"
+        >
+          Send
+        </button>
+        <button
+          type="button"
+          class="chip-pill"
+          *ngIf="apiExpanded"
+          (click)="clearApiCaptures(); $event.stopPropagation()"
+        >
+          Clear
+        </button>
+      </div>
+      <div class="log-container" *ngIf="apiExpanded && captures.length > 0">
+        <div class="log-scroll">
+          <div class="log-entry" *ngFor="let c of captures; trackBy: trackCapture">
+            <span class="cap-label">{{ c.label }}</span>
+            <span class="cap-ts">{{ c.ts | date: 'short' }}</span>
+            <pre class="cap-body">{{ c.body.slice(0, 400) }}{{ c.body.length > 400 ? '…' : '' }}</pre>
+          </div>
+        </div>
       </div>
     </div>
 
