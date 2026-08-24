@@ -27,7 +27,7 @@ import { CommonModule } from '@angular/common';
           class="chev"
           *ngIf="showBack"
           (click)="back($event)"
-          aria-label="Prethodni"
+          aria-label="Previous"
         >
           ‹
         </button>
@@ -38,7 +38,7 @@ import { CommonModule } from '@angular/common';
           *ngIf="showForward"
           (click)="forward($event)"
           [disabled]="forwardDisabled"
-          aria-label="Sledeći"
+          aria-label="Next"
         >
           ›
         </button>
@@ -119,7 +119,7 @@ export class PageTbarComponent {
   @Input() onPill?: () => void;
 
   get clock(): string {
-    return new Date().toLocaleTimeString('sr-Latn-RS', {
+    return new Date().toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,

@@ -31,10 +31,10 @@ export class AlarmsPage implements OnInit {
     label: string;
     hint: string;
   }[] = [
-    { key: 'low', label: 'Niska', hint: `Razrešava se na ${LOW_CLEAR}` },
-    { key: 'urgentLow', label: 'Hitna niska', hint: 'Ne poštuje odloženo' },
-    { key: 'high', label: 'Visoka', hint: 'Posle 30 min iznad' },
-    { key: 'fallingFast', label: 'Brzo padanje', hint: 'mmol/L po minutu' },
+    { key: 'low', label: 'Low', hint: `Clears at ${LOW_CLEAR}` },
+    { key: 'urgentLow', label: 'Urgent low', hint: 'Ignores snooze' },
+    { key: 'high', label: 'High', hint: 'After 30 min above' },
+    { key: 'fallingFast', label: 'Falling fast', hint: 'mmol/L per minute' },
   ];
 
   ruleRows: {
@@ -42,10 +42,10 @@ export class AlarmsPage implements OnInit {
     label: string;
     hint: string;
   }[] = [
-    { key: 'staleEnabled', label: 'Nema podataka 20 min', hint: 'Tretira se kao hitno' },
-    { key: 'projectionEnabled', label: 'Alarm na projekciju', hint: 'Koristi prognozu 15 min' },
-    { key: 'overnightProfile', label: 'Noćni profil', hint: '22:00–07:00 · niska na 4.2' },
-    { key: 'repeatUntilCleared', label: 'Ponavljaj dok se ne razreši', hint: 'Svakih 15 min' },
+    { key: 'staleEnabled', label: 'No data for 20 min', hint: 'Treated as urgent' },
+    { key: 'projectionEnabled', label: 'Alert on projection', hint: 'Uses 15-min forecast' },
+    { key: 'overnightProfile', label: 'Overnight profile', hint: '22:00–07:00 · low at 4.2' },
+    { key: 'repeatUntilCleared', label: 'Repeat until cleared', hint: 'Every 15 min' },
   ];
 
   constructor(
@@ -85,22 +85,22 @@ export class AlarmsPage implements OnInit {
   }
 
   firedDay(f: FiredAlarm): string {
-    return new Date(f.timestamp).toLocaleDateString('sr-Latn-RS', {
+    return new Date(f.timestamp).toLocaleDateString('en-GB', {
       weekday: 'short',
     });
   }
 
   firedTime(f: FiredAlarm): string {
-    return new Date(f.timestamp).toLocaleTimeString('sr-Latn-RS', {
+    return new Date(f.timestamp).toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
     });
   }
 
   firedSubtitle(f: FiredAlarm): string {
-    if (f.tag === 'real') return 'Označeno · stvarno';
-    if (f.tag === 'false') return 'Označeno · lažno';
-    return 'Označite ispod';
+    if (f.tag === 'real') return 'Tagged · real';
+    if (f.tag === 'false') return 'Tagged · false';
+    return 'Tag below';
   }
 
   firedDot(f: FiredAlarm): string {

@@ -15,7 +15,7 @@ const MIN_SWIPE_PX = 72;
 
 /**
  * Horizontal swipe navigation.
- * - Default: switch main tabs (Sada → Dan → Trendovi → Alarmi → Podešavanja).
+ * - Default: switch main tabs (Now → Day → Trends → Alarms → Settings).
  * - Day mode: swipe between calendar days; at today, swipe left advances to next tab.
  */
 @Directive({

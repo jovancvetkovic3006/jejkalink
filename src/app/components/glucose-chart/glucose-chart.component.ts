@@ -26,14 +26,16 @@ function hatchPattern(): CanvasPattern | string {
   c.width = 5;
   c.height = 5;
   const ctx = c.getContext('2d');
-  if (!ctx) return 'rgba(221, 226, 233, 0.7)';
-  ctx.strokeStyle = '#DDE2E9';
-  ctx.lineWidth = 2.2;
+  if (!ctx) return 'rgba(221, 226, 233, 0.45)';
+  ctx.fillStyle = 'rgba(221, 226, 233, 0.35)';
+  ctx.fillRect(0, 0, 5, 5);
+  ctx.strokeStyle = 'rgba(197, 205, 216, 0.7)';
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(0, 5);
   ctx.lineTo(5, 0);
   ctx.stroke();
-  return ctx.createPattern(c, 'repeat') || 'rgba(221, 226, 233, 0.7)';
+  return ctx.createPattern(c, 'repeat') || 'rgba(221, 226, 233, 0.45)';
 }
 
 @Component({
@@ -63,6 +65,8 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
   @Input() endMs = 0;
   @Input() sparkline = false;
   @Input() boluses: BolusMark[] = [];
+  @Input() targetLow = LOW;
+  @Input() targetHigh = HIGH;
 
   private chart?: Chart;
 
@@ -110,16 +114,11 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       data.push(points[i]);
     }
 
+    const low = this.targetLow;
+    const high = this.targetHigh;
     const hatch = hatchPattern();
-    const annotations: Record<string, unknown> = {
-      band: {
-        type: 'box',
-        yMin: LOW,
-        yMax: HIGH,
-        backgroundColor: '#E9F5F3',
-        borderWidth: 0,
-      },
-    };
+    // Draw under the trace: gaps → target band → line (datasets)
+    const annotations: Record<string, unknown> = {};
 
     for (let i = 0; i < gaps.length; i++) {
       annotations[`gap_${i}`] = {
@@ -128,6 +127,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         xMax: gaps[i].to.getTime(),
         backgroundColor: hatch,
         borderWidth: 0,
+        drawTime: 'beforeDatasetsDraw',
         label: {
           display: !this.sparkline,
           content: 'gap',
@@ -138,6 +138,15 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         },
       };
     }
+
+    annotations['band'] = {
+      type: 'box',
+      yMin: low,
+      yMax: high,
+      backgroundColor: 'rgba(233, 245, 243, 0.85)',
+      borderWidth: 0,
+      drawTime: 'beforeDatasetsDraw',
+    };
 
     const bolusData = this.boluses
       .filter((b) => {
@@ -169,8 +178,8 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
           const y = ctx.parsed?.y;
           if (y == null) return 0;
           if (this.sparkline && ctx.dataIndex === lastIdx) return 4;
-          if (y < LOW) return 2.1;
-          if (y > HIGH) return 1.7;
+          if (y < low) return 2.1;
+          if (y > high) return 1.7;
           return 0;
         },
         pointBackgroundColor: (ctx: {
@@ -181,8 +190,8 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
           if (y == null) return '#15213B';
           if (this.sparkline && ctx.dataIndex === lastIdx) return '#0E9B8A';
           if (y < VERY_LOW) return '#9B1B47';
-          if (y < LOW) return '#C2255C';
-          if (y > HIGH) return 'rgba(199, 124, 30, 0.75)';
+          if (y < low) return '#C2255C';
+          if (y > high) return 'rgba(199, 124, 30, 0.75)';
           return '#15213B';
         },
         pointBorderColor: '#fff',
@@ -214,7 +223,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
           color: '#707C91',
           font: { size: 10, family: 'IBM Plex Mono' },
           callback: (v: string | number) =>
-            new Date(Number(v)).toLocaleTimeString('sr-Latn-RS', {
+            new Date(Number(v)).toLocaleTimeString('en-GB', {
               hour: '2-digit',
               minute: '2-digit',
             }),
@@ -235,7 +244,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
               title: (items) => {
                 const x = items[0]?.parsed?.x;
                 if (x == null) return '';
-                return new Date(x).toLocaleString('sr-Latn-RS', {
+                return new Date(x).toLocaleString('en-GB', {
                   day: '2-digit',
                   month: '2-digit',
                   hour: '2-digit',
@@ -258,7 +267,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
             grid: { color: 'rgba(227, 231, 237, 1)', drawTicks: false },
           },
           y: {
-            min: this.sparkline ? 2.5 : 2.5,
+            min: 2.5,
             max: this.sparkline ? 15 : 16,
             display: true,
             ticks: {
@@ -266,14 +275,16 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
               font: { size: 8.5, family: 'IBM Plex Mono' },
               callback: (v) => {
                 const n = Number(v);
-                if (n === LOW || n === HIGH) return n.toFixed(1);
+                if (Math.abs(n - low) < 0.05) return low.toFixed(1);
+                if (Math.abs(n - high) < 0.05) return high.toFixed(1);
                 if (!this.sparkline && (n === 15 || n === 16)) return '15';
                 return '';
               },
             },
             grid: {
               color: (ctx) =>
-                ctx.tick.value === LOW || ctx.tick.value === HIGH
+                Math.abs(ctx.tick.value - low) < 0.05 ||
+                Math.abs(ctx.tick.value - high) < 0.05
                   ? 'rgba(227, 231, 237, 1)'
                   : 'transparent',
               drawTicks: false,

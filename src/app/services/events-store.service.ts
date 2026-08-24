@@ -64,7 +64,8 @@ export class EventsStore {
       this.add({
         kind: 'sensor',
         timestamp: patientData.lastSG?.timestamp || nowIso,
-        label: 'Senzor nije povezan',
+        label: 'Sensor disconnected',
+        detail: 'Conduit out of range',
       });
     }
 
@@ -74,7 +75,8 @@ export class EventsStore {
         this.add({
           kind: 'basal',
           timestamp: nowIso,
-          label: `Temporalni bazal još ${b.timeRemaining || '?'} min`,
+          label: `Temp basal ${b.timeRemaining || '?'} min left`,
+          detail: b.tempRate != null ? `${b.tempRate} u/h` : undefined,
           units: b.tempRate,
         });
       }
@@ -82,7 +84,8 @@ export class EventsStore {
         this.add({
           kind: 'alarm',
           timestamp: nowIso,
-          label: b.type === 'SUSPENDED_ON_LOW' ? 'Suspendovano na niskoj' : 'Suspendovano pre niske',
+          label: b.type === 'SUSPENDED_ON_LOW' ? 'Suspended on low' : 'Suspended before low',
+          detail: 'Pump auto-suspend',
         });
       }
     }
@@ -97,20 +100,30 @@ export class EventsStore {
       const ts = m.timestamp || m.time || nowIso;
       if (amount && Number(amount) > 0) {
         const carbs = m.carbs ?? m.carbohydrates;
+        const meal = m.meal ?? m.mealType ?? m.foodType;
+        const detailParts: string[] = [];
+        if (carbs) detailParts.push(`${carbs} g carbs`);
+        if (meal) detailParts.push(String(meal).toLowerCase());
         this.add({
           kind: 'bolus',
           timestamp: ts,
-          label: `Bolus ${Number(amount).toFixed(1)} j`,
-          detail: carbs ? `${carbs} g` : undefined,
+          label: `Bolus ${Number(amount).toFixed(1)} u`,
+          detail: detailParts.length ? detailParts.join(' · ') : undefined,
           units: Number(amount),
         });
       }
     }
 
+    const reservoir = patientData.reservoirRemainingUnits;
     this.add({
       kind: 'sync',
       timestamp: nowIso,
-      label: 'Sinhronizacija CareLink',
+      id: `sync-${Math.floor(Date.now() / (5 * 60 * 1000))}`,
+      label: 'Sensor synced',
+      detail:
+        reservoir != null && reservoir >= 0
+          ? `Pump reservoir ${reservoir} u`
+          : 'CareLink refresh',
     });
   }
 

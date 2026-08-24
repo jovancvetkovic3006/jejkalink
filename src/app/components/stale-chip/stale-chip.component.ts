@@ -1,7 +1,7 @@
 import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { STALE_URGENT_MIN, STALE_WARN_MIN } from '../../domain/glucose';
-import { formatDurationSr } from '../../utils/duration-format.util';
+import { formatDurationEn } from '../../utils/duration-format.util';
 
 @Component({
   selector: 'app-stale-chip',
@@ -44,12 +44,13 @@ export class StaleChipComponent implements OnChanges {
   ngOnChanges() {
     const m = this.minutesAgo;
     if (m == null || !Number.isFinite(m)) {
-      this.label = 'nema podataka';
+      this.label = 'no data';
       this.tone = 'urgent';
       return;
     }
     const mins = Math.max(0, Math.floor(m));
-    this.label = `očitano ${formatDurationSr(mins)}`;
+    if (mins === 0) this.label = 'Read just now';
+    else this.label = `Read ${formatDurationEn(mins)}`;
     if (mins >= STALE_URGENT_MIN) this.tone = 'urgent';
     else if (mins >= STALE_WARN_MIN) this.tone = 'warn';
     else this.tone = 'ok';

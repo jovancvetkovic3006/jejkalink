@@ -88,5 +88,5 @@ export class MetricGridComponent {
   @Input() cells: MetricCell[] = [];
   @Input() empty = false;
   @Input() placeholder = false;
-  @Input() emptyMessage = 'Još nema podataka za period';
+  @Input() emptyMessage = 'No data for this period yet';
 }

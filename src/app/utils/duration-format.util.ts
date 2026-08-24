@@ -1,23 +1,34 @@
-/** Serbian (Latin) relative duration for UI chips and labels. */
+/** English relative duration for UI chips and labels. */
 
-export function formatDurationSr(minutes: number, prefix = 'pre'): string {
+export function formatDurationEn(minutes: number, prefix = 'ago'): string {
   const m = Math.max(0, Math.floor(minutes));
-  if (m === 0) return 'upravo sada';
-  if (m < 60) return `${prefix} ${m} min`;
+  if (m === 0) return 'just now';
+  if (m < 60) return `${m} min ${prefix}`;
 
   const h = Math.floor(m / 60);
   const rem = m % 60;
-  if (rem === 0) return `${prefix} ${h}h`;
-  return `${prefix} ${h}h ${rem}m`;
+  if (rem === 0) return `${h}h ${prefix}`;
+  return `${h}h ${rem}m ${prefix}`;
 }
 
-/** e.g. "Nema podataka 2h 15m" */
-export function formatStaleLabelSr(minutes: number): string {
+/** e.g. "No data for 2h 15m" */
+export function formatStaleLabelEn(minutes: number): string {
   const m = Math.max(0, Math.floor(minutes));
-  if (m === 0) return 'Nema podataka';
-  if (m < 60) return `Nema podataka ${m} min`;
+  if (m === 0) return 'No data';
+  if (m < 60) return `No data for ${m} min`;
   const h = Math.floor(m / 60);
   const rem = m % 60;
-  if (rem === 0) return `Nema podataka ${h}h`;
-  return `Nema podataka ${h}h ${rem}m`;
+  if (rem === 0) return `No data for ${h}h`;
+  return `No data for ${h}h ${rem}m`;
+}
+
+/** e.g. "polled 4 min ago" */
+export function formatPolledAgoEn(minutes: number): string {
+  const m = Math.max(0, Math.floor(minutes));
+  if (m === 0) return 'polled just now';
+  if (m < 60) return `polled ${m} min ago`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (rem === 0) return `polled ${h}h ago`;
+  return `polled ${h}h ${rem}m ago`;
 }

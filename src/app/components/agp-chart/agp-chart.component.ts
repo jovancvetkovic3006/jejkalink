@@ -37,6 +37,8 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
   @ViewChild('canvas') canvasRef?: ElementRef<HTMLCanvasElement>;
   @Input() buckets: AgpBucket[] = [];
   @Input() usePlaceholder = false;
+  @Input() targetLow = LOW;
+  @Input() targetHigh = HIGH;
 
   private chart?: Chart;
 
@@ -124,11 +126,12 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
             annotations: {
               band: {
                 type: 'box',
-                yMin: LOW,
-                yMax: HIGH,
-                backgroundColor: '#E9F5F3',
+                yMin: this.targetLow,
+                yMax: this.targetHigh,
+                backgroundColor: 'rgba(233, 245, 243, 0.85)',
                 borderWidth: 0,
-              },
+                drawTime: 'beforeDatasetsDraw',
+              } as any,
             },
           },
         },
@@ -159,14 +162,18 @@ export class AgpChartComponent implements AfterViewInit, OnChanges {
               font: { size: 8.5, family: 'IBM Plex Mono' },
               callback: (v) => {
                 const n = Number(v);
-                if (n === LOW || n === HIGH) return n.toFixed(1);
+                const low = this.targetLow;
+                const high = this.targetHigh;
+                if (Math.abs(n - low) < 0.05) return low.toFixed(1);
+                if (Math.abs(n - high) < 0.05) return high.toFixed(1);
                 if (n === 15 || n === 16) return '15';
                 return '';
               },
             },
             grid: {
               color: (ctx) =>
-                ctx.tick.value === LOW || ctx.tick.value === HIGH
+                Math.abs(ctx.tick.value - this.targetLow) < 0.05 ||
+                Math.abs(ctx.tick.value - this.targetHigh) < 0.05
                   ? 'rgba(227, 231, 237, 1)'
                   : 'transparent',
               drawTicks: false,

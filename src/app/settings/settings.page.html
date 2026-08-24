@@ -1,25 +1,25 @@
 <ion-content appTabSwipe>
   <div class="screen">
     <app-page-tbar
-      title="Podešavanja"
-      pill="Lokalno"
+      title="Settings"
+      pill="Local"
       [statusRight]="'v' + appVersion"
     ></app-page-tbar>
 
     <div class="card-surface">
-      <div class="lbl">Veza</div>
+      <div class="lbl">Connection</div>
       <div class="set">
         <div class="body">
-          <div class="h">CareLink sesija</div>
+          <div class="h">CareLink session</div>
           <div class="s">{{ sessionDetail }}</div>
         </div>
-        <span class="chip-pill ok" *ngIf="tokenStatus === 'Aktivan'">Aktivan</span>
-        <span class="chip-pill" *ngIf="tokenStatus !== 'Aktivan'">{{ tokenStatus }}</span>
+        <span class="chip-pill ok" *ngIf="tokenStatus === 'Live'">Live</span>
+        <span class="chip-pill" *ngIf="tokenStatus !== 'Live'">{{ tokenStatus }}</span>
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Interval provere</div>
-          <div class="s">Usklađen sa senzorom na :02</div>
+          <div class="h">Poll interval</div>
+          <div class="s">Aligned to sensor at :02</div>
         </div>
         <div class="stepper">
           <button type="button" (click)="stepPoll(-1)" [disabled]="pollInterval <= 5">−</button>
@@ -29,15 +29,19 @@
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Uzastopni neuspehi</div>
-          <div class="s">Backoff, zatim alarm</div>
+          <div class="h">Consecutive failures</div>
+          <div class="s">Alert after {{ failureAlertAt }} · now {{ failures }}</div>
         </div>
-        <span class="rt numeral">{{ failures }}</span>
+        <div class="stepper">
+          <button type="button" (click)="stepFailureAlert(-1)" [disabled]="failureAlertAt <= 1">−</button>
+          <b class="numeral">{{ failureAlertAt }}</b>
+          <button type="button" (click)="stepFailureAlert(1)" [disabled]="failureAlertAt >= 20">+</button>
+        </div>
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Pacijent</div>
-          <div class="s">CareLink korisničko ime</div>
+          <div class="h">Patient</div>
+          <div class="s">CareLink username</div>
         </div>
         <input
           class="who-input"
@@ -45,36 +49,36 @@
           (blur)="saveUsername()"
           placeholder="username"
         />
-        <span class="chip-pill ok" *ngIf="saved">Sačuvano</span>
+        <span class="chip-pill ok" *ngIf="saved">Saved</span>
       </div>
       <app-coverage-strip
         [coverage]="uptimeCoverage"
         [periodStart]="uptimeStart"
         [periodEnd]="uptimeEnd"
-        periodLabel="Uptime kolektora · 30 dana"
+        periodLabel="Collector uptime · 30 days"
       ></app-coverage-strip>
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Podaci</div>
+      <div class="lbl">Data</div>
       <div class="set">
         <div class="body">
-          <div class="h">Sačuvana očitavanja</div>
-          <div class="s">Lokalna istorija</div>
+          <div class="h">Readings stored</div>
+          <div class="s">Local history</div>
         </div>
         <span class="rt numeral">{{ readingsCount }}</span>
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Uvezi CareLink CSV</div>
-          <div class="s">Dopuna pre prve provere</div>
+          <div class="h">Import CareLink CSV</div>
+          <div class="s">Backfill before first poll</div>
         </div>
-        <button type="button" class="chip-pill" (click)="importCsvHint()">Izaberi fajl</button>
+        <button type="button" class="chip-pill" (click)="importCsvHint()">Choose file</button>
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Čuvaj sirove odgovore</div>
-          <div class="s">Za ponovno parsiranje</div>
+          <div class="h">Keep raw responses</div>
+          <div class="s">Lets you re-parse later</div>
         </div>
         <button
           type="button"
@@ -85,32 +89,47 @@
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Izvoz za kliniku</div>
-          <div class="s">PDF · poslednjih 90 dana</div>
+          <div class="h">Export for clinic</div>
+          <div class="s">PDF · last 90 days</div>
         </div>
-        <button type="button" class="chip-pill" (click)="exportPdfHint()">Kreiraj</button>
+        <button type="button" class="chip-pill" (click)="exportPdfHint()">Create</button>
       </div>
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Prikaz</div>
+      <div class="lbl">Display</div>
       <div class="set">
         <div class="body">
-          <div class="h">Jedinice</div>
-          <div class="s">Jedna decimala</div>
+          <div class="h">Units</div>
+          <div class="s">One decimal place</div>
         </div>
         <span class="rt">mmol/L</span>
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Ciljni opseg</div>
-          <div class="s">Senčenje na svakom grafiku</div>
+          <div class="h">Target low</div>
+          <div class="s">Shaded band lower edge</div>
         </div>
-        <span class="rt">3.9 – 10.0</span>
+        <div class="stepper">
+          <button type="button" (click)="stepTargetLow(-0.1)">−</button>
+          <b class="numeral">{{ targetLow | number: '1.1-1' }}</b>
+          <button type="button" (click)="stepTargetLow(0.1)">+</button>
+        </div>
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Početak sedmice</div>
+          <div class="h">Target high</div>
+          <div class="s">Shaded band upper edge</div>
+        </div>
+        <div class="stepper">
+          <button type="button" (click)="stepTargetHigh(-0.1)">−</button>
+          <b class="numeral">{{ targetHigh | number: '1.1-1' }}</b>
+          <button type="button" (click)="stepTargetHigh(0.1)">+</button>
+        </div>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Week starts</div>
         </div>
         <button type="button" class="chip-pill" (click)="toggleWeekStart()">
           {{ weekStartLabel() }}
@@ -119,11 +138,11 @@
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Analiza</div>
+      <div class="lbl">Analysis</div>
       <div class="set">
         <div class="body">
-          <div class="h">Nedeljni pregled</div>
-          <div class="s">Nedelja 20:00</div>
+          <div class="h">Weekly read</div>
+          <div class="s">Sunday 20:00</div>
         </div>
         <button
           type="button"
@@ -134,8 +153,8 @@
       </div>
       <div class="set">
         <div class="body">
-          <div class="h">Označi neuobičajene dane</div>
-          <div class="s">Samo kad se razlikuje</div>
+          <div class="h">Flag unusual days</div>
+          <div class="s">Only when it differs</div>
         </div>
         <button
           type="button"
@@ -148,12 +167,12 @@
 
     <div class="card-surface log-card" *ngIf="debugLog$ | async as logs">
       <div class="lbl" (click)="logsExpanded = !logsExpanded">
-        Logovi ({{ logs.length }})
+        Logs ({{ logs.length }})
         <button type="button" class="chip-pill" *ngIf="logsExpanded" (click)="sendLogs(); $event.stopPropagation()">
-          Pošalji
+          Send
         </button>
         <button type="button" class="chip-pill" *ngIf="logsExpanded" (click)="clearLogs(); $event.stopPropagation()">
-          Obriši
+          Clear
         </button>
       </div>
       <div class="log-container" *ngIf="logsExpanded && logs.length > 0">
@@ -162,7 +181,7 @@
     </div>
 
     <div class="card-surface">
-      <button type="button" class="logout-btn" (click)="logout()">Odjavi se</button>
+      <button type="button" class="logout-btn" (click)="logout()">Sign out</button>
     </div>
   </div>
 </ion-content>

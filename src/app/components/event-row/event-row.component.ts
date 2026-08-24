@@ -22,15 +22,15 @@ import { CommonModule } from '@angular/common';
         display: flex;
         align-items: center;
         gap: 11px;
-        padding: 10px 0;
+        padding: 12px 0;
         border-bottom: 1px solid var(--line);
       }
       .row:last-child {
         border-bottom: 0;
-        padding-bottom: 0;
+        padding-bottom: 2px;
       }
       .row:first-child {
-        padding-top: 0;
+        padding-top: 2px;
       }
       .t {
         font-family: var(--font-data);

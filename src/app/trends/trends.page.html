@@ -1,16 +1,21 @@
 <ion-content appTabSwipe>
   <div class="screen">
     <app-page-tbar
-      title="Trendovi"
+      title="Trends"
       [pill]="periodPill"
       statusRight="7 · 14 · 30 · 90"
       [onPill]="cyclePeriod"
     ></app-page-tbar>
 
     <div class="card-surface flush agp-card">
-      <div class="lbl" style="padding-left: 4px">Tipičan dan · medijana i raspon</div>
-      <app-glass-panel [placeholder]="agpPlaceholder">
-        <app-agp-chart [buckets]="agpBuckets" [usePlaceholder]="agpPlaceholder"></app-agp-chart>
+      <div class="lbl" style="padding-left: 4px">Typical day · median &amp; spread</div>
+      <app-glass-panel [placeholder]="agpPlaceholder" message="Not enough data for AGP">
+        <app-agp-chart
+          [buckets]="agpBuckets"
+          [usePlaceholder]="agpPlaceholder"
+          [targetLow]="targetLow"
+          [targetHigh]="targetHigh"
+        ></app-agp-chart>
       </app-glass-panel>
       <app-coverage-strip
         [coverage]="coverage"
@@ -21,7 +26,7 @@
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Vreme u opsegu</div>
+      <div class="lbl">Time in range</div>
       <div class="rb">
         <i
           *ngFor="let b of rangeBars"
@@ -43,7 +48,7 @@
       [cells]="displayCells"
       [empty]="metricsEmpty"
       [placeholder]="metricsPlaceholder"
-      emptyMessage="Potrebno je više očitavanja za trendove"
+      emptyMessage="Need more readings for trends"
     ></app-metric-grid>
 
     <div class="ai-card">
@@ -59,7 +64,7 @@
         >
           <path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" />
         </svg>
-        Nedeljni pregled
+        Weekly read
       </div>
       <p>{{ weeklyReadP1 }}</p>
       <p>{{ weeklyReadP2 }}</p>

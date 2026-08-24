@@ -5,6 +5,8 @@ import { Subscription } from 'rxjs';
 import { AuthenticationService } from '../services/authentication.service';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { EventsStore, AppEvent } from '../services/events-store.service';
+import { CollectorHealthService } from '../services/collector-health.service';
+import { AppSettingsService } from '../services/app-settings.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { StaleChipComponent } from '../components/stale-chip/stale-chip.component';
 import { GlucoseChartComponent } from '../components/glucose-chart/glucose-chart.component';
@@ -17,10 +19,11 @@ import {
   formatMmol,
   rangeBucket,
   rangeColorVar,
-  rangeLabelSr,
+  rangeLabelEn,
 } from '../domain/glucose';
 import { slopePerMin, projectMmol } from '../utils/glucose-slope.util';
 import { placeholderSparklineReadings } from '../utils/placeholder-data.util';
+import { formatPolledAgoEn } from '../utils/duration-format.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PLACEHOLDER_EVENTS: AppEvent[] = [
@@ -28,22 +31,22 @@ const PLACEHOLDER_EVENTS: AppEvent[] = [
     id: 'ph-1',
     kind: 'bolus',
     timestamp: new Date().toISOString(),
-    label: 'Bolus 4.2 j',
-    detail: '45 g · doručak',
+    label: 'Bolus 4.2 u',
+    detail: '45 g carbs · breakfast',
   },
   {
     id: 'ph-2',
     kind: 'sync',
     timestamp: new Date().toISOString(),
-    label: 'Senzor sinhronizovan',
-    detail: 'Rezervoar 118 j',
+    label: 'Sensor synced',
+    detail: 'Pump reservoir 118 u',
   },
   {
     id: 'ph-3',
     kind: 'alarm',
     timestamp: new Date().toISOString(),
-    label: 'Niska 3.7',
-    detail: 'Oporavak za 22 min',
+    label: 'Low 3.7',
+    detail: 'Recovered in 22 min',
   },
 ];
 
@@ -69,6 +72,7 @@ const PLACEHOLDER_EVENTS: AppEvent[] = [
 export class NowPage implements OnInit, OnDestroy {
   private sub?: Subscription;
   private patientSub?: Subscription;
+  private pollTick?: ReturnType<typeof setInterval>;
   readings: SgReading[] = [];
   events: AppEvent[] = [];
   value = '--';
@@ -82,7 +86,7 @@ export class NowPage implements OnInit, OnDestroy {
   coverage: CoverageResult | null = null;
   sparkStart = 0;
   sparkEnd = 0;
-  periodLabel = 'Pokriće danas';
+  periodLabel = 'Coverage today';
   whoPill = '';
   pollStatus = '';
   projectionChip = '';
@@ -94,14 +98,21 @@ export class NowPage implements OnInit, OnDestroy {
   displayEvents: AppEvent[] = [];
   eventsPlaceholder = false;
   heroPlaceholder = false;
+  targetLow = 3.9;
+  targetHigh = 10.0;
 
   constructor(
     public auth: AuthenticationService,
     private readonly history: SgsHistoryService,
-    private readonly eventsStore: EventsStore
+    private readonly eventsStore: EventsStore,
+    private readonly collector: CollectorHealthService,
+    private readonly appSettings: AppSettingsService
   ) {}
 
   ngOnInit() {
+    const s = this.appSettings.get();
+    this.targetLow = s.targetLow;
+    this.targetHigh = s.targetHigh;
     this.sub = this.history.allSgs$.subscribe((sgs: SgReading[]) => {
       this.readings = sgs;
       this.refresh();
@@ -111,11 +122,14 @@ export class NowPage implements OnInit, OnDestroy {
       this.events = e.slice(0, 8);
       this.syncEventsDisplay();
     });
+    this.collector.lastOkAt$.subscribe(() => this.updatePollStatus());
+    this.pollTick = setInterval(() => this.updatePollStatus(), 30_000);
   }
 
   ngOnDestroy() {
     this.sub?.unsubscribe();
     this.patientSub?.unsubscribe();
+    if (this.pollTick) clearInterval(this.pollTick);
   }
 
   doRefresh(ev: CustomEvent) {
@@ -123,7 +137,7 @@ export class NowPage implements OnInit, OnDestroy {
   }
 
   eventTime(e: AppEvent): string {
-    return new Date(e.timestamp).toLocaleTimeString('sr-Latn-RS', {
+    return new Date(e.timestamp).toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -138,6 +152,12 @@ export class NowPage implements OnInit, OnDestroy {
     this.displayEvents = this.eventsPlaceholder ? PLACEHOLDER_EVENTS : this.events;
   }
 
+  private updatePollStatus() {
+    const mins = this.collector.minutesSinceLastOk();
+    this.pollStatus =
+      mins == null ? 'not polled yet' : formatPolledAgoEn(mins);
+  }
+
   private refresh() {
     const nowMs = Date.now();
     const now = new Date(nowMs);
@@ -148,7 +168,11 @@ export class NowPage implements OnInit, OnDestroy {
     this.coverage = detectGaps(this.readings, startOfDay, now);
     this.sparkEnd = nowMs;
     this.sparkStart = nowMs - 3 * 60 * 60 * 1000;
-    this.pollStatus = `provereno ${formatDurationPoll(now)}`;
+    this.updatePollStatus();
+
+    const s = this.appSettings.get();
+    this.targetLow = s.targetLow;
+    this.targetHigh = s.targetHigh;
 
     this.sparkPlaceholder = this.readings.length === 0;
     this.sparkReadings = this.sparkPlaceholder
@@ -164,11 +188,11 @@ export class NowPage implements OnInit, OnDestroy {
       this.hasReading = false;
       this.heroPlaceholder = true;
       this.value = '6.4';
-      this.rangeText = rangeLabelSr('in-range');
+      this.rangeText = rangeLabelEn('in-range');
       this.rangeColor = rangeColorVar('in-range');
       this.trendColor = 'var(--teal)';
       this.minutesAgo = 4;
-      this.projectionChip = 'Projekcija 6.0 za 15 min';
+      this.projectionChip = 'Projected 6.0 in 15m';
       this.slopePerMin = -0.04;
       return;
     }
@@ -177,7 +201,7 @@ export class NowPage implements OnInit, OnDestroy {
     this.heroPlaceholder = false;
     this.value = formatMmol(last.mmol);
     const bucket = rangeBucket(last.mmol);
-    this.rangeText = rangeLabelSr(bucket);
+    this.rangeText = rangeLabelEn(bucket);
     this.rangeColor = rangeColorVar(bucket);
     this.trendColor = rangeColorVar(bucket);
     this.minutesAgo = (nowMs - new Date(last.timestamp).getTime()) / 60000;
@@ -185,7 +209,7 @@ export class NowPage implements OnInit, OnDestroy {
     this.slopePerMin = slopePerMin(this.readings);
     const projected = projectMmol(last.mmol, this.slopePerMin, 15);
     this.projectionChip =
-      projected != null ? `Projekcija ${formatMmol(projected)} za 15 min` : '';
+      projected != null ? `Projected ${formatMmol(projected)} in 15m` : '';
   }
 
   private buildWhoPill(data: any): string {
@@ -202,8 +226,4 @@ export class NowPage implements OnInit, OnDestroy {
       return '';
     }
   }
-}
-
-function formatDurationPoll(now: Date): string {
-  return now.toLocaleTimeString('sr-Latn-RS', { hour: '2-digit', minute: '2-digit' });
 }

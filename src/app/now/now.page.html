@@ -5,13 +5,13 @@
 
   <div class="screen">
     <app-page-tbar
-      title="Sada"
+      title="Now"
       [pill]="whoPill"
       [statusRight]="pollStatus"
     ></app-page-tbar>
 
     <div class="card-surface hero-card">
-      <app-glass-panel [placeholder]="heroPlaceholder">
+      <app-glass-panel [placeholder]="heroPlaceholder" message="No reading yet">
         <div class="hero">
           <div class="val numeral" [style.color]="rangeColor">{{ value }}</div>
           <div class="unit">{{ unit }}</div>
@@ -36,22 +36,24 @@
     </div>
 
     <div class="card-surface flush spark-card">
-      <div class="lbl">Poslednja 3 sata</div>
-      <app-glass-panel [placeholder]="sparkPlaceholder">
+      <div class="lbl">Last 3 hours</div>
+      <app-glass-panel [placeholder]="sparkPlaceholder" message="No data for this period">
         <div class="spark">
           <app-glucose-chart
             [readings]="sparkReadings"
             [startMs]="sparkStart"
             [endMs]="sparkEnd"
             [sparkline]="true"
+            [targetLow]="targetLow"
+            [targetHigh]="targetHigh"
           ></app-glucose-chart>
         </div>
       </app-glass-panel>
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Nedavni događaji</div>
-      <app-glass-panel [placeholder]="eventsPlaceholder">
+      <div class="lbl">Recent events</div>
+      <app-glass-panel [placeholder]="eventsPlaceholder" message="No events yet">
         <app-event-row
           *ngFor="let e of displayEvents"
           [time]="eventTime(e)"

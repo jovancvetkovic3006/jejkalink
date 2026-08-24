@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { EventsStore, AppEvent } from '../services/events-store.service';
+import { AppSettingsService } from '../services/app-settings.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { MetricGridComponent, MetricCell } from '../components/metric-grid/metric-grid.component';
 import { GlucoseChartComponent, BolusMark } from '../components/glucose-chart/glucose-chart.component';
@@ -19,43 +20,22 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
     id: 'ph-d1',
     kind: 'bolus',
     timestamp: new Date().toISOString(),
-    label: 'Bolus 3.8 j',
-    detail: 'doručak',
+    label: 'Bolus 6.1 u · 62 g',
+    detail: 'Dinner',
   },
   {
     id: 'ph-d2',
-    kind: 'sensor',
+    kind: 'alarm',
     timestamp: new Date().toISOString(),
-    label: 'Obrok 45 g',
-    detail: '08:12',
+    label: 'Low 3.6 · treated',
+    detail: 'Recovered',
   },
   {
     id: 'ph-d3',
     kind: 'gap',
     timestamp: new Date().toISOString(),
-    label: 'Gubitak veze',
-    detail: '14 min',
-  },
-];
-
-const PLACEHOLDER_DAY_CELLS: MetricCell[] = [
-  { key: 'U opsegu', value: '72', valueSuffix: '%', delta: '3.9–10.0' },
-  { key: 'Prosek', value: '6.4', delta: 'mmol/L' },
-  {
-    key: 'Ispod 3.9',
-    value: '4',
-    valueSuffix: '%',
-    valueColor: 'var(--low)',
-    delta: '1% ispod 3.0',
-    deltaTone: 'down',
-  },
-  {
-    key: 'Iznad 10.0',
-    value: '18',
-    valueSuffix: '%',
-    valueColor: 'var(--amber)',
-    delta: '3% preko 13.9',
-    deltaTone: 'down',
+    label: 'Signal lost',
+    detail: 'Resumed 15:10',
   },
 ];
 
@@ -96,10 +76,13 @@ export class DayPage implements OnInit, OnDestroy {
   eventsPlaceholder = false;
   displayCells: MetricCell[] = [];
   metricsPlaceholder = false;
+  targetLow = 3.9;
+  targetHigh = 10.0;
 
   constructor(
     private readonly history: SgsHistoryService,
-    private readonly eventsStore: EventsStore
+    private readonly eventsStore: EventsStore,
+    private readonly appSettings: AppSettingsService
   ) {}
 
   ngOnInit() {
@@ -129,7 +112,7 @@ export class DayPage implements OnInit, OnDestroy {
   onNext = () => this.nextDay();
 
   eventTime(e: AppEvent): string {
-    return new Date(e.timestamp).toLocaleTimeString('sr-Latn-RS', {
+    return new Date(e.timestamp).toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -150,6 +133,10 @@ export class DayPage implements OnInit, OnDestroy {
   }
 
   private refresh() {
+    const s = this.appSettings.get();
+    this.targetLow = s.targetLow;
+    this.targetHigh = s.targetHigh;
+
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() + this.dayOffset);
@@ -159,7 +146,7 @@ export class DayPage implements OnInit, OnDestroy {
     this.endMs = end.getTime();
     this.periodStart = start;
     this.periodEnd = end;
-    this.datePill = start.toLocaleDateString('sr-Latn-RS', {
+    this.datePill = start.toLocaleDateString('en-GB', {
       weekday: 'short',
       day: '2-digit',
       month: 'short',
@@ -179,38 +166,61 @@ export class DayPage implements OnInit, OnDestroy {
     const m = periodMetrics(this.readings, start, end);
     this.coverage = m.coverage;
     this.metricsEmpty = m.count === 0;
-    this.cells = [
+
+    const rangeLabel = `${this.targetLow.toFixed(1)}–${this.targetHigh.toFixed(1)}`;
+    const placeholderCells: MetricCell[] = [
+      { key: 'In range', value: '72', valueSuffix: '%', delta: rangeLabel },
+      { key: 'Mean', value: '6.4', delta: 'mmol/L' },
       {
-        key: 'U opsegu',
-        value: String(m.tirPct),
+        key: `Below ${this.targetLow.toFixed(1)}`,
+        value: '4',
         valueSuffix: '%',
-        delta: '3.9–10.0',
+        valueColor: 'var(--low)',
+        delta: '0.6% under 3.0',
+        deltaTone: 'down',
       },
       {
-        key: 'Prosek',
+        key: `Above ${this.targetHigh.toFixed(1)}`,
+        value: '25',
+        valueSuffix: '%',
+        valueColor: 'var(--amber)',
+        delta: '3% over 13.9',
+        deltaTone: 'down',
+      },
+    ];
+
+    this.cells = [
+      {
+        key: 'In range',
+        value: String(m.tirPct),
+        valueSuffix: '%',
+        delta: rangeLabel,
+      },
+      {
+        key: 'Mean',
         value: m.meanLabel,
         delta: 'mmol/L',
       },
       {
-        key: 'Ispod 3.9',
+        key: `Below ${this.targetLow.toFixed(1)}`,
         value: String(m.belowPct),
         valueSuffix: '%',
         valueColor: 'var(--low)',
-        delta: m.veryLowPct ? `${m.veryLowPct}% ispod 3.0` : undefined,
+        delta: `${m.veryLowPct}% under 3.0`,
         deltaTone: 'down',
       },
       {
-        key: 'Iznad 10.0',
+        key: `Above ${this.targetHigh.toFixed(1)}`,
         value: String(m.abovePct),
         valueSuffix: '%',
         valueColor: 'var(--amber)',
-        delta: m.veryHighPct ? `${m.veryHighPct}% preko 13.9` : undefined,
+        delta: `${m.veryHighPct}% over 13.9`,
         deltaTone: 'down',
       },
     ];
 
     this.metricsPlaceholder = this.metricsEmpty;
-    this.displayCells = this.metricsPlaceholder ? PLACEHOLDER_DAY_CELLS : this.cells;
+    this.displayCells = this.metricsPlaceholder ? placeholderCells : this.cells;
 
     this.boluses = this.eventsStore
       .bolusesInRange(this.startMs, this.endMs)

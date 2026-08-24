@@ -8,7 +8,7 @@ import {
   VERY_LOW,
 } from '../domain/glucose';
 import { SgReading } from './sgs-history.service';
-import { formatStaleLabelSr } from '../utils/duration-format.util';
+import { formatStaleLabelEn } from '../utils/duration-format.util';
 
 export interface AlarmSettings {
   low: number;
@@ -122,16 +122,16 @@ export class AlarmsService {
     const ageMin = (Date.now() - new Date(last.timestamp).getTime()) / 60000;
 
     if (s.staleEnabled && ageMin >= STALE_URGENT_MIN) {
-      this.fire('stale', formatStaleLabelSr(ageMin), last);
+      this.fire('stale', formatStaleLabelEn(ageMin), last);
     }
 
     const mmol = last.mmol;
     if (mmol < s.urgentLow) {
-      this.fire('urgent_low', `Hitna niska ${mmol.toFixed(1)}`, last);
+      this.fire('urgent_low', `Urgent low ${mmol.toFixed(1)}`, last);
       this.lowActive = true;
     } else if (mmol < s.low) {
       if (!this.lowActive) {
-        this.fire('low', `Niska ${mmol.toFixed(1)}`, last);
+        this.fire('low', `Low ${mmol.toFixed(1)}`, last);
         this.lowActive = true;
       }
     } else if (mmol >= LOW_CLEAR) {
@@ -139,7 +139,7 @@ export class AlarmsService {
     }
 
     if (mmol > s.high) {
-      this.fire('high', `Visoka ${mmol.toFixed(1)}`, last);
+      this.fire('high', `High ${mmol.toFixed(1)}`, last);
     }
 
     if (readings.length >= 2 && s.fallingFast) {
@@ -150,7 +150,7 @@ export class AlarmsService {
       if (dtMin > 0) {
         const slope = (last.mmol - prev.mmol) / dtMin;
         if (slope <= -s.fallingFast) {
-          this.fire('falling_fast', `Brzo padanje ${slope.toFixed(2)}/min`, last);
+          this.fire('falling_fast', `Falling fast ${slope.toFixed(2)}/min`, last);
         }
       }
     }

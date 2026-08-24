@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { HIGH, LOW } from '../domain/glucose';
 
 export interface AppSettings {
   keepRaw: boolean;
@@ -7,6 +8,10 @@ export interface AppSettings {
   weeklyReadEnabled: boolean;
   flagUnusualDays: boolean;
   pollIntervalMin: number;
+  /** Alert after this many consecutive collector failures. */
+  failureAlertAt: number;
+  targetLow: number;
+  targetHigh: number;
 }
 
 const KEY = 'app_settings_v1';
@@ -17,6 +22,9 @@ const DEFAULTS: AppSettings = {
   weeklyReadEnabled: false,
   flagUnusualDays: false,
   pollIntervalMin: 5,
+  failureAlertAt: 3,
+  targetLow: LOW,
+  targetHigh: HIGH,
 };
 
 @Injectable({ providedIn: 'root' })

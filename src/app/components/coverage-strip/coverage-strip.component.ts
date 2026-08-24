@@ -85,7 +85,7 @@ export class CoverageStripComponent {
 
   get gapPart(): string {
     const gapMin = Math.round(this.display.gapMs / 60000);
-    return `${this.display.gapCount} praznina · ${gapMin} min`;
+    return `${this.display.gapCount} gap · ${gapMin} min`;
   }
 
   segmentFlex(s: { from: Date; to: Date }): number {

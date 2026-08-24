@@ -41,20 +41,23 @@ export function rangeBucket(mmol: number): RangeBucket {
   return 'very-high';
 }
 
-export function rangeLabelSr(bucket: RangeBucket): string {
+export function rangeLabelEn(bucket: RangeBucket): string {
   switch (bucket) {
     case 'very-low':
-      return 'Veoma niska';
+      return 'Very low';
     case 'low':
-      return 'Niska';
+      return 'Low';
     case 'in-range':
-      return 'U opsegu';
+      return 'In range';
     case 'high':
-      return 'Visoka';
+      return 'High';
     case 'very-high':
-      return 'Veoma visoka';
+      return 'Very high';
   }
 }
+
+/** @deprecated use rangeLabelEn */
+export const rangeLabelSr = rangeLabelEn;
 
 /** CSS token name for bucket colour. */
 export function rangeColorVar(bucket: RangeBucket): string {

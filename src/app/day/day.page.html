@@ -7,7 +7,7 @@
 >
   <div class="screen">
     <app-page-tbar
-      title="Dan"
+      title="Day"
       [pill]="datePill"
       [showBack]="true"
       [showForward]="true"
@@ -18,13 +18,15 @@
     ></app-page-tbar>
 
     <div class="card-surface flush chart-card">
-      <app-glass-panel [placeholder]="chartPlaceholder">
+      <app-glass-panel [placeholder]="chartPlaceholder" message="No readings for this day">
         <div class="chart">
           <app-glucose-chart
             [readings]="chartReadings"
             [startMs]="startMs"
             [endMs]="endMs"
             [boluses]="boluses"
+            [targetLow]="targetLow"
+            [targetHigh]="targetHigh"
           ></app-glucose-chart>
         </div>
       </app-glass-panel>
@@ -40,12 +42,12 @@
       [cells]="displayCells"
       [empty]="metricsEmpty"
       [placeholder]="metricsPlaceholder"
-      emptyMessage="Nema pokrivenih očitavanja za ovaj dan"
+      emptyMessage="No covered readings for this day"
     ></app-metric-grid>
 
     <div class="card-surface log">
-      <div class="lbl">Dnevnik</div>
-      <app-glass-panel [placeholder]="eventsPlaceholder">
+      <div class="lbl">Day log</div>
+      <app-glass-panel [placeholder]="eventsPlaceholder" message="No entries for this day">
         <app-event-row
           *ngFor="let e of displayEvents"
           [time]="eventTime(e)"

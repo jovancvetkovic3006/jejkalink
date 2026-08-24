@@ -26,20 +26,23 @@ import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.7.0';
+  appVersion = '1.8.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;
   userName = '';
-  tokenStatus = 'Nepoznato';
+  tokenStatus = 'Unknown';
   sessionDetail = '';
   readingsCount = 0;
   failures = 0;
+  failureAlertAt = 3;
   pollInterval = 5;
   keepRaw = true;
   weekStart: 'monday' | 'sunday' = 'monday';
   weeklyReadEnabled = false;
   flagUnusualDays = false;
+  targetLow = 3.9;
+  targetHigh = 10.0;
   uptimeCoverage: ReturnType<typeof detectGaps> | null = null;
   uptimeStart = new Date();
   uptimeEnd = new Date();
@@ -63,6 +66,9 @@ export class SettingsPage implements OnInit {
     this.weeklyReadEnabled = s.weeklyReadEnabled;
     this.flagUnusualDays = s.flagUnusualDays;
     this.pollInterval = s.pollIntervalMin;
+    this.failureAlertAt = s.failureAlertAt;
+    this.targetLow = s.targetLow;
+    this.targetHigh = s.targetHigh;
     this.collectorHealth.failures$.subscribe((n) => (this.failures = n));
     this.refreshUptime();
     this.history.allSgs$.subscribe(() => {
@@ -86,25 +92,26 @@ export class SettingsPage implements OnInit {
         const user = JSON.parse(raw);
         this.userName = user.name || '';
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   private updateTokenStatus() {
     if (this.authService.isTokenExpired()) {
-      this.tokenStatus = 'Istekao';
-      this.sessionDetail = 'Potrebna ponovna prijava';
+      this.tokenStatus = 'Expired';
+      this.sessionDetail = 'Sign in again';
     } else {
       try {
         const token = this.authService.getToken();
         const parts = token.split('.');
-        const padded = parts[1] + '='.repeat((4 - parts[1].length % 4) % 4);
+        const padded = parts[1] + '='.repeat((4 - (parts[1].length % 4)) % 4);
         const payload = JSON.parse(atob(padded));
         const exp = new Date(payload.exp * 1000);
-        this.tokenStatus = 'Aktivan';
-        this.sessionDetail =
-          'Važi do ' + exp.toLocaleString('sr-Latn-RS');
+        this.tokenStatus = 'Live';
+        this.sessionDetail = 'Valid until ' + exp.toLocaleString('en-GB');
       } catch {
-        this.tokenStatus = 'Aktivan';
+        this.tokenStatus = 'Live';
         this.sessionDetail = '';
       }
     }
@@ -132,7 +139,7 @@ export class SettingsPage implements OnInit {
   }
 
   weekStartLabel(): string {
-    return this.weekStart === 'monday' ? 'Ponedeljak' : 'Nedelja';
+    return this.weekStart === 'monday' ? 'Monday' : 'Sunday';
   }
 
   toggleWeekStart() {
@@ -145,6 +152,27 @@ export class SettingsPage implements OnInit {
     if (next === this.pollInterval) return;
     this.pollInterval = next;
     this.appSettings.patch({ pollIntervalMin: next });
+  }
+
+  stepFailureAlert(delta: number) {
+    const next = Math.min(20, Math.max(1, this.failureAlertAt + delta));
+    if (next === this.failureAlertAt) return;
+    this.failureAlertAt = next;
+    this.appSettings.patch({ failureAlertAt: next });
+  }
+
+  stepTargetLow(delta: number) {
+    const next = Math.round((this.targetLow + delta) * 10) / 10;
+    if (next < 3.0 || next >= this.targetHigh - 0.5) return;
+    this.targetLow = next;
+    this.appSettings.patch({ targetLow: next });
+  }
+
+  stepTargetHigh(delta: number) {
+    const next = Math.round((this.targetHigh + delta) * 10) / 10;
+    if (next > 15.0 || next <= this.targetLow + 0.5) return;
+    this.targetHigh = next;
+    this.appSettings.patch({ targetHigh: next });
   }
 
   importCsvHint() {

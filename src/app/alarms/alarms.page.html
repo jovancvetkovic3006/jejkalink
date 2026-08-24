@@ -1,21 +1,21 @@
 <ion-content appTabSwipe>
   <div class="screen">
     <app-page-tbar
-      title="Alarmi"
+      title="Alarms"
       pill="backup"
-      statusRight="samo rezervni"
+      statusRight="backup only"
     ></app-page-tbar>
 
     <div class="caveat-card">
-      <div class="lbl">Rezervni alarm, ne glavni</div>
+      <div class="lbl">Second opinion, not the first</div>
       <p>
-        Očitavanja stižu 10–15 minuta nakon senzora. Držite alarme na pumpi i CareLink-u
-        uključene — ovde se okidaju uz njih, nikad umesto njih.
+        Readings arrive 10–15 minutes after the sensor takes them. Keep the pump and
+        CareLink alarms on — these fire alongside, never instead.
       </p>
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Pragovi</div>
+      <div class="lbl">Thresholds</div>
       <div class="set" *ngFor="let row of thresholdRows">
         <div class="body">
           <div class="h">{{ row.label }}</div>
@@ -30,7 +30,7 @@
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Pravila</div>
+      <div class="lbl">Rules</div>
       <div class="set" *ngFor="let row of ruleRows">
         <div class="body">
           <div class="h">{{ row.label }}</div>
@@ -46,8 +46,11 @@
     </div>
 
     <div class="card-surface">
-      <div class="lbl">Okidanja ove nedelje · {{ fired.length }}</div>
-      <app-glass-panel [showMessage]="fired.length === 0" message="Nema okidanja ove nedelje">
+      <div class="lbl">Fired this week · {{ fired.length }}</div>
+      <app-glass-panel
+        [placeholder]="fired.length === 0"
+        message="No firings this week"
+      >
         <div class="fire-block" *ngFor="let f of fired">
           <app-event-row
             [time]="firedTime(f)"
@@ -57,8 +60,8 @@
             [dotColor]="firedDot(f)"
           ></app-event-row>
           <div class="tag-row">
-            <button type="button" class="chip-pill" (click)="tag(f.id, 'real')">Stvarno</button>
-            <button type="button" class="chip-pill" (click)="tag(f.id, 'false')">Lažno</button>
+            <button type="button" class="chip-pill" (click)="tag(f.id, 'real')">Real</button>
+            <button type="button" class="chip-pill" (click)="tag(f.id, 'false')">False</button>
           </div>
         </div>
       </app-glass-panel>

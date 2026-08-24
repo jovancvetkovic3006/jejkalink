@@ -127,10 +127,13 @@ function mergeSegments(segments: CoverageSegment[]): CoverageSegment[] {
   return out.filter((s) => s.to.getTime() > s.from.getTime());
 }
 
-export function formatCoverageCaptionSr(cov: CoverageResult): string {
+export function formatCoverageCaptionEn(cov: CoverageResult): string {
   const gapMin = Math.round(cov.gapMs / 60000);
   if (cov.gapCount > 0) {
-    return `${cov.gapCount} praznina · ${gapMin} min · ${cov.coveragePct}%`;
+    return `${cov.gapCount} gap · ${gapMin} min · ${cov.coveragePct}%`;
   }
   return `${cov.coveragePct}%`;
 }
+
+/** @deprecated use formatCoverageCaptionEn */
+export const formatCoverageCaptionSr = formatCoverageCaptionEn;
