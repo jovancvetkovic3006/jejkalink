@@ -77,13 +77,9 @@
     <div class="card-surface log">
       <div class="lbl">Day log</div>
       <app-glass-panel [placeholder]="eventsPlaceholder" message="No data yet">
-        <cdk-virtual-scroll-viewport
-          *ngIf="!eventsPlaceholder; else dayLogPh"
-          itemSize="56"
-          class="virt-list virt-log"
-        >
+        <div class="event-list" *ngIf="!eventsPlaceholder; else dayLogPh">
           <app-event-row
-            *cdkVirtualFor="let e of displayEvents; trackBy: trackEvent"
+            *ngFor="let e of displayEvents; trackBy: trackEvent"
             [time]="eventTime(e)"
             [title]="e.label"
             [subtitle]="e.detail || ''"
@@ -92,7 +88,7 @@
             [removable]="isNote(e)"
             (removed)="removeNote(noteId(e))"
           ></app-event-row>
-        </cdk-virtual-scroll-viewport>
+        </div>
         <ng-template #dayLogPh>
           <app-event-row
             *ngFor="let e of displayEvents"

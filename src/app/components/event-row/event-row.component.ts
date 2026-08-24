@@ -55,27 +55,22 @@ import { CommonModule } from '@angular/common';
     `
       :host {
         display: block;
-        height: 56px;
+        min-height: 56px;
         box-sizing: border-box;
         border-bottom: 1px solid var(--line);
-        overflow: hidden;
       }
       :host(.tall) {
-        height: 80px;
+        min-height: 80px;
       }
       :host(:last-child) {
         border-bottom: 0;
       }
       .wrap {
-        height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
         box-sizing: border-box;
-      }
-      :host(.tall) .wrap {
-        justify-content: flex-start;
-        padding-top: 6px;
+        padding: 8px 0;
       }
       .row {
         display: flex;

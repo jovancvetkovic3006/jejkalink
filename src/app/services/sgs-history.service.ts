@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { toMmol } from '../domain/glucose';
 import { AppSettingsService } from './app-settings.service';
+import { DataRetentionService } from './data-retention.service';
 
 export interface SgReading {
   /** Original CareLink mg/dL (if known). */
@@ -25,7 +26,10 @@ export class SgsHistoryService {
 
   public allSgs$ = new BehaviorSubject<SgReading[]>(this.load());
 
-  constructor(private readonly appSettings: AppSettingsService) {}
+  constructor(
+    private readonly appSettings: AppSettingsService,
+    private readonly retention: DataRetentionService
+  ) {}
 
   private load(): SgReading[] {
     try {
@@ -62,16 +66,27 @@ export class SgsHistoryService {
 
   private prune(entries: SgReading[]): SgReading[] {
     const cutoff = Date.now() - SgsHistoryService.MAX_AGE_MS;
-    return entries
-      .filter((e) => e.mmol > 0 && e.timestamp && new Date(e.timestamp).getTime() >= cutoff)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const kept: SgReading[] = [];
+    const removed: SgReading[] = [];
+    for (const e of entries) {
+      if (!e.mmol || e.mmol <= 0 || !e.timestamp) continue;
+      if (new Date(e.timestamp).getTime() >= cutoff) kept.push(e);
+      else removed.push(e);
+    }
+    if (removed.length) {
+      this.retention.archiveRemovedReadings(removed, kept);
+    }
+    return kept.sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
   }
 
   private persist(entries: SgReading[]) {
     try {
       localStorage.setItem(SgsHistoryService.STORAGE_KEY, JSON.stringify(entries));
+      this.retention.clearStorageWarning();
     } catch {
-      /* storage full */
+      this.retention.notifyStorageFull('readings');
     }
   }
 

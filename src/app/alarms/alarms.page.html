@@ -67,23 +67,19 @@
         [placeholder]="firedPlaceholder"
         message="No data yet"
       >
-        <cdk-virtual-scroll-viewport
-          *ngIf="!firedPlaceholder; else firedPh"
-          itemSize="80"
-          class="virt-list virt-fired"
-        >
+        <div class="event-list" *ngIf="!firedPlaceholder; else firedPh">
           <app-event-row
-            *cdkVirtualFor="let f of displayFired; trackBy: trackFired"
+            *ngFor="let f of displayFired; trackBy: trackFired"
             [time]="firedTime(f)"
             [title]="f.label"
             [subtitle]="firedSubtitle(f)"
             [rightValue]="firedDay(f)"
             [dotColor]="firedDot(f)"
-            [showAlarmTags]="!firedPlaceholder"
+            [showAlarmTags]="true"
             [alarmTag]="f.tag"
             (alarmTagClick)="tagAlarm(f.id, $event)"
           ></app-event-row>
-        </cdk-virtual-scroll-viewport>
+        </div>
         <ng-template #firedPh>
           <app-event-row
             *ngFor="let f of displayFired"

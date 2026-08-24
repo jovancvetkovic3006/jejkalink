@@ -64,9 +64,32 @@
       <div class="set">
         <div class="body">
           <div class="h">Readings stored</div>
-          <div class="s">Local history</div>
+          <div class="s">Hot window · last {{ hotRetentionDays }} days</div>
         </div>
         <span class="rt numeral">{{ readingsCount }}</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Local storage</div>
+          <div class="s">Approximate app data size</div>
+        </div>
+        <span class="rt numeral">{{ storageLabel }}</span>
+      </div>
+      <div class="storage-warn" *ngIf="storageWarning">{{ storageWarning }}</div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Monthly archives</div>
+          <div class="s">Auto-saved when months roll off · last {{ lastArchiveLabel }}</div>
+        </div>
+        <span class="rt numeral">{{ archiveMonths }}</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Export archive</div>
+          <div class="s">JSON + HTML · last export {{ lastExportLabel }}</div>
+        </div>
+        <button type="button" class="chip-pill" (click)="exportArchive()">Create</button>
+        <span class="s" *ngIf="archiveStatus">{{ archiveStatus }}</span>
       </div>
       <div class="set">
         <div class="body">
@@ -185,11 +208,11 @@
         </button>
       </div>
       <div class="log-container" *ngIf="logsExpanded && logs.length > 0">
-        <cdk-virtual-scroll-viewport itemSize="22" class="virt-logs">
-          <div class="log-entry" *cdkVirtualFor="let log of logs; trackBy: trackLog">
+        <div class="log-scroll">
+          <div class="log-entry" *ngFor="let log of logs; trackBy: trackLog">
             {{ log }}
           </div>
-        </cdk-virtual-scroll-viewport>
+        </div>
       </div>
     </div>
 

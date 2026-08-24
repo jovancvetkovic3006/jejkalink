@@ -1,6 +1,7 @@
 import { periodMetrics } from './metrics';
 import { detectGaps } from './coverage';
 import { detectHypoEpisodes, postMealRises } from './episodes';
+import { buildMonthlySummary } from './archive';
 import { SgReading } from '../services/sgs-history.service';
 
 function reading(mmol: number, iso: string): SgReading {
@@ -71,5 +72,19 @@ describe('analytics', () => {
     );
     expect(rises.length).toBe(1);
     expect(rises[0].riseMmol).toBeGreaterThan(3);
+  });
+
+  it('builds monthly archive summary', () => {
+    const readings: SgReading[] = [];
+    for (let d = 1; d <= 28; d++) {
+      readings.push(
+        reading(6.0, `2025-06-${String(d).padStart(2, '0')}T12:00:00`)
+      );
+    }
+    const summary = buildMonthlySummary(readings, '2025-06');
+    expect(summary).not.toBeNull();
+    expect(summary!.month).toBe('2025-06');
+    expect(summary!.tirPct).toBe(100);
+    expect(summary!.readingCount).toBe(28);
   });
 });

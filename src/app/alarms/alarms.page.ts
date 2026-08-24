@@ -1,7 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { Subscription } from 'rxjs';
 import { AlarmsService, AlarmSettings, FiredAlarm } from '../services/alarms.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
@@ -41,7 +40,6 @@ const PLACEHOLDER_FIRED: FiredAlarm[] = [
   styleUrls: ['alarms.page.scss'],
   imports: [
     CommonModule,
-    ScrollingModule,
     IonContent,
     PageTbarComponent,
     EventRowComponent,

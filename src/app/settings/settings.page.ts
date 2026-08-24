@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { AuthenticationService } from '../services/authentication.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
 import { AppSettingsService } from '../services/app-settings.service';
@@ -19,6 +18,15 @@ import {
   buildClinicReportHtml,
   downloadHtmlReport,
 } from '../utils/clinic-report.util';
+import {
+  DataRetentionService,
+  HOT_RETENTION_DAYS,
+} from '../services/data-retention.service';
+import {
+  buildArchiveHtml,
+  buildArchiveJson,
+  downloadTextFile,
+} from '../utils/archive-export.util';
 
 @Component({
   selector: 'app-settings',
@@ -28,7 +36,6 @@ import {
     IonContent,
     FormsModule,
     CommonModule,
-    ScrollingModule,
     PageTbarComponent,
     CoverageStripComponent,
     TabSwipeDirective,
@@ -36,7 +43,7 @@ import {
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.16.0';
+  appVersion = '1.17.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;
@@ -58,6 +65,13 @@ export class SettingsPage implements OnInit {
   uptimeEnd = new Date();
   csvStatus = '';
   exportStatus = '';
+  archiveStatus = '';
+  storageLabel = '';
+  storageWarning: string | null = null;
+  archiveMonths = 0;
+  lastArchiveLabel = 'None yet';
+  lastExportLabel = 'Never';
+  hotRetentionDays = HOT_RETENTION_DAYS;
 
   constructor(
     private readonly authService: AuthenticationService,
@@ -66,7 +80,8 @@ export class SettingsPage implements OnInit {
     private readonly collectorHealth: CollectorHealthService,
     private readonly collectorConfig: CollectorConfigService,
     private readonly eventsStore: EventsStore,
-    private readonly annotations: AnnotationsStore
+    private readonly annotations: AnnotationsStore,
+    private readonly retention: DataRetentionService
   ) {}
 
   ngOnInit() {
@@ -90,7 +105,17 @@ export class SettingsPage implements OnInit {
     this.history.allSgs$.subscribe(() => {
       this.readingsCount = this.history.readings().length;
       this.refreshUptime();
+      this.refreshRetention();
     });
+    this.retention.storageWarning$.subscribe((w) => (this.storageWarning = w));
+    this.refreshRetention();
+  }
+
+  private refreshRetention() {
+    this.storageLabel = this.retention.formatStorageMb();
+    this.archiveMonths = this.retention.archiveCount();
+    this.lastArchiveLabel = this.retention.lastArchiveLabel();
+    this.lastExportLabel = this.retention.lastExportLabel();
   }
 
   private refreshUptime() {
@@ -279,6 +304,32 @@ export class SettingsPage implements OnInit {
     const stamp = end.toISOString().slice(0, 10);
     downloadHtmlReport(`jejkalink-clinic-${stamp}.html`, html);
     this.exportStatus = 'Report saved (open in browser · Print to PDF)';
+  }
+
+  exportArchive() {
+    const months = this.retention.loadArchives();
+    if (!months.length) {
+      this.archiveStatus = 'No monthly archives yet — summaries appear when data rolls past 90 days';
+      return;
+    }
+    const patient =
+      this.patientUsername.trim() || localStorage.getItem('patientUsername') || 'Patient';
+    const bundle = {
+      exportedAt: new Date().toISOString(),
+      patientLabel: patient,
+      hotRetentionDays: HOT_RETENTION_DAYS,
+      months,
+    };
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadTextFile(
+      `jejkalink-archive-${stamp}.json`,
+      buildArchiveJson(bundle),
+      'application/json'
+    );
+    downloadHtmlReport(`jejkalink-archive-${stamp}.html`, buildArchiveHtml(bundle));
+    this.retention.markExported();
+    this.refreshRetention();
+    this.archiveStatus = `Saved ${months.length} monthly summaries (JSON + HTML)`;
   }
 
   logout() {

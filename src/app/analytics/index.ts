@@ -23,3 +23,5 @@ export {
 export type { HypoEpisode, PostMealRise, BolusAnchor } from './episodes';
 export { splitByDayType, hourlyTirBySlot } from './day-split';
 export type { DaySplitMetrics, HourlyTir } from './day-split';
+export { buildMonthlySummary, monthKeyForReading, monthBounds } from './archive';
+export type { MonthlyArchive } from './archive';

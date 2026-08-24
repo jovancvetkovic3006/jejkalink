@@ -1,7 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { FormsModule } from '@angular/forms';
 import { combineLatest, Subscription } from 'rxjs';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
@@ -53,7 +52,6 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
   imports: [
     CommonModule,
     FormsModule,
-    ScrollingModule,
     IonContent,
     CoverageStripComponent,
     MetricGridComponent,
