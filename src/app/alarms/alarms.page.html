@@ -48,11 +48,11 @@
     <div class="card-surface">
       <div class="lbl">Fired this week · {{ fired.length }}</div>
       <app-glass-panel
-        [placeholder]="fired.length === 0"
-        message="No firings this week"
+        [placeholder]="firedPlaceholder"
+        message="No data yet"
       >
         <app-event-row
-          *ngFor="let f of fired"
+          *ngFor="let f of displayFired"
           [time]="firedTime(f)"
           [title]="f.label"
           [subtitle]="firedSubtitle(f)"

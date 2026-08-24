@@ -40,20 +40,23 @@ export class TrendsPage implements OnInit, OnDestroy {
   periodEnd = new Date();
   agpBuckets: ReturnType<typeof agpBuckets> = [];
   rangeBars: { label: string; pct: number; color: string }[] = [];
+  displayRangeBars: { label: string; pct: number; color: string }[] = [];
+  rangePlaceholder = false;
   metricsEmpty = true;
   periodPill = '14 days';
   coveragePeriodLabel = '';
   agpPlaceholder = false;
   displayCells: MetricCell[] = [];
   metricsPlaceholder = false;
+  weeklyReadPlaceholder = true;
   targetLow = 3.9;
   targetHigh = 10.0;
   weeklyReadP1 =
-    'Weekly read is not configured. When enabled, a descriptive pattern summary will appear here.';
+    'Overnight lows landed on four nights this fortnight, and three of them followed an afternoon swim. The drop starts around 01:30 rather than right after exercise.';
   weeklyReadP2 =
-    'Never a dose suggestion — description and one clinic question only.';
+    'Breakfast is the widest spread of the day — the 10th–90th band is 6.8 mmol/L apart at 09:00.';
   weeklyReadQ =
-    'A clinic question will appear here when the weekly read is active.';
+    'Worth asking the clinic: does the delayed post-exercise pattern suggest a temp target on swim days?';
 
   constructor(
     private readonly history: SgsHistoryService,
@@ -212,6 +215,32 @@ export class TrendsPage implements OnInit, OnDestroy {
         color: 'var(--very-high)',
       },
     ];
+
+    this.rangePlaceholder = this.metricsEmpty;
+    this.displayRangeBars = this.rangePlaceholder
+      ? [
+          { label: 'Very low · under 3.0', pct: 1, color: 'var(--very-low)' },
+          {
+            label: `Low · 3.0–${low.toFixed(1)}`,
+            pct: 4,
+            color: 'var(--low)',
+          },
+          {
+            label: `In range · ${low.toFixed(1)}–${high.toFixed(1)}`,
+            pct: 65,
+            color: 'var(--teal)',
+          },
+          {
+            label: `High · ${high.toFixed(1)}–13.9`,
+            pct: 25,
+            color: 'var(--amber)',
+          },
+          { label: 'Very high · over 13.9', pct: 5, color: 'var(--very-high)' },
+        ]
+      : this.rangeBars;
+
+    // No generated weekly read yet — always show blurred mock until real content exists.
+    this.weeklyReadPlaceholder = true;
   }
 }
 

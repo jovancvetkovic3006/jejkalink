@@ -9,66 +9,70 @@
 
     <div class="card-surface flush agp-card">
       <div class="lbl" style="padding-left: 4px">Typical day · median &amp; spread</div>
-      <app-glass-panel [placeholder]="agpPlaceholder" message="Not enough data for AGP">
+      <app-glass-panel [placeholder]="agpPlaceholder" message="No data yet">
         <app-agp-chart
           [buckets]="agpBuckets"
           [usePlaceholder]="agpPlaceholder"
           [targetLow]="targetLow"
           [targetHigh]="targetHigh"
         ></app-agp-chart>
+        <app-coverage-strip
+          [coverage]="coverage"
+          [periodStart]="periodStart"
+          [periodEnd]="periodEnd"
+          [periodLabel]="coveragePeriodLabel"
+        ></app-coverage-strip>
       </app-glass-panel>
-      <app-coverage-strip
-        [coverage]="coverage"
-        [periodStart]="periodStart"
-        [periodEnd]="periodEnd"
-        [periodLabel]="coveragePeriodLabel"
-      ></app-coverage-strip>
     </div>
 
     <div class="card-surface">
       <div class="lbl">Time in range</div>
-      <div class="rb">
-        <i
-          *ngFor="let b of rangeBars"
-          [style.flex]="b.pct || 0.01"
-          [style.background]="b.color"
-          >{{ b.pct >= 8 ? b.pct + '%' : '' }}</i
-        >
-      </div>
-      <div class="rkey">
-        <div *ngFor="let b of rangeBars">
-          <s [style.background]="b.color"></s>
-          <span>{{ b.label }}</span>
-          <b class="numeral">{{ b.pct }}%</b>
+      <app-glass-panel [placeholder]="rangePlaceholder" message="No data yet">
+        <div class="rb">
+          <i
+            *ngFor="let b of displayRangeBars"
+            [style.flex]="b.pct || 0.01"
+            [style.background]="b.color"
+            >{{ b.pct >= 8 ? b.pct + '%' : '' }}</i
+          >
         </div>
-      </div>
+        <div class="rkey">
+          <div *ngFor="let b of displayRangeBars">
+            <s [style.background]="b.color"></s>
+            <span>{{ b.label }}</span>
+            <b class="numeral">{{ b.pct }}%</b>
+          </div>
+        </div>
+      </app-glass-panel>
     </div>
 
     <app-metric-grid
       [cells]="displayCells"
       [empty]="metricsEmpty"
       [placeholder]="metricsPlaceholder"
-      emptyMessage="Need more readings for trends"
+      emptyMessage="No data yet"
     ></app-metric-grid>
 
     <div class="ai-card">
-      <div class="lbl">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.2"
-          stroke-linecap="round"
-        >
-          <path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" />
-        </svg>
-        Weekly read
-      </div>
-      <p>{{ weeklyReadP1 }}</p>
-      <p>{{ weeklyReadP2 }}</p>
-      <div class="q">{{ weeklyReadQ }}</div>
+      <app-glass-panel [placeholder]="weeklyReadPlaceholder" message="No data yet">
+        <div class="lbl">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+          >
+            <path d="M12 3v18M3 12h18M6 6l12 12M18 6L6 18" />
+          </svg>
+          Weekly read
+        </div>
+        <p>{{ weeklyReadP1 }}</p>
+        <p>{{ weeklyReadP2 }}</p>
+        <div class="q">{{ weeklyReadQ }}</div>
+      </app-glass-panel>
     </div>
   </div>
 </ion-content>

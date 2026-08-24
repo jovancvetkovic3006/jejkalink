@@ -9,6 +9,30 @@ import { GlassPanelComponent } from '../components/glass-panel/glass-panel.compo
 import { LOW_CLEAR } from '../domain/glucose';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
+const PLACEHOLDER_FIRED: FiredAlarm[] = [
+  {
+    id: 'ph-f1',
+    timestamp: new Date().toISOString(),
+    rule: 'low',
+    label: 'Low 3.7',
+    tag: null,
+  },
+  {
+    id: 'ph-f2',
+    timestamp: new Date().toISOString(),
+    rule: 'stale',
+    label: 'No data 24 min',
+    tag: null,
+  },
+  {
+    id: 'ph-f3',
+    timestamp: new Date().toISOString(),
+    rule: 'projection',
+    label: 'Projected low 3.8',
+    tag: null,
+  },
+];
+
 @Component({
   selector: 'app-alarms-page',
   templateUrl: 'alarms.page.html',
@@ -25,6 +49,8 @@ import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 export class AlarmsPage implements OnInit {
   settings!: AlarmSettings;
   fired: FiredAlarm[] = [];
+  displayFired: FiredAlarm[] = [];
+  firedPlaceholder = false;
 
   thresholdRows: {
     key: 'urgentLow' | 'low' | 'high' | 'fallingFast';
@@ -55,7 +81,11 @@ export class AlarmsPage implements OnInit {
 
   ngOnInit() {
     this.settings = { ...this.alarms.settings$.value };
-    this.alarms.fired$.subscribe(() => (this.fired = this.alarms.firedThisWeek()));
+    this.alarms.fired$.subscribe(() => {
+      this.fired = this.alarms.firedThisWeek();
+      this.firedPlaceholder = this.fired.length === 0;
+      this.displayFired = this.firedPlaceholder ? PLACEHOLDER_FIRED : this.fired;
+    });
     this.alarms.evaluate(this.history.readings());
   }
 

@@ -11,7 +11,7 @@
     ></app-page-tbar>
 
     <div class="card-surface hero-card">
-      <app-glass-panel [placeholder]="heroPlaceholder" message="No reading yet">
+      <app-glass-panel [placeholder]="heroPlaceholder" message="No data yet">
         <div class="hero">
           <div class="val numeral" [style.color]="rangeColor">{{ value }}</div>
           <div class="unit">{{ unit }}</div>
@@ -26,18 +26,18 @@
           <app-stale-chip [minutesAgo]="minutesAgo"></app-stale-chip>
           <span class="chip" *ngIf="projectionChip">{{ projectionChip }}</span>
         </div>
+        <app-coverage-strip
+          [coverage]="coverage"
+          [periodStart]="dayStart"
+          [periodEnd]="dayEnd"
+          [periodLabel]="periodLabel"
+        ></app-coverage-strip>
       </app-glass-panel>
-      <app-coverage-strip
-        [coverage]="coverage"
-        [periodStart]="dayStart"
-        [periodEnd]="dayEnd"
-        [periodLabel]="periodLabel"
-      ></app-coverage-strip>
     </div>
 
     <div class="card-surface flush spark-card">
       <div class="lbl">Last 3 hours</div>
-      <app-glass-panel [placeholder]="sparkPlaceholder" message="No data for this period">
+      <app-glass-panel [placeholder]="sparkPlaceholder" message="No data yet">
         <div class="spark">
           <app-glucose-chart
             [readings]="sparkReadings"
@@ -53,7 +53,7 @@
 
     <div class="card-surface">
       <div class="lbl">Recent events</div>
-      <app-glass-panel [placeholder]="eventsPlaceholder" message="No events yet">
+      <app-glass-panel [placeholder]="eventsPlaceholder" message="No data yet">
         <app-event-row
           *ngFor="let e of displayEvents"
           [time]="eventTime(e)"

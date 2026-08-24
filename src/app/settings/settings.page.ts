@@ -26,7 +26,7 @@ import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.11.0';
+  appVersion = '1.12.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;

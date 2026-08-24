@@ -16,7 +16,7 @@ export interface MetricCell {
   standalone: true,
   imports: [CommonModule, GlassPanelComponent],
   template: `
-    <app-glass-panel [placeholder]="placeholder || empty" [showMessage]="empty && !placeholder" [message]="emptyMessage">
+    <app-glass-panel [placeholder]="placeholder || empty" [message]="emptyMessage">
       <div class="mgrid">
         <div class="m" *ngFor="let cell of cells">
           <div class="k">{{ cell.key }}</div>
@@ -88,5 +88,5 @@ export class MetricGridComponent {
   @Input() cells: MetricCell[] = [];
   @Input() empty = false;
   @Input() placeholder = false;
-  @Input() emptyMessage = 'No data for this period yet';
+  @Input() emptyMessage = 'No data yet';
 }

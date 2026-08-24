@@ -18,7 +18,7 @@
     ></app-page-tbar>
 
     <div class="card-surface flush chart-card">
-      <app-glass-panel [placeholder]="chartPlaceholder" message="No readings for this day">
+      <app-glass-panel [placeholder]="chartPlaceholder" message="No data yet">
         <div class="chart">
           <app-glucose-chart
             [readings]="chartReadings"
@@ -29,25 +29,25 @@
             [targetHigh]="targetHigh"
           ></app-glucose-chart>
         </div>
+        <app-coverage-strip
+          [coverage]="coverage"
+          [periodStart]="periodStart"
+          [periodEnd]="periodEnd"
+          periodLabel="00:00–24:00"
+        ></app-coverage-strip>
       </app-glass-panel>
-      <app-coverage-strip
-        [coverage]="coverage"
-        [periodStart]="periodStart"
-        [periodEnd]="periodEnd"
-        periodLabel="00:00–24:00"
-      ></app-coverage-strip>
     </div>
 
     <app-metric-grid
       [cells]="displayCells"
       [empty]="metricsEmpty"
       [placeholder]="metricsPlaceholder"
-      emptyMessage="No covered readings for this day"
+      emptyMessage="No data yet"
     ></app-metric-grid>
 
     <div class="card-surface log">
       <div class="lbl">Day log</div>
-      <app-glass-panel [placeholder]="eventsPlaceholder" message="No entries for this day">
+      <app-glass-panel [placeholder]="eventsPlaceholder" message="No data yet">
         <app-event-row
           *ngFor="let e of displayEvents"
           [time]="eventTime(e)"
