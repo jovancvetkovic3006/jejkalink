@@ -48,7 +48,6 @@ export class TrendsPage implements OnInit, OnDestroy {
   agpPlaceholder = false;
   displayCells: MetricCell[] = [];
   metricsPlaceholder = false;
-  weeklyReadPlaceholder = true;
   targetLow = 3.9;
   targetHigh = 10.0;
   weeklyReadP1 =
@@ -238,9 +237,6 @@ export class TrendsPage implements OnInit, OnDestroy {
           { label: 'Very high · over 13.9', pct: 5, color: 'var(--very-high)' },
         ]
       : this.rangeBars;
-
-    // No generated weekly read yet — always show blurred mock until real content exists.
-    this.weeklyReadPlaceholder = true;
   }
 }
 
