@@ -6,6 +6,10 @@ import { App } from '@capacitor/app';
 import { BackgroundWeb } from './services/background-web.service';
 import { SgsHistoryService } from './services/sgs-history.service';
 import { AlarmsService } from './services/alarms.service';
+import { CollectorConfigService } from './services/collector-config.service';
+import { AppSettingsService } from './services/app-settings.service';
+import { CollectorHealthService } from './services/collector-health.service';
+import { combineLatest } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -14,13 +18,17 @@ import { AlarmsService } from './services/alarms.service';
 })
 export class AppComponent implements OnInit {
   timeoutId: ReturnType<typeof setTimeout> | undefined;
+  private collectorAlertFired = false;
 
   constructor(
     private readonly authService: AuthenticationService,
     private readonly bckg: BackgroundWeb,
     private readonly platform: Platform,
     private readonly history: SgsHistoryService,
-    private readonly alarms: AlarmsService
+    private readonly alarms: AlarmsService,
+    private readonly collectorConfig: CollectorConfigService,
+    private readonly appSettings: AppSettingsService,
+    private readonly collectorHealth: CollectorHealthService
   ) {}
 
   async init() {
@@ -32,7 +40,16 @@ export class AppComponent implements OnInit {
     }
 
     (window as any).Capacitor.Plugins.Background.addListener('onDataFetched', async (info: any) => {
-      console.log('[LOGG] Data fetched:', info);
+      console.log('[LOGG] Data fetched from background');
+      const ok = this.authService.ingestCareLinkPayload(info);
+      if (!ok) {
+        console.log('[LOGG] Background payload ingest failed', info?.error || typeof info?.data);
+      }
+    });
+
+    (window as any).Capacitor.Plugins.Background.addListener('onDataFetchError', async (info: any) => {
+      console.log('[LOGG] Background data fetch error:', info);
+      this.authService.recordBackgroundFetchError(info);
     });
 
     (window as any).Capacitor.Plugins.Background.addListener('onTokenRefreshed', async (info: any) => {
@@ -53,6 +70,7 @@ export class AppComponent implements OnInit {
     });
 
     await this.bckg.setTokens(this.authService.getTokens());
+    await this.collectorConfig.syncToNative();
     await this.bckg.startPolling();
   }
 
@@ -61,6 +79,25 @@ export class AppComponent implements OnInit {
 
     this.history.allSgs$.subscribe((readings) => {
       this.alarms.evaluate(readings);
+    });
+
+    combineLatest([
+      this.collectorHealth.failures$,
+      this.appSettings.settings$,
+    ]).subscribe(([failures, settings]) => {
+      if (failures === 0) {
+        this.collectorAlertFired = false;
+        return;
+      }
+      if (failures >= settings.failureAlertAt && !this.collectorAlertFired) {
+        this.collectorAlertFired = true;
+        void this.bckg.fireAlarmAlert({
+          title: 'Collector failing',
+          body: `${failures} consecutive CareLink failures. Open the app to check session and connection.`,
+          critical: false,
+          rule: 'collector_failure',
+        });
+      }
     });
 
     App.addListener('appStateChange', async ({ isActive }) => {

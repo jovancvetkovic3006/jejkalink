@@ -27,6 +27,7 @@
             [boluses]="boluses"
             [targetLow]="targetLow"
             [targetHigh]="targetHigh"
+            [title]="chartTitle"
           ></app-glucose-chart>
         </div>
         <app-coverage-strip
@@ -48,14 +49,30 @@
     <div class="card-surface log">
       <div class="lbl">Day log</div>
       <app-glass-panel [placeholder]="eventsPlaceholder" message="No data yet">
-        <app-event-row
-          *ngFor="let e of displayEvents"
-          [time]="eventTime(e)"
-          [title]="e.label"
-          [subtitle]="e.detail || ''"
-          [rightValue]="eventRight(e)"
-          [dotColor]="eventDot(e)"
-        ></app-event-row>
+        <cdk-virtual-scroll-viewport
+          *ngIf="!eventsPlaceholder; else dayLogPh"
+          itemSize="56"
+          class="virt-log"
+        >
+          <app-event-row
+            *cdkVirtualFor="let e of displayEvents; trackBy: trackEvent"
+            [time]="eventTime(e)"
+            [title]="e.label"
+            [subtitle]="e.detail || ''"
+            [rightValue]="eventRight(e)"
+            [dotColor]="eventDot(e)"
+          ></app-event-row>
+        </cdk-virtual-scroll-viewport>
+        <ng-template #dayLogPh>
+          <app-event-row
+            *ngFor="let e of displayEvents"
+            [time]="eventTime(e)"
+            [title]="e.label"
+            [subtitle]="e.detail || ''"
+            [rightValue]="eventRight(e)"
+            [dotColor]="eventDot(e)"
+          ></app-event-row>
+        </ng-template>
       </app-glass-panel>
     </div>
   </div>

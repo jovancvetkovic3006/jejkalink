@@ -9,6 +9,8 @@ import {
 } from '../domain/glucose';
 import { SgReading } from './sgs-history.service';
 import { formatStaleLabelEn } from '../utils/duration-format.util';
+import { projectMmol, slopePerMin } from '../utils/glucose-slope.util';
+import { BackgroundWeb } from './background-web.service';
 
 export interface AlarmSettings {
   low: number;
@@ -42,6 +44,10 @@ const DEFAULTS: AlarmSettings = {
   repeatUntilCleared: true,
 };
 
+const OVERNIGHT_LOW = 4.2;
+const HIGH_HOLD_MIN = 30;
+const DEDUPE_MS = 15 * 60 * 1000;
+
 @Injectable({ providedIn: 'root' })
 export class AlarmsService {
   private static readonly SETTINGS_KEY = 'alarm_settings_v1';
@@ -52,6 +58,11 @@ export class AlarmsService {
 
   private lowActive = false;
   private lastFireKey = '';
+  private highSinceMs: number | null = null;
+
+  constructor(private readonly bckg: BackgroundWeb) {
+    void this.syncThresholdsToNative(this.settings$.value);
+  }
 
   private loadSettings(): AlarmSettings {
     try {
@@ -75,6 +86,20 @@ export class AlarmsService {
     const next = { ...this.settings$.value, ...patch };
     localStorage.setItem(AlarmsService.SETTINGS_KEY, JSON.stringify(next));
     this.settings$.next(next);
+    void this.syncThresholdsToNative(next);
+  }
+
+  /** Push thresholds to Android so ongoing notification / critical channel match UI. */
+  async syncThresholdsToNative(s: AlarmSettings = this.settings$.value) {
+    try {
+      await this.bckg.setAlarmThresholds({
+        low: s.low,
+        high: s.high,
+        urgentLow: s.urgentLow,
+      });
+    } catch (e) {
+      console.log('[alarms] setAlarmThresholds failed', e);
+    }
   }
 
   private persistFired(list: FiredAlarm[]) {
@@ -82,16 +107,35 @@ export class AlarmsService {
     this.fired$.next(list.slice(0, 200));
   }
 
-  private fire(rule: string, label: string, reading?: SgReading) {
-    const key = `${rule}-${reading?.timestamp || ''}-${label}`;
-    if (key === this.lastFireKey) return;
-    // Deduplicate same rule within 15 minutes
-    const recent = this.loadFired().find(
+  private isOvernight(d: Date): boolean {
+    const h = d.getHours();
+    return h >= 22 || h < 7;
+  }
+
+  private effectiveLow(s: AlarmSettings, readingTs: Date): number {
+    if (s.overnightProfile && this.isOvernight(readingTs)) return OVERNIGHT_LOW;
+    return s.low;
+  }
+
+  private shouldNotify(rule: string): boolean {
+    const recent = this.fired$.value.find(
       (f) =>
         f.rule === rule &&
-        Date.now() - new Date(f.timestamp).getTime() < 15 * 60 * 1000
+        Date.now() - new Date(f.timestamp).getTime() < DEDUPE_MS
     );
-    if (recent) return;
+    return !recent;
+  }
+
+  private fire(
+    rule: string,
+    label: string,
+    reading?: SgReading,
+    opts?: { critical?: boolean; body?: string }
+  ) {
+    const key = `${rule}-${reading?.timestamp || ''}-${label}`;
+    if (key === this.lastFireKey) return;
+    if (!this.shouldNotify(rule)) return;
+
     this.lastFireKey = key;
     const entry: FiredAlarm = {
       id: `${rule}-${Date.now()}`,
@@ -102,56 +146,119 @@ export class AlarmsService {
       mmol: reading?.mmol,
       tag: null,
     };
-    this.persistFired([entry, ...this.loadFired()]);
+    this.persistFired([entry, ...this.fired$.value]);
+
+    const critical =
+      opts?.critical ??
+      (rule === 'urgent_low' || rule === 'stale' || rule === 'projection');
+    void this.deliver(rule, label, opts?.body || label, critical);
+  }
+
+  private async deliver(
+    rule: string,
+    title: string,
+    body: string,
+    critical: boolean
+  ) {
+    try {
+      await this.bckg.fireAlarmAlert({ title, body, critical, rule });
+    } catch (e) {
+      console.log('[alarms] fireAlarmAlert failed', e);
+    }
   }
 
   tag(id: string, tag: 'real' | 'false') {
-    const list = this.loadFired().map((f) => (f.id === id ? { ...f, tag } : f));
+    const list = this.fired$.value.map((f) => (f.id === id ? { ...f, tag } : f));
     this.persistFired(list);
   }
 
   /**
    * Evaluate against reading timestamps (not fetch time).
-   * Call after history updates.
+   * Call after history updates. Delivers native notifications for new fires.
    */
   evaluate(readings: SgReading[]) {
     const s = this.settings$.value;
     if (!readings.length) return;
 
     const last = readings[readings.length - 1];
-    const ageMin = (Date.now() - new Date(last.timestamp).getTime()) / 60000;
+    const readingAt = new Date(last.timestamp);
+    const ageMin = (Date.now() - readingAt.getTime()) / 60000;
+    const low = this.effectiveLow(s, readingAt);
 
     if (s.staleEnabled && ageMin >= STALE_URGENT_MIN) {
-      this.fire('stale', formatStaleLabelEn(ageMin), last);
+      this.fire('stale', formatStaleLabelEn(ageMin), last, {
+        critical: true,
+        body: 'No fresh CGM reading for 20+ minutes. Check sensor and phone connection.',
+      });
     }
 
     const mmol = last.mmol;
     if (mmol < s.urgentLow) {
-      this.fire('urgent_low', `Urgent low ${mmol.toFixed(1)}`, last);
+      this.fire('urgent_low', `Urgent low ${mmol.toFixed(1)}`, last, {
+        critical: true,
+        body: `Reading ${mmol.toFixed(1)} mmol/L at ${readingAt.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}. Backup alarm — keep pump alerts on.`,
+      });
       this.lowActive = true;
-    } else if (mmol < s.low) {
-      if (!this.lowActive) {
-        this.fire('low', `Low ${mmol.toFixed(1)}`, last);
-        this.lowActive = true;
+    } else if (mmol < low) {
+      if (!this.lowActive || s.repeatUntilCleared) {
+        this.fire('low', `Low ${mmol.toFixed(1)}`, last, {
+          critical: true,
+          body: `Below ${low.toFixed(1)} mmol/L${
+            s.overnightProfile && this.isOvernight(readingAt) ? ' (overnight profile)' : ''
+          }.`,
+        });
       }
+      this.lowActive = true;
     } else if (mmol >= LOW_CLEAR) {
       this.lowActive = false;
     }
 
     if (mmol > s.high) {
-      this.fire('high', `High ${mmol.toFixed(1)}`, last);
+      if (this.highSinceMs == null) {
+        this.highSinceMs = readingAt.getTime();
+      }
+      const heldMin = (readingAt.getTime() - this.highSinceMs) / 60000;
+      if (heldMin >= HIGH_HOLD_MIN) {
+        this.fire('high', `High ${mmol.toFixed(1)}`, last, {
+          critical: false,
+          body: `Above ${s.high.toFixed(1)} mmol/L for ${Math.round(heldMin)} min.`,
+        });
+      }
+    } else {
+      this.highSinceMs = null;
     }
 
-    if (readings.length >= 2 && s.fallingFast) {
-      const prev = readings[readings.length - 2];
-      const dtMin =
-        (new Date(last.timestamp).getTime() - new Date(prev.timestamp).getTime()) /
-        60000;
-      if (dtMin > 0) {
-        const slope = (last.mmol - prev.mmol) / dtMin;
-        if (slope <= -s.fallingFast) {
-          this.fire('falling_fast', `Falling fast ${slope.toFixed(2)}/min`, last);
-        }
+    if (readings.length >= 2 && s.fallingFast > 0) {
+      const slope = slopePerMin(readings);
+      if (slope != null && slope <= -s.fallingFast) {
+        this.fire(
+          'falling_fast',
+          `Falling fast ${slope.toFixed(2)}/min`,
+          last,
+          {
+            critical: false,
+            body: `Drop rate ${slope.toFixed(2)} mmol/L per minute crossed ${s.fallingFast.toFixed(2)}.`,
+          }
+        );
+      }
+    }
+
+    if (s.projectionEnabled) {
+      const slope = slopePerMin(readings);
+      const projected = projectMmol(mmol, slope, 15);
+      if (projected != null && projected < low) {
+        this.fire(
+          'projection',
+          `Projected low ${projected.toFixed(1)}`,
+          last,
+          {
+            critical: true,
+            body: `15-min forecast ${projected.toFixed(1)} mmol/L (now ${mmol.toFixed(1)}).`,
+          }
+        );
       }
     }
   }

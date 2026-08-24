@@ -444,8 +444,12 @@ export class AuthenticationService {
               });
             return;
           }
-          this.collectorHealth.recordSuccess();
-          this.patientData$.next(this.processPatientData(response.data));
+          if (!this.ingestCareLinkPayload(response.data)) {
+            this.collectorHealth.recordFailure();
+            this.refreshCycleInProgress = false;
+            (event?.target as HTMLIonRefresherElement)?.complete();
+            return;
+          }
           Log().info('Re-fresh data sg: ', response.data?.patientData?.lastSG || {});
           Log().info('Re-fresh data sgs: ', response.data?.patientData?.sgs || []);
           this.bckg.showNotificationFromIonic({
@@ -487,6 +491,54 @@ export class AuthenticationService {
           }
         },
       });
+  }
+
+  /**
+   * Ingest a CareLink display/message body from Ionic HTTP or background plugin.
+   * Merges readings, events, raw blob, and updates patientData$.
+   * Background plugin sends `{ data: "<json string>" }`; CapacitorHttp already parses.
+   */
+  ingestCareLinkPayload(raw: unknown): boolean {
+    const body = this.normalizeCareLinkBody(raw);
+    if (!body?.patientData) {
+      this.addDebug('ingestCareLinkPayload: missing patientData');
+      return false;
+    }
+    this.collectorHealth.recordSuccess();
+    this.patientData$.next(this.processPatientData(body));
+    this.addDebug(
+      'ingestCareLinkPayload: ok sgs=' +
+        (body.patientData?.sgs?.length ?? 0)
+    );
+    return true;
+  }
+
+  /** Background poll failed (401 / network). */
+  recordBackgroundFetchError(info?: { error?: string; status?: number }) {
+    this.collectorHealth.recordFailure();
+    this.addDebug(
+      'background fetch error: ' +
+        (info?.error || 'unknown') +
+        (info?.status != null ? ' status=' + info.status : '')
+    );
+  }
+
+  private normalizeCareLinkBody(raw: unknown): any | null {
+    try {
+      let body: any = raw;
+      // Plugin wraps as { data: string | object }
+      if (body && typeof body === 'object' && 'data' in body && !('patientData' in body)) {
+        body = (body as { data: unknown }).data;
+      }
+      if (typeof body === 'string') {
+        body = JSON.parse(body);
+      }
+      if (!body || typeof body !== 'object') return null;
+      return body;
+    } catch (e) {
+      this.addDebug('normalizeCareLinkBody failed: ' + String(e));
+      return null;
+    }
   }
 
   getData(): Observable<HttpResponse> {

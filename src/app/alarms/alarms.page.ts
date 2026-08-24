@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { AlarmsService, AlarmSettings, FiredAlarm } from '../services/alarms.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
@@ -39,6 +40,7 @@ const PLACEHOLDER_FIRED: FiredAlarm[] = [
   styleUrls: ['alarms.page.scss'],
   imports: [
     CommonModule,
+    ScrollingModule,
     IonContent,
     PageTbarComponent,
     EventRowComponent,
@@ -139,4 +141,6 @@ export class AlarmsPage implements OnInit {
     if (f.rule === 'projection') return 'var(--gap)';
     return 'var(--amber)';
   }
+
+  trackFired = (_: number, f: FiredAlarm) => f.id;
 }

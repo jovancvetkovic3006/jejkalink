@@ -51,14 +51,30 @@
         [placeholder]="firedPlaceholder"
         message="No data yet"
       >
-        <app-event-row
-          *ngFor="let f of displayFired"
-          [time]="firedTime(f)"
-          [title]="f.label"
-          [subtitle]="firedSubtitle(f)"
-          [rightValue]="firedDay(f)"
-          [dotColor]="firedDot(f)"
-        ></app-event-row>
+        <cdk-virtual-scroll-viewport
+          *ngIf="!firedPlaceholder; else firedPh"
+          itemSize="56"
+          class="virt-fired"
+        >
+          <app-event-row
+            *cdkVirtualFor="let f of displayFired; trackBy: trackFired"
+            [time]="firedTime(f)"
+            [title]="f.label"
+            [subtitle]="firedSubtitle(f)"
+            [rightValue]="firedDay(f)"
+            [dotColor]="firedDot(f)"
+          ></app-event-row>
+        </cdk-virtual-scroll-viewport>
+        <ng-template #firedPh>
+          <app-event-row
+            *ngFor="let f of displayFired"
+            [time]="firedTime(f)"
+            [title]="f.label"
+            [subtitle]="firedSubtitle(f)"
+            [rightValue]="firedDay(f)"
+            [dotColor]="firedDot(f)"
+          ></app-event-row>
+        </ng-template>
       </app-glass-panel>
     </div>
   </div>

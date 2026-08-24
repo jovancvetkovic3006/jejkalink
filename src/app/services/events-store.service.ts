@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { detectGaps } from '../analytics/coverage';
+import { SgReading } from './sgs-history.service';
 
 export type EventKind =
   | 'bolus'
@@ -139,6 +141,29 @@ export class EventsStore {
         new Date(e.timestamp).getTime() >= startMs &&
         new Date(e.timestamp).getTime() <= endMs
     );
+  }
+
+  /** Upsert gap rows from detectGaps for a day window (day log). */
+  syncGapsForRange(readings: SgReading[], startMs: number, endMs: number) {
+    const start = new Date(startMs);
+    const end = new Date(endMs);
+    const cov = detectGaps(readings, start, end);
+    for (const seg of cov.segments) {
+      if (seg.covered) continue;
+      const durMin = Math.round((seg.to.getTime() - seg.from.getTime()) / 60000);
+      if (durMin < 10) continue;
+      const id = `gap-${seg.from.toISOString()}-${seg.to.toISOString()}`;
+      this.add({
+        id,
+        kind: 'gap',
+        timestamp: seg.from.toISOString(),
+        label: 'Signal lost',
+        detail: `${durMin} min · until ${seg.to.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`,
+      });
+    }
   }
 
   static dotColor(kind: EventKind): string {

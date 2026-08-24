@@ -9,8 +9,8 @@ import { MetricGridComponent, MetricCell } from '../components/metric-grid/metri
 import { AgpChartComponent } from '../components/agp-chart/agp-chart.component';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
-import { agpBuckets, periodMetrics } from '../analytics';
-import { VERY_HIGH, VERY_LOW } from '../domain/glucose';
+import { agpBuckets, periodMetrics, buildWeeklyRead, alignTrendPeriod, isUnusualDay } from '../analytics';
+import { VERY_HIGH, VERY_LOW, LOW, TIGHT_HIGH } from '../domain/glucose';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
 const PERIODS = [7, 14, 30, 90] as const;
@@ -51,11 +51,10 @@ export class TrendsPage implements OnInit, OnDestroy {
   targetLow = 3.9;
   targetHigh = 10.0;
   weeklyReadP1 =
-    'Overnight lows landed on four nights this fortnight, and three of them followed an afternoon swim. The drop starts around 01:30 rather than right after exercise.';
-  weeklyReadP2 =
-    'Breakfast is the widest spread of the day — the 10th–90th band is 6.8 mmol/L apart at 09:00.';
-  weeklyReadQ =
-    'Worth asking the clinic: does the delayed post-exercise pattern suggest a temp target on swim days?';
+    'Enable weekly read in Settings to see a descriptive summary from your metrics.';
+  weeklyReadP2 = '';
+  weeklyReadQ = '';
+  weeklyReadEnabled = false;
 
   constructor(
     private readonly history: SgsHistoryService,
@@ -83,21 +82,49 @@ export class TrendsPage implements OnInit, OnDestroy {
     const s = this.appSettings.get();
     this.targetLow = s.targetLow;
     this.targetHigh = s.targetHigh;
+    this.weeklyReadEnabled = s.weeklyReadEnabled;
 
     const end = new Date();
-    const start = new Date(end.getTime() - this.days * 24 * 60 * 60 * 1000);
+    const aligned = alignTrendPeriod(this.days, s.weekStart, end);
+    const start = aligned.start;
     this.periodStart = start;
-    this.periodEnd = end;
+    this.periodEnd = aligned.end;
     this.periodPill = `${this.days} days`;
-    this.coveragePeriodLabel = `${fmtShort(start)} — ${fmtShort(end)}`;
+    this.coveragePeriodLabel = `${fmtShort(start)} — ${fmtShort(aligned.end)}`;
 
-    const m = periodMetrics(this.readings, start, end);
+    const ranged = this.history.readingsInRange(start.getTime(), end.getTime());
+    const m = periodMetrics(ranged, start, end, {
+      low: this.targetLow,
+      high: this.targetHigh,
+    });
     const prevStart = new Date(start.getTime() - this.days * 24 * 60 * 60 * 1000);
-    const prev = periodMetrics(this.readings, prevStart, start);
+    const prevRanged = this.history.readingsInRange(prevStart.getTime(), start.getTime());
+    const prev = periodMetrics(prevRanged, prevStart, start, {
+      low: this.targetLow,
+      high: this.targetHigh,
+    });
     this.coverage = m.coverage;
     this.metricsEmpty = m.count === 0;
-    this.agpBuckets = agpBuckets(this.readings, start, end);
+    this.agpBuckets = agpBuckets(ranged, start, aligned.end);
     this.agpPlaceholder = this.agpBuckets.length === 0;
+
+    if (s.flagUnusualDays && m.count > 0) {
+      let unusual = 0;
+      const dayMs = 24 * 60 * 60 * 1000;
+      for (let t = start.getTime(); t < aligned.end.getTime(); t += dayMs) {
+        const dayStart = new Date(t);
+        const dayEnd = new Date(t + dayMs - 1);
+        const dayReadings = this.history.readingsInRange(t, t + dayMs - 1);
+        const dm = periodMetrics(dayReadings, dayStart, dayEnd, {
+          low: this.targetLow,
+          high: this.targetHigh,
+        });
+        if (isUnusualDay(dm, m)) unusual++;
+      }
+      if (unusual > 0) {
+        this.periodPill = `${this.days} days · ${unusual} unusual`;
+      }
+    }
 
     const delta = (cur: number, old: number, higherIsBetter: boolean) => {
       const d = Math.round((cur - old) * 10) / 10;
@@ -136,13 +163,29 @@ export class TrendsPage implements OnInit, OnDestroy {
         deltaTone: meanD.tone,
       },
       {
-        key: 'Overnight TIR',
-        value: m.overnightTirPct != null ? String(m.overnightTirPct) : '--',
-        valueSuffix: m.overnightTirPct != null ? '%' : undefined,
-        delta: '00:00–06:00',
+        key: 'Tight TIR',
+        value: String(m.tightTirPct),
+        valueSuffix: '%',
+        delta: '3.9–7.8',
         deltaTone: 'muted',
       },
     ];
+
+    const read = buildWeeklyRead(m, this.days, this.weeklyReadEnabled);
+    if (read) {
+      this.weeklyReadP1 = read.p1;
+      this.weeklyReadP2 = read.p2;
+      this.weeklyReadQ = read.q;
+    } else if (!this.weeklyReadEnabled) {
+      this.weeklyReadP1 =
+        'Enable weekly read in Settings to see a descriptive summary from your metrics.';
+      this.weeklyReadP2 = '';
+      this.weeklyReadQ = '';
+    } else {
+      this.weeklyReadP1 = 'Not enough covered data for a weekly read yet.';
+      this.weeklyReadP2 = '';
+      this.weeklyReadQ = '';
+    }
 
     const placeholderCells: MetricCell[] = [
       {
@@ -166,10 +209,10 @@ export class TrendsPage implements OnInit, OnDestroy {
         deltaTone: 'down',
       },
       {
-        key: 'Overnight TIR',
-        value: '79',
+        key: 'Tight TIR',
+        value: '62',
         valueSuffix: '%',
-        delta: '00:00–06:00',
+        delta: '3.9–7.8',
         deltaTone: 'muted',
       },
     ];
@@ -179,10 +222,7 @@ export class TrendsPage implements OnInit, OnDestroy {
 
     const low = this.targetLow;
     const high = this.targetHigh;
-    const inPeriod = this.readings.filter((r) => {
-      const t = new Date(r.timestamp).getTime();
-      return t >= start.getTime() && t <= end.getTime() && r.mmol > 0;
-    });
+    const inPeriod = ranged.filter((r) => r.mmol > 0);
     const n = inPeriod.length || 1;
     const pct = (fn: (v: number) => boolean) =>
       Math.round((inPeriod.filter((r) => fn(r.mmol)).length / n) * 1000) / 10;
@@ -202,6 +242,11 @@ export class TrendsPage implements OnInit, OnDestroy {
         label: `In range · ${low.toFixed(1)}–${high.toFixed(1)}`,
         pct: pct((v) => v >= low && v <= high),
         color: 'var(--teal)',
+      },
+      {
+        label: `Tight · ${LOW.toFixed(1)}–${TIGHT_HIGH.toFixed(1)}`,
+        pct: pct((v) => v >= LOW && v <= TIGHT_HIGH),
+        color: 'var(--indigo)',
       },
       {
         label: `High · ${high.toFixed(1)}–13.9`,

@@ -17,11 +17,16 @@
 
 .log-container {
   max-height: 280px;
-  overflow-y: auto;
+  overflow: hidden;
   background: #1a1a2e;
   border-radius: 8px;
   padding: 8px;
   margin-top: 8px;
+}
+
+.virt-logs {
+  height: 260px;
+  width: 100%;
 }
 
 .log-entry {
@@ -30,6 +35,8 @@
   font-family: var(--font-data);
   padding: 3px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 22px;
+  box-sizing: border-box;
 }
 
 .logout-btn {

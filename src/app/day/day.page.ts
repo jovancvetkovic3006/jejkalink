@@ -1,7 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { combineLatest, Subscription } from 'rxjs';
 import { SgsHistoryService, SgReading } from '../services/sgs-history.service';
 import { EventsStore, AppEvent } from '../services/events-store.service';
 import { AppSettingsService } from '../services/app-settings.service';
@@ -11,7 +12,7 @@ import { GlucoseChartComponent, BolusMark } from '../components/glucose-chart/gl
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { EventRowComponent } from '../components/event-row/event-row.component';
 import { GlassPanelComponent } from '../components/glass-panel/glass-panel.component';
-import { periodMetrics } from '../analytics';
+import { periodMetrics, isUnusualDay } from '../analytics';
 import { placeholderDayReadings } from '../utils/placeholder-data.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 
@@ -45,6 +46,7 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
   styleUrls: ['day.page.scss'],
   imports: [
     CommonModule,
+    ScrollingModule,
     IonContent,
     CoverageStripComponent,
     MetricGridComponent,
@@ -62,6 +64,7 @@ export class DayPage implements OnInit, OnDestroy {
   dayOffset = 0;
   datePill = '';
   dateStatus = '';
+  chartTitle = 'Glucose';
   startMs = 0;
   endMs = 0;
   periodStart = new Date();
@@ -86,7 +89,10 @@ export class DayPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.sub = this.history.allSgs$.subscribe((sgs: SgReading[]) => {
+    this.sub = combineLatest([
+      this.history.allSgs$,
+      this.eventsStore.events$,
+    ]).subscribe(([sgs]) => {
       this.readings = sgs;
       this.refresh();
     });
@@ -132,6 +138,8 @@ export class DayPage implements OnInit, OnDestroy {
     return r ? r.mmol.toFixed(1) : '';
   }
 
+  trackEvent = (_: number, e: AppEvent) => e.id;
+
   private refresh() {
     const s = this.appSettings.get();
     this.targetLow = s.targetLow;
@@ -151,21 +159,39 @@ export class DayPage implements OnInit, OnDestroy {
       day: '2-digit',
       month: 'short',
     });
-    this.dateStatus = this.datePill;
+    this.chartTitle =
+      this.dayOffset === 0 ? 'Today · glucose' : `${this.datePill} · glucose`;
 
-    const inDay = this.readings.filter((r) => {
-      const t = new Date(r.timestamp).getTime();
-      return t >= this.startMs && t <= this.endMs;
-    });
+    const inDay = this.history.readingsInRange(this.startMs, this.endMs);
 
     this.chartPlaceholder = inDay.length === 0;
     this.chartReadings = this.chartPlaceholder
       ? placeholderDayReadings(this.startMs, this.endMs)
       : inDay;
 
-    const m = periodMetrics(this.readings, start, end);
+    const m = periodMetrics(inDay, start, end, {
+      low: this.targetLow,
+      high: this.targetHigh,
+    });
     this.coverage = m.coverage;
     this.metricsEmpty = m.count === 0;
+
+    let status = this.datePill;
+    if (s.flagUnusualDays && !this.metricsEmpty) {
+      const lookback = new Date(end.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const periodReadings = this.history.readingsInRange(
+        lookback.getTime(),
+        end.getTime()
+      );
+      const periodM = periodMetrics(periodReadings, lookback, end, {
+        low: this.targetLow,
+        high: this.targetHigh,
+      });
+      if (isUnusualDay(m, periodM)) {
+        status = `${this.datePill} · unusual`;
+      }
+    }
+    this.dateStatus = status;
 
     const rangeLabel = `${this.targetLow.toFixed(1)}–${this.targetHigh.toFixed(1)}`;
     const placeholderCells: MetricCell[] = [
@@ -225,6 +251,10 @@ export class DayPage implements OnInit, OnDestroy {
     this.boluses = this.eventsStore
       .bolusesInRange(this.startMs, this.endMs)
       .map((b) => ({ timestamp: b.timestamp, units: b.units || 0 }));
+
+    if (!this.chartPlaceholder) {
+      this.eventsStore.syncGapsForRange(inDay, this.startMs, this.endMs);
+    }
 
     this.dayEvents = this.eventsStore.events$.value.filter((e) => {
       const t = new Date(e.timestamp).getTime();

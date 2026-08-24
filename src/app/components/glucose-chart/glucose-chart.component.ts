@@ -1,8 +1,10 @@
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   Input,
+  NgZone,
   OnChanges,
   ViewChild,
 } from '@angular/core';
@@ -20,6 +22,8 @@ export interface BolusMark {
   timestamp: string;
   units: number;
 }
+
+const MAX_GAP_ANNOTATIONS = 16;
 
 function hatchPattern(): CanvasPattern | string {
   const c = document.createElement('canvas');
@@ -42,7 +46,14 @@ function hatchPattern(): CanvasPattern | string {
   selector: 'app-glucose-chart',
   standalone: true,
   imports: [CommonModule],
-  template: `<div class="wrap" [class.sparkline]="sparkline"><canvas #canvas></canvas></div>`,
+  template: `
+    <div class="chart-shell" [class.sparkline]="sparkline">
+      <div class="chart-title numeral" *ngIf="titleEnabled">{{ displayTitle }}</div>
+      <div class="wrap" [class.sparkline]="sparkline">
+        <canvas #canvas></canvas>
+      </div>
+    </div>
+  `,
   host: { class: 'glucose-chart-host' },
   styles: [
     `
@@ -51,10 +62,31 @@ function hatchPattern(): CanvasPattern | string {
         width: 100%;
         height: 100%;
       }
+      .chart-shell {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        min-height: inherit;
+      }
+      .chart-title {
+        font-family: var(--font-data);
+        font-size: 12px;
+        color: var(--muted);
+        padding: 0 4px 6px;
+        min-height: 18px;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+      }
+      .chart-shell:not(.sparkline) .chart-title {
+        font-size: 13px;
+        color: var(--ink);
+        font-weight: 500;
+      }
       .wrap {
         position: relative;
         width: 100%;
-        height: 100%;
+        flex: 1;
         min-height: 180px;
       }
       .wrap.sparkline {
@@ -64,6 +96,10 @@ function hatchPattern(): CanvasPattern | string {
         display: block;
         width: 100% !important;
         height: 100% !important;
+        touch-action: none;
+      }
+      .sparkline canvas {
+        touch-action: pan-y;
       }
     `,
   ],
@@ -77,32 +113,84 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
   @Input() boluses: BolusMark[] = [];
   @Input() targetLow = LOW;
   @Input() targetHigh = HIGH;
+  /** Default label above the chart; updates while scrubbing. */
+  @Input() title = '';
+  @Input() showTitle = true;
 
+  displayTitle = '';
   private chart?: Chart;
+  private scrubbing = false;
+  private readonly onPointerLeave = () => {
+    this.scrubbing = false;
+    this.setDisplayTitle(this.title);
+  };
+
+  constructor(
+    private readonly cdr: ChangeDetectorRef,
+    private readonly zone: NgZone
+  ) {}
+
+  get titleEnabled(): boolean {
+    return this.showTitle && (!!this.title || !!this.displayTitle);
+  }
 
   ngAfterViewInit() {
     this.render();
   }
 
   ngOnChanges() {
+    if (!this.scrubbing) {
+      this.displayTitle = this.title;
+    }
     if (this.canvasRef) this.render();
+  }
+
+  private maxPoints(): number {
+    if (this.sparkline) return 64;
+    const hours = Math.max(1, (this.endMs - this.startMs) / 3_600_000);
+    if (hours <= 6) return 120;
+    if (hours <= 24) return 240;
+    if (hours <= 72) return 360;
+    return 480;
+  }
+
+  private setDisplayTitle(text: string) {
+    if (this.displayTitle === text) return;
+    this.zone.run(() => {
+      this.displayTitle = text;
+      this.cdr.markForCheck();
+    });
+  }
+
+  private formatScrub(x: number, y: number): string {
+    const when = new Date(x).toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `${when} · ${y.toFixed(1)} mmol/L`;
   }
 
   private render() {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas || !this.startMs || !this.endMs) return;
 
+    if (!this.scrubbing) {
+      this.displayTitle = this.title;
+    }
+
     const slice = this.readings.filter((r) => {
       const t = new Date(r.timestamp).getTime();
       return t >= this.startMs && t <= this.endMs && readingMmol(r) > 0;
     });
-    const display = downsampleSgPoints(slice, this.sparkline ? 80 : 800);
+    const display = downsampleSgPoints(slice, this.maxPoints());
 
     const gaps = detectGaps(
       this.readings,
       new Date(this.startMs),
       new Date(this.endMs)
-    ).segments.filter((s) => !s.covered);
+    )
+      .segments.filter((s) => !s.covered)
+      .slice(0, MAX_GAP_ANNOTATIONS);
 
     const points = display.map((d) => ({
       x: new Date(d.timestamp).getTime(),
@@ -127,7 +215,6 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
     const low = this.targetLow;
     const high = this.targetHigh;
     const hatch = hatchPattern();
-    // Draw under the trace: gaps → target band → line (datasets)
     const annotations: Record<string, unknown> = {};
 
     for (let i = 0; i < gaps.length; i++) {
@@ -169,6 +256,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       }));
 
     const lastIdx = data.length - 1;
+    const lineDatasetIndex = 1;
     const datasets: ChartConfiguration['data']['datasets'] = [
       {
         type: 'bar',
@@ -246,24 +334,23 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
         responsive: true,
         maintainAspectRatio: false,
         animation: false,
+        interaction: {
+          mode: 'nearest',
+          axis: 'x',
+          intersect: false,
+        },
+        onHover: (_event, elements) => {
+          const hit = elements.find((e) => e.datasetIndex === lineDatasetIndex);
+          if (!hit) return;
+          const pt = data[hit.index];
+          if (pt?.y == null) return;
+          this.scrubbing = true;
+          this.setDisplayTitle(this.formatScrub(pt.x, pt.y));
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
-            enabled: !this.sparkline,
-            callbacks: {
-              title: (items) => {
-                const x = items[0]?.parsed?.x;
-                if (x == null) return '';
-                return new Date(x).toLocaleString('en-GB', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-              },
-              label: (ctx) =>
-                ctx.parsed.y != null ? ` ${ctx.parsed.y.toFixed(1)} mmol/L` : '',
-            },
+            enabled: false,
           },
           annotation: { annotations: annotations as any },
         },
@@ -310,7 +397,15 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       },
     };
 
-    if (this.chart) this.chart.destroy();
+    if (this.chart) {
+      canvas.removeEventListener('mouseleave', this.onPointerLeave);
+      canvas.removeEventListener('touchend', this.onPointerLeave);
+      canvas.removeEventListener('touchcancel', this.onPointerLeave);
+      this.chart.destroy();
+    }
     this.chart = new Chart(canvas, cfg);
+    canvas.addEventListener('mouseleave', this.onPointerLeave);
+    canvas.addEventListener('touchend', this.onPointerLeave);
+    canvas.addEventListener('touchcancel', this.onPointerLeave);
   }
 }

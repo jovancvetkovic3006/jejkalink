@@ -2,14 +2,21 @@ import { Component, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { AuthenticationService } from '../services/authentication.service';
 import { SgsHistoryService } from '../services/sgs-history.service';
 import { AppSettingsService } from '../services/app-settings.service';
 import { CollectorHealthService } from '../services/collector-health.service';
+import { CollectorConfigService } from '../services/collector-config.service';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
-import { detectGaps } from '../analytics';
+import { detectGaps, periodMetrics } from '../analytics';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
+import { parseCareLinkCsv, csvImportSummary } from '../utils/carelink-csv.util';
+import {
+  buildClinicReportHtml,
+  downloadHtmlReport,
+} from '../utils/clinic-report.util';
 
 @Component({
   selector: 'app-settings',
@@ -19,6 +26,7 @@ import { TabSwipeDirective } from '../directives/tab-swipe.directive';
     IonContent,
     FormsModule,
     CommonModule,
+    ScrollingModule,
     PageTbarComponent,
     CoverageStripComponent,
     TabSwipeDirective,
@@ -26,7 +34,7 @@ import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.13.0';
+  appVersion = '1.14.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;
@@ -46,12 +54,15 @@ export class SettingsPage implements OnInit {
   uptimeCoverage: ReturnType<typeof detectGaps> | null = null;
   uptimeStart = new Date();
   uptimeEnd = new Date();
+  csvStatus = '';
+  exportStatus = '';
 
   constructor(
     private readonly authService: AuthenticationService,
     private readonly history: SgsHistoryService,
     private readonly appSettings: AppSettingsService,
-    private readonly collectorHealth: CollectorHealthService
+    private readonly collectorHealth: CollectorHealthService,
+    private readonly collectorConfig: CollectorConfigService
   ) {}
 
   ngOnInit() {
@@ -70,6 +81,7 @@ export class SettingsPage implements OnInit {
     this.targetLow = s.targetLow;
     this.targetHigh = s.targetHigh;
     this.collectorHealth.failures$.subscribe((n) => (this.failures = n));
+    this.collectorHealth.pollEvents$.subscribe(() => this.refreshUptime());
     this.refreshUptime();
     this.history.allSgs$.subscribe(() => {
       this.readingsCount = this.history.readings().length;
@@ -82,7 +94,11 @@ export class SettingsPage implements OnInit {
     const start = new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
     this.uptimeStart = start;
     this.uptimeEnd = end;
-    this.uptimeCoverage = detectGaps(this.history.readings(), start, end);
+    this.uptimeCoverage = this.collectorHealth.uptimeCoverage(
+      start,
+      end,
+      this.pollInterval
+    );
   }
 
   private loadUserInfo() {
@@ -120,6 +136,7 @@ export class SettingsPage implements OnInit {
   saveUsername() {
     localStorage.setItem('patientUsername', this.patientUsername);
     this.saved = true;
+    void this.collectorConfig.syncToNative();
     setTimeout(() => (this.saved = false), 2000);
   }
 
@@ -152,6 +169,7 @@ export class SettingsPage implements OnInit {
     if (next === this.pollInterval) return;
     this.pollInterval = next;
     this.appSettings.patch({ pollIntervalMin: next });
+    void this.collectorConfig.syncToNative();
   }
 
   stepFailureAlert(delta: number) {
@@ -159,6 +177,7 @@ export class SettingsPage implements OnInit {
     if (next === this.failureAlertAt) return;
     this.failureAlertAt = next;
     this.appSettings.patch({ failureAlertAt: next });
+    void this.collectorConfig.syncToNative();
   }
 
   stepTargetLow(delta: number) {
@@ -176,11 +195,55 @@ export class SettingsPage implements OnInit {
   }
 
   importCsvHint() {
-    /* v1 shell — file picker later */
+    const input = document.getElementById('csv-import-input') as HTMLInputElement | null;
+    input?.click();
+  }
+
+  onCsvSelected(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      const rows = parseCareLinkCsv(text);
+      if (!rows.length) {
+        this.csvStatus = 'No glucose rows found in CSV';
+        return;
+      }
+      this.history.merge(rows);
+      this.readingsCount = this.history.readings().length;
+      this.csvStatus = `Imported · ${csvImportSummary(rows)}`;
+    };
+    reader.readAsText(file);
   }
 
   exportPdfHint() {
-    /* v1 shell */
+    const end = new Date();
+    const start = new Date(end.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const ranged = this.history.readingsInRange(start.getTime(), end.getTime());
+    const m = periodMetrics(ranged, start, end, {
+      low: this.targetLow,
+      high: this.targetHigh,
+    });
+    if (m.count === 0) {
+      this.exportStatus = 'No readings in the last 14 days';
+      return;
+    }
+    const patient =
+      this.patientUsername.trim() || localStorage.getItem('patientUsername') || 'Patient';
+    const html = buildClinicReportHtml({
+      patientLabel: patient,
+      periodLabel: `${start.toLocaleDateString('en-GB')} — ${end.toLocaleDateString('en-GB')}`,
+      metrics: m,
+      targetLow: this.targetLow,
+      targetHigh: this.targetHigh,
+    });
+    const stamp = end.toISOString().slice(0, 10);
+    downloadHtmlReport(`jejkalink-clinic-${stamp}.html`, html);
+    this.exportStatus = 'Report saved (open in browser · Print to PDF)';
   }
 
   logout() {
@@ -195,4 +258,6 @@ export class SettingsPage implements OnInit {
   sendLogs() {
     this.authService.sendLogsViaEmail();
   }
+
+  trackLog = (index: number, log: string) => `${index}:${log.slice(0, 24)}`;
 }

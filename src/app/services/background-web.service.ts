@@ -5,6 +5,22 @@ import { Capacitor } from '@capacitor/core';
 // Define BackgroundPlugin interface if not imported from elsewhere
 export interface BackgroundPlugin {
     showNotificationFromIonic(data: any): Promise<void>;
+    fireAlarmAlert(options: {
+        title: string;
+        body?: string;
+        critical?: boolean;
+        rule?: string;
+    }): Promise<{ success: boolean }>;
+    setAlarmThresholds(options: {
+        low: number;
+        high: number;
+        urgentLow: number;
+    }): Promise<{ success: boolean }>;
+    setCollectorConfig(options: {
+        pollIntervalMin: number;
+        failureAlertAt: number;
+        patientUsername: string;
+    }): Promise<{ success: boolean }>;
     requestPermissions(): Promise<{ granted: boolean }>;
     hasNotificationPermission(): Promise<{ granted: boolean }>;
     setTokens(options: { accessToken: string; refreshToken: string }): Promise<{ success: boolean }>;
@@ -36,6 +52,31 @@ export class BackgroundWeb extends WebPlugin implements BackgroundPlugin {
 
     showNotificationFromIonic(data: any): Promise<void> {
         return (window as any).Capacitor.Plugins.Background.showNotificationFromIonic(data);
+    }
+
+    fireAlarmAlert(options: {
+        title: string;
+        body?: string;
+        critical?: boolean;
+        rule?: string;
+    }): Promise<{ success: boolean }> {
+        return (window as any).Capacitor.Plugins.Background.fireAlarmAlert(options);
+    }
+
+    setAlarmThresholds(options: {
+        low: number;
+        high: number;
+        urgentLow: number;
+    }): Promise<{ success: boolean }> {
+        return (window as any).Capacitor.Plugins.Background.setAlarmThresholds(options);
+    }
+
+    setCollectorConfig(options: {
+        pollIntervalMin: number;
+        failureAlertAt: number;
+        patientUsername: string;
+    }): Promise<{ success: boolean }> {
+        return (window as any).Capacitor.Plugins.Background.setCollectorConfig(options);
     }
 
     requestPermissions(): Promise<{ granted: boolean }> {

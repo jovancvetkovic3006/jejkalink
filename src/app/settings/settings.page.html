@@ -55,7 +55,7 @@
         [coverage]="uptimeCoverage"
         [periodStart]="uptimeStart"
         [periodEnd]="uptimeEnd"
-        periodLabel="Collector uptime · 30 days"
+        periodLabel="Poll success · 30 days"
       ></app-coverage-strip>
     </div>
 
@@ -74,7 +74,15 @@
           <div class="s">Backfill before first poll</div>
         </div>
         <button type="button" class="chip-pill" (click)="importCsvHint()">Choose file</button>
+        <span class="s" *ngIf="csvStatus">{{ csvStatus }}</span>
       </div>
+      <input
+        id="csv-import-input"
+        type="file"
+        accept=".csv,text/csv"
+        hidden
+        (change)="onCsvSelected($event)"
+      />
       <div class="set">
         <div class="body">
           <div class="h">Keep raw responses</div>
@@ -93,6 +101,7 @@
           <div class="s">PDF · last 90 days</div>
         </div>
         <button type="button" class="chip-pill" (click)="exportPdfHint()">Create</button>
+        <span class="s" *ngIf="exportStatus">{{ exportStatus }}</span>
       </div>
     </div>
 
@@ -176,7 +185,11 @@
         </button>
       </div>
       <div class="log-container" *ngIf="logsExpanded && logs.length > 0">
-        <div class="log-entry" *ngFor="let log of logs">{{ log }}</div>
+        <cdk-virtual-scroll-viewport itemSize="22" class="virt-logs">
+          <div class="log-entry" *cdkVirtualFor="let log of logs; trackBy: trackLog">
+            {{ log }}
+          </div>
+        </cdk-virtual-scroll-viewport>
       </div>
     </div>
 
