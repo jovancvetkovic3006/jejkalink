@@ -274,3 +274,10 @@ ion-tab-button {
     display: none !important;
   }
 }
+
+/* CDK virtual scroll inside ion-content — fixed height, avoid contain:strict collapse */
+.virt-list {
+  height: 280px;
+  width: 100%;
+  contain: none;
+}

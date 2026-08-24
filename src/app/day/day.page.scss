@@ -2,11 +2,6 @@
   height: 236px;
 }
 
-.virt-log {
-  height: min(320px, 45vh);
-  width: 100%;
-}
-
 .note-bar {
   display: flex;
   flex-direction: column;
@@ -51,22 +46,4 @@
   background: var(--paper);
   color: var(--ink);
   min-width: 0;
-}
-
-.log-row-wrap {
-  position: relative;
-}
-
-.note-remove {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 18px;
-  line-height: 1;
-  padding: 4px 8px;
-  cursor: pointer;
 }

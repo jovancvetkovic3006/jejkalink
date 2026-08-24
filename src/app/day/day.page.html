@@ -80,29 +80,18 @@
         <cdk-virtual-scroll-viewport
           *ngIf="!eventsPlaceholder; else dayLogPh"
           itemSize="56"
-          class="virt-log"
+          class="virt-list virt-log"
         >
-          <div
+          <app-event-row
             *cdkVirtualFor="let e of displayEvents; trackBy: trackEvent"
-            class="log-row-wrap"
-          >
-            <app-event-row
-              [time]="eventTime(e)"
-              [title]="e.label"
-              [subtitle]="e.detail || ''"
-              [rightValue]="eventRight(e)"
-              [dotColor]="eventDot(e)"
-            ></app-event-row>
-            <button
-              *ngIf="isNote(e)"
-              type="button"
-              class="note-remove"
-              (click)="removeNote(noteId(e))"
-              aria-label="Remove note"
-            >
-              ×
-            </button>
-          </div>
+            [time]="eventTime(e)"
+            [title]="e.label"
+            [subtitle]="e.detail || ''"
+            [rightValue]="eventRight(e)"
+            [dotColor]="eventDot(e)"
+            [removable]="isNote(e)"
+            (removed)="removeNote(noteId(e))"
+          ></app-event-row>
         </cdk-virtual-scroll-viewport>
         <ng-template #dayLogPh>
           <app-event-row

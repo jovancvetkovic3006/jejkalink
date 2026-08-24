@@ -69,39 +69,20 @@
       >
         <cdk-virtual-scroll-viewport
           *ngIf="!firedPlaceholder; else firedPh"
-          itemSize="72"
-          class="virt-fired"
+          itemSize="80"
+          class="virt-list virt-fired"
         >
-          <div
+          <app-event-row
             *cdkVirtualFor="let f of displayFired; trackBy: trackFired"
-            class="fired-row"
-          >
-            <app-event-row
-              [time]="firedTime(f)"
-              [title]="f.label"
-              [subtitle]="firedSubtitle(f)"
-              [rightValue]="firedDay(f)"
-              [dotColor]="firedDot(f)"
-            ></app-event-row>
-            <div class="tag-row">
-              <button
-                type="button"
-                class="tag-btn"
-                [class.on]="f.tag === 'real'"
-                (click)="tagAlarm(f.id, 'real')"
-              >
-                Real
-              </button>
-              <button
-                type="button"
-                class="tag-btn"
-                [class.on]="f.tag === 'false'"
-                (click)="tagAlarm(f.id, 'false')"
-              >
-                False
-              </button>
-            </div>
-          </div>
+            [time]="firedTime(f)"
+            [title]="f.label"
+            [subtitle]="firedSubtitle(f)"
+            [rightValue]="firedDay(f)"
+            [dotColor]="firedDot(f)"
+            [showAlarmTags]="!firedPlaceholder"
+            [alarmTag]="f.tag"
+            (alarmTagClick)="tagAlarm(f.id, $event)"
+          ></app-event-row>
         </cdk-virtual-scroll-viewport>
         <ng-template #firedPh>
           <app-event-row

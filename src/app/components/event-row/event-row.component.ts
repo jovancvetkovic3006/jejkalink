@@ -1,4 +1,10 @@
-import { Component, Input } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  HostBinding,
+  Input,
+  Output,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -6,36 +12,77 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="row">
-      <span class="t">{{ time }}</span>
-      <span class="dot" [style.background]="dotColor"></span>
-      <div class="body">
-        <div class="h">{{ title }}</div>
-        <div class="s" *ngIf="subtitle">{{ subtitle }}</div>
+    <div class="wrap">
+      <div class="row">
+        <span class="t">{{ time }}</span>
+        <span class="dot" [style.background]="dotColor"></span>
+        <div class="body">
+          <div class="h">{{ title }}</div>
+          <div class="s" *ngIf="subtitle">{{ subtitle }}</div>
+        </div>
+        <span class="rt numeral" *ngIf="rightValue && !removable">{{ rightValue }}</span>
+        <button
+          *ngIf="removable"
+          type="button"
+          class="remove"
+          (click)="removed.emit()"
+          aria-label="Remove note"
+        >
+          ×
+        </button>
       </div>
-      <span class="rt numeral" *ngIf="rightValue">{{ rightValue }}</span>
+      <div class="tag-row" *ngIf="showAlarmTags">
+        <button
+          type="button"
+          class="tag-btn"
+          [class.on]="alarmTag === 'real'"
+          (click)="alarmTagClick.emit('real')"
+        >
+          Real
+        </button>
+        <button
+          type="button"
+          class="tag-btn"
+          [class.on]="alarmTag === 'false'"
+          (click)="alarmTagClick.emit('false')"
+        >
+          False
+        </button>
+      </div>
     </div>
   `,
   styles: [
     `
       :host {
         display: block;
+        height: 56px;
+        box-sizing: border-box;
         border-bottom: 1px solid var(--line);
+        overflow: hidden;
+      }
+      :host(.tall) {
+        height: 80px;
       }
       :host(:last-child) {
         border-bottom: 0;
+      }
+      .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-sizing: border-box;
+      }
+      :host(.tall) .wrap {
+        justify-content: flex-start;
+        padding-top: 6px;
       }
       .row {
         display: flex;
         align-items: center;
         gap: 11px;
-        padding: 14px 0;
-      }
-      :host(:last-child) .row {
-        padding-bottom: 4px;
-      }
-      :host(:first-child) .row {
-        padding-top: 4px;
+        min-height: 0;
+        flex: 0 0 auto;
       }
       .t {
         font-family: var(--font-data);
@@ -57,22 +104,70 @@ import { CommonModule } from '@angular/common';
       .h {
         font-size: var(--t-row);
         font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .s {
         font-size: var(--t-sub);
         color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .rt {
         font-size: 12px;
         color: var(--ink);
+        flex: 0 0 auto;
+      }
+      .remove {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1;
+        padding: 4px 2px;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+      .tag-row {
+        display: flex;
+        gap: 6px;
+        padding: 4px 0 0 64px;
+        flex: 0 0 auto;
+      }
+      .tag-btn {
+        font-family: var(--font-data);
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 99px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .tag-btn.on {
+        border-color: var(--indigo-br);
+        background: var(--indigo-bg);
+        color: var(--indigo);
       }
     `,
   ],
 })
 export class EventRowComponent {
+  @HostBinding('class.tall') get tall() {
+    return this.showAlarmTags;
+  }
+
   @Input() time = '';
   @Input() title = '';
   @Input() subtitle = '';
   @Input() rightValue = '';
   @Input() dotColor = 'var(--indigo)';
+  @Input() removable = false;
+  @Input() showAlarmTags = false;
+  @Input() alarmTag: 'real' | 'false' | null = null;
+
+  @Output() removed = new EventEmitter<void>();
+  @Output() alarmTagClick = new EventEmitter<'real' | 'false'>();
 }

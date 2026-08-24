@@ -36,7 +36,7 @@ import {
 })
 export class SettingsPage implements OnInit {
   patientUsername = '';
-  appVersion = '1.15.0';
+  appVersion = '1.16.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   logsExpanded = false;

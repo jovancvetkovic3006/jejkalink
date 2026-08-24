@@ -27,6 +27,7 @@
 .virt-logs {
   height: 260px;
   width: 100%;
+  contain: none;
 }
 
 .log-entry {
@@ -35,8 +36,11 @@
   font-family: var(--font-data);
   padding: 3px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  min-height: 22px;
+  height: 22px;
   box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .logout-btn {
