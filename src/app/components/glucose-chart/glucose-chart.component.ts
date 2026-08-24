@@ -42,16 +42,26 @@ function hatchPattern(): CanvasPattern | string {
   selector: 'app-glucose-chart',
   standalone: true,
   imports: [CommonModule],
-  template: `<div class="wrap"><canvas #canvas></canvas></div>`,
+  template: `<div class="wrap" [class.sparkline]="sparkline"><canvas #canvas></canvas></div>`,
+  host: { class: 'glucose-chart-host' },
   styles: [
     `
+      :host {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
       .wrap {
         position: relative;
         width: 100%;
         height: 100%;
         min-height: 180px;
       }
+      .wrap.sparkline {
+        min-height: 0;
+      }
       canvas {
+        display: block;
         width: 100% !important;
         height: 100% !important;
       }
@@ -273,6 +283,7 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
             ticks: {
               color: '#707C91',
               font: { size: 8.5, family: 'IBM Plex Mono' },
+              padding: this.sparkline ? 0 : 3,
               callback: (v) => {
                 const n = Number(v);
                 if (Math.abs(n - low) < 0.05) return low.toFixed(1);
@@ -290,6 +301,11 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
               drawTicks: false,
             },
           },
+        },
+        layout: {
+          padding: this.sparkline
+            ? { top: 4, bottom: 4, left: 0, right: 0 }
+            : { top: 0, bottom: 0, left: 0, right: 0 },
         },
       },
     };
