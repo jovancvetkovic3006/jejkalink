@@ -18,18 +18,23 @@ import { CommonModule } from '@angular/common';
   `,
   styles: [
     `
+      :host {
+        display: block;
+        border-bottom: 1px solid var(--line);
+      }
+      :host(:last-child) {
+        border-bottom: 0;
+      }
       .row {
         display: flex;
         align-items: center;
         gap: 11px;
         padding: 14px 0;
-        border-bottom: 1px solid var(--line);
       }
-      .row:last-child {
-        border-bottom: 0;
+      :host(:last-child) .row {
         padding-bottom: 4px;
       }
-      .row:first-child {
+      :host(:first-child) .row {
         padding-top: 4px;
       }
       .t {
