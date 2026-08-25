@@ -91,9 +91,13 @@ export class SgsHistoryService {
   }
 
   /** Upsert by patient + timestamp; CareLink may send overlapping windows. */
-  merge(newSgs: { sg: number; timestamp: string }[]) {
+  merge(
+    newSgs: { sg: number; timestamp: string }[],
+    opts?: { cutoffMs?: number }
+  ) {
     if (!newSgs?.length) return;
 
+    const cutoffMs = opts?.cutoffMs;
     const patientId =
       localStorage.getItem('patientUsername')?.trim() || 'default';
     const byKey = new Map<string, SgReading>();
@@ -103,6 +107,12 @@ export class SgsHistoryService {
 
     for (const e of newSgs) {
       if (!e?.sg || e.sg <= 0 || !e.timestamp) continue;
+      if (
+        cutoffMs != null &&
+        new Date(e.timestamp).getTime() > cutoffMs
+      ) {
+        continue;
+      }
       byKey.set(this.upsertKey(patientId, e.timestamp), {
         sg: e.sg,
         mmol: toMmol(e.sg),

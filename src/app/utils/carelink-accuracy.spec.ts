@@ -1,0 +1,104 @@
+import {
+  CARELINK_SERVER_SKEW_MS,
+  filterAcceptedSgs,
+  latestAcceptedSg,
+  serverCutoffMs,
+} from './carelink-time.util';
+import { eventsFromCareLinkMarkers } from './carelink-markers.util';
+import {
+  mapCareLinkTrend,
+  slopePerMinWindow,
+  trendFromSlope,
+} from './glucose-slope.util';
+import { SgReading } from '../services/sgs-history.service';
+
+describe('carelink-time', () => {
+  // Naive ISO timestamps are parsed as local — build cutoff from the same clock.
+  const at1650 = new Date('2026-08-25T16:50:00').getTime();
+
+  it('accepts SG at server time and rejects post-server points', () => {
+    const cutoff = at1650 + CARELINK_SERVER_SKEW_MS;
+    const sgs = [
+      { sg: 130, timestamp: '2026-08-25T16:50:00' },
+      { sg: 121, timestamp: '2026-08-25T16:55:00' },
+      { sg: 78, timestamp: '2026-08-25T17:45:00' },
+      { sg: 0, timestamp: '2026-08-25T16:40:00' },
+    ];
+    const accepted = filterAcceptedSgs(sgs, cutoff);
+    expect(accepted.map((s) => s.timestamp)).toEqual(['2026-08-25T16:50:00']);
+  });
+
+  it('latestAcceptedSg prefers real last over future lastSG', () => {
+    const cutoff = serverCutoffMs({ currentServerTime: at1650 });
+    const lastSG = { sg: 78, timestamp: '2026-08-25T17:45:00' };
+    const sgs = [
+      { sg: 140, timestamp: '2026-08-25T16:45:00' },
+      { sg: 130, timestamp: '2026-08-25T16:50:00' },
+      { sg: 78, timestamp: '2026-08-25T17:45:00' },
+    ];
+    const best = latestAcceptedSg(sgs, cutoff, lastSG);
+    expect(best?.sg).toBe(130);
+    expect(best?.timestamp).toBe('2026-08-25T16:50:00');
+  });
+});
+
+describe('carelink-markers', () => {
+  it('extracts INSULIN deliveredFastAmount boluses', () => {
+    const events = eventsFromCareLinkMarkers([
+      {
+        type: 'INSULIN',
+        timestamp: '2026-08-25T09:03:02',
+        data: {
+          dataValues: {
+            deliveredFastAmount: '5.3',
+            programmedFastAmount: '5.3',
+            bolusType: 'FAST',
+          },
+        },
+      },
+      {
+        type: 'LOW_GLUCOSE_SUSPENDED',
+        timestamp: '2026-08-25T04:29:38',
+        data: { dataValues: {} },
+      },
+      {
+        type: 'CALIBRATION',
+        timestamp: '2026-08-25T12:54:58',
+        data: {
+          dataValues: {
+            unitValue: '166',
+            bgUnits: 'MMOL_L',
+            calibrationSuccess: true,
+            calibrationType: 'CALIBRATION_COMPLETE',
+          },
+        },
+      },
+    ]);
+    const bolus = events.find((e) => e.kind === 'bolus');
+    expect(bolus?.units).toBe(5.3);
+    expect(bolus?.id).toBe('insulin-2026-08-25T09:03:02');
+    expect(events.some((e) => e.id.startsWith('lgs-'))).toBe(true);
+    const cal = events.find((e) => e.id.startsWith('cal-'));
+    expect(cal?.label).toBe('Calibration accepted');
+    expect(cal?.detail).toContain('mmol/L');
+  });
+});
+
+describe('glucose-slope trend fallback', () => {
+  it('maps NONE to slope-based down trend', () => {
+    expect(mapCareLinkTrend('NONE')).toBeNull();
+    expect(mapCareLinkTrend('DOWN')).toBe(-1);
+    const readings: SgReading[] = [
+      { mmol: 9.3, timestamp: '2026-08-25T16:25:00' },
+      { mmol: 9.3, timestamp: '2026-08-25T16:30:00' },
+      { mmol: 9.1, timestamp: '2026-08-25T16:35:00' },
+      { mmol: 8.5, timestamp: '2026-08-25T16:40:00' },
+      { mmol: 7.8, timestamp: '2026-08-25T16:45:00' },
+      { mmol: 7.2, timestamp: '2026-08-25T16:50:00' },
+    ];
+    const slope = slopePerMinWindow(readings, 15);
+    expect(slope).not.toBeNull();
+    expect(slope!).toBeLessThan(0);
+    expect(trendFromSlope(slope)).toBe(-1);
+  });
+});

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { SgReading } from './sgs-history.service';
 import { formatMinutesLong } from '../utils/duration-format.util';
+import { eventsFromCareLinkMarkers } from '../utils/carelink-markers.util';
 
 export type EventKind =
   | 'bolus'
@@ -63,15 +64,26 @@ export class EventsStore {
   ingestCareLink(patientData: any) {
     if (!patientData) return;
     const nowIso = new Date().toISOString();
+    const dayBucket = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
 
     if (patientData.conduitSensorInRange === false) {
       this.add({
         kind: 'sensor',
         timestamp: patientData.lastSG?.timestamp || nowIso,
+        id: `disconnect-${dayBucket}`,
         label: 'Sensor disconnected',
         detail: 'Conduit out of range',
       });
     }
+
+    const markers =
+      patientData.markers ||
+      patientData.mealMarkers ||
+      patientData.bolusMarkers ||
+      [];
+    const hasLgsMarker = markers.some(
+      (m: any) => m?.type === 'LOW_GLUCOSE_SUSPENDED'
+    );
 
     const banner = patientData.pumpBannerState || [];
     for (const b of banner) {
@@ -79,16 +91,25 @@ export class EventsStore {
         this.add({
           kind: 'basal',
           timestamp: nowIso,
+          id: `temp-basal-${Math.floor(Date.now() / (15 * 60 * 1000))}`,
           label: `Temp basal ${formatMinutesLong(Number(b.timeRemaining) || 0)} left`,
           detail: b.tempRate != null ? `${b.tempRate} u/h` : undefined,
           units: b.tempRate,
         });
       }
-      if (b?.type === 'SUSPENDED_ON_LOW' || b?.type === 'SUSPENDED_BEFORE_LOW') {
+      // Prefer timed LGS markers over banner rows with poll-time stamps.
+      if (
+        !hasLgsMarker &&
+        (b?.type === 'SUSPENDED_ON_LOW' || b?.type === 'SUSPENDED_BEFORE_LOW')
+      ) {
         this.add({
           kind: 'alarm',
           timestamp: nowIso,
-          label: b.type === 'SUSPENDED_ON_LOW' ? 'Suspended on low' : 'Suspended before low',
+          id: `banner-lgs-${dayBucket}-${b.type}`,
+          label:
+            b.type === 'SUSPENDED_ON_LOW'
+              ? 'Suspended on low'
+              : 'Suspended before low',
           detail: 'Pump auto-suspend',
         });
       }
@@ -107,11 +128,12 @@ export class EventsStore {
       }
     }
 
-    if (patientData.pumpSuspended) {
+    // Deduped status when suspended but no LGS marker this payload.
+    if (patientData.pumpSuspended && !hasLgsMarker) {
       this.add({
         kind: 'alarm',
         timestamp: nowIso,
-        id: `suspend-${Math.floor(Date.now() / (15 * 60 * 1000))}`,
+        id: `suspend-${dayBucket}`,
         label: 'Pump suspended',
         detail: 'Delivery paused',
       });
@@ -131,6 +153,7 @@ export class EventsStore {
       this.add({
         kind: 'sensor',
         timestamp: patientData.lastSG?.timestamp || nowIso,
+        id: `change-sensor-${dayBucket}`,
         label: 'Replace sensor',
         detail: 'Sensor end of life',
       });
@@ -141,44 +164,14 @@ export class EventsStore {
       this.add({
         kind: 'sensor',
         timestamp: nowIso,
-        id: `cal-${Math.floor(Date.now() / (60 * 60 * 1000))}`,
+        id: `cal-due-${Math.floor(Date.now() / (60 * 60 * 1000))}`,
         label: 'Calibration due soon',
         detail: `In ${formatMinutesLong(Math.floor(calMin))}`,
       });
     }
 
-    const markers =
-      patientData.markers ||
-      patientData.mealMarkers ||
-      patientData.bolusMarkers ||
-      [];
-    for (const m of markers) {
-      const amount = m.amount ?? m.bolusAmount ?? m.value;
-      const carbs = m.carbs ?? m.carbohydrates;
-      const ts = m.timestamp || m.time || nowIso;
-      const meal = m.meal ?? m.mealType ?? m.foodType;
-
-      if (amount && Number(amount) > 0) {
-        const detailParts: string[] = [];
-        if (carbs) detailParts.push(`${carbs} g carbs`);
-        if (meal) detailParts.push(String(meal).toLowerCase());
-        this.add({
-          kind: 'bolus',
-          timestamp: ts,
-          label: `Bolus ${Number(amount).toFixed(1)} u`,
-          detail: detailParts.length ? detailParts.join(' · ') : undefined,
-          units: Number(amount),
-        });
-      } else if (carbs && Number(carbs) > 0) {
-        const detailParts: string[] = [`${carbs} g carbs`];
-        if (meal) detailParts.push(String(meal).toLowerCase());
-        this.add({
-          kind: 'meal',
-          timestamp: ts,
-          label: 'Carbs logged',
-          detail: detailParts.join(' · '),
-        });
-      }
+    for (const ev of eventsFromCareLinkMarkers(markers)) {
+      this.add(ev);
     }
 
     const reservoir = patientData.reservoirRemainingUnits;

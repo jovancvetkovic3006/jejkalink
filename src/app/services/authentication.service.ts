@@ -13,6 +13,16 @@ import { CollectorHealthService } from './collector-health.service';
 import { ApiCaptureService } from './api-capture.service';
 import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
 import { formatDurationEn, formatMinutesLong } from '../utils/duration-format.util';
+import {
+  filterAcceptedSgs,
+  latestAcceptedSg,
+  serverCutoffMs,
+} from '../utils/carelink-time.util';
+import {
+  mapCareLinkTrend,
+  slopePerMinWindow,
+  trendFromSlope,
+} from '../utils/glucose-slope.util';
 
 export interface IUserInfo {
   name: string;
@@ -460,12 +470,15 @@ export class AuthenticationService {
             sgs: response.data?.patientData?.sgs || [],
             conduitSensorInRange: response.data?.patientData?.conduitSensorInRange,
             lastSGTrend: response.data?.patientData?.lastSGTrend || '',
+            currentServerTime: response.data?.patientData?.currentServerTime ?? 0,
             activeInsulin: response.data?.patientData?.activeInsulin || {},
             reservoirRemainingUnits: response.data?.patientData?.reservoirRemainingUnits ?? -1,
             isTempBasal: response.data?.patientData?.isTempBasal ?? false,
             sensorDurationMinutes: response.data?.patientData?.sensorDurationMinutes ?? -1,
             gstBatteryLevel: response.data?.patientData?.gstBatteryLevel ?? -1,
             conduitBatteryLevel: response.data?.patientData?.conduitBatteryLevel ?? -1,
+            pumpBatteryLevelPercent:
+              response.data?.patientData?.pumpBatteryLevelPercent ?? -1,
           });
           this.refreshCycleInProgress = false;
           (event?.target as HTMLIonRefresherElement)?.complete();
@@ -595,8 +608,17 @@ export class AuthenticationService {
     );
   }
 
-  getLastGlicemia(data: any): any {
-    return data.lastSG?.sg ? data.lastSG?.sg : data.sgs[0] ? data.sgs[0] : { sg: 0, timestamp: Date.now() } as any;
+  getLastGlicemia(patientData: any): { sg: number; timestamp: string } {
+    const cutoff = serverCutoffMs(patientData);
+    const accepted = latestAcceptedSg(
+      patientData?.sgs,
+      cutoff,
+      patientData?.lastSG
+    );
+    if (accepted) {
+      return { sg: Number(accepted.sg), timestamp: accepted.timestamp };
+    }
+    return { sg: 0, timestamp: '' };
   }
 
   getTimeSinceLastGS(data: any): string {
@@ -627,23 +649,33 @@ export class AuthenticationService {
     };
 
     const patientData = recentData.patientData || {};
+    const cutoff = serverCutoffMs(patientData);
 
-    data.sgs = (patientData.sgs?.reverse() as any[] || []).filter(sg => sg.sg > 0 && sg.timestamp).sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    const acceptedSgs = filterAcceptedSgs(patientData.sgs, cutoff)
+      .filter(
+        (sg): sg is { sg: number; timestamp: string } & Record<string, unknown> =>
+          Number(sg.sg) > 0 && typeof sg.timestamp === 'string'
+      )
+      .map((sg) => ({ ...sg, sg: Number(sg.sg), timestamp: sg.timestamp }))
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    data.sgs = acceptedSgs;
 
-    this.sgsHistory.merge(data.sgs);
+    this.sgsHistory.merge(acceptedSgs, { cutoffMs: cutoff });
     this.sgsHistory.saveRawResponse(recentData);
     this.eventsStore.ingestCareLink(patientData);
 
-    const isSensorConnected = data.isSensorConnected = !!patientData.conduitSensorInRange;
-    const lastSgRaw = patientData.lastSG;
-    const lastSgValid =
-      lastSgRaw &&
-      Number(lastSgRaw.sg) > 0 &&
-      !!lastSgRaw.timestamp;
+    const isSensorConnected = data.isSensorConnected =
+      !!patientData.conduitSensorInRange;
+    const currentSg = latestAcceptedSg(
+      patientData.sgs,
+      cutoff,
+      patientData.lastSG
+    );
+    const hasAccepted = !!currentSg && Number(currentSg.sg) > 0;
 
-    // When disconnected / invalid lastSG, keep last known history value + prior trend.
     const historyReadings = this.sgsHistory.readings();
     const historyLast =
       historyReadings.length > 0
@@ -653,7 +685,7 @@ export class AuthenticationService {
     let timestamp: string | number;
     let trend: number;
 
-    if (!isSensorConnected || !lastSgValid) {
+    if (!isSensorConnected || !hasAccepted) {
       if (historyLast) {
         glicemia = formatMmol(historyLast.mmol);
         timestamp = historyLast.timestamp;
@@ -664,24 +696,26 @@ export class AuthenticationService {
         glicemia = '--';
         timestamp = Date.now();
       }
-      trend = typeof prev.trend === 'number' ? prev.trend : 0;
-      data.senzor.push({ text: 'Sensor disconnected', warn: true });
-      data.senzor.push({
-        text: `Last reading ${formatDurationEn(
-          (Date.now() - new Date(timestamp).getTime()) / 60000
-        )}`,
-        warn: false,
-      });
-    } else {
-      glicemia = formatMmol(toMmol(this.getLastGlicemia(data).sg));
-      timestamp = lastSgRaw.timestamp || this.getLastGlicemia(data)?.timestamp || Date.now();
-      const trend_raw = patientData.lastSGTrend || '';
+      const mapped = mapCareLinkTrend(patientData.lastSGTrend);
       trend =
-        trend_raw === 'DOWN' || trend_raw === 'DOWN_DOUBLE'
-          ? -1
-          : trend_raw === 'UP' || trend_raw === 'UP_DOUBLE'
-            ? 1
-            : 0;
+        mapped ??
+        trendFromSlope(slopePerMinWindow(historyReadings)) ??
+        (typeof prev.trend === 'number' ? prev.trend : 0);
+      if (!isSensorConnected) {
+        data.senzor.push({ text: 'Sensor disconnected', warn: true });
+        data.senzor.push({
+          text: `Last reading ${formatDurationEn(
+            (Date.now() - new Date(timestamp).getTime()) / 60000
+          )}`,
+          warn: false,
+        });
+      }
+    } else {
+      glicemia = formatMmol(toMmol(Number(currentSg!.sg)));
+      timestamp = currentSg!.timestamp;
+      const mapped = mapCareLinkTrend(patientData.lastSGTrend);
+      trend =
+        mapped ?? trendFromSlope(slopePerMinWindow(historyReadings));
     }
 
     data.since = (() => {
@@ -693,7 +727,10 @@ export class AuthenticationService {
     })();
 
     const unitsLeft = patientData.reservoirRemainingUnits || 0;
-    const sensorState = patientData.lastSG?.sensorState || 'UNKNOWN';
+    const sensorState =
+      currentSg?.sensorState ||
+      patientData.lastSG?.sensorState ||
+      'UNKNOWN';
 
     const dt = new Date(timestamp);
     const datePart = dt.toLocaleDateString('en-GB', {
@@ -718,7 +755,11 @@ export class AuthenticationService {
       : '0.0';
 
     const sensorBattery = patientData.gstBatteryLevel || 0;
-    const pumpBattery = patientData.conduitBatteryLevel || 0;
+    const pumpBattery =
+      patientData.pumpBatteryLevelPercent ??
+      patientData.pumpBatteryLevel ??
+      0;
+    const conduitBattery = patientData.conduitBatteryLevel || 0;
 
     const meanMmol = toMmol(patientData?.averageSG || 0);
     const gmi = formatMmol(gmiFromMean(meanMmol));
@@ -734,16 +775,25 @@ export class AuthenticationService {
     data.current = glicemia;
     data.trend = trend;
 
-    const durationMinutes = patientData.sensorDurationMinutes || 0;
-    const days = Math.floor(durationMinutes / 1440);
-    const hours = Math.floor((durationMinutes % 1440) / 60);
-    const minutes = durationMinutes % 60;
-    const sensorExpiring = durationMinutes > 0 && durationMinutes < 1440;
-    if (isSensorConnected) {
-      data.senzor.push({
-        text: `Sensor life ${days}d ${formatMinutesLong(hours * 60 + minutes)} left`,
-        warn: sensorExpiring,
-      });
+    // sensorDurationMinutes is elapsed wear; DURABLE Guardian ≈ 7 days total.
+    const DURABLE_LIFE_MIN = 7 * 24 * 60;
+    const elapsedMin = Number(patientData.sensorDurationMinutes) || 0;
+    const sensorType = patientData.cgmInfo?.sensorType || 'DURABLE';
+    if (isSensorConnected && elapsedMin > 0) {
+      const remainingMin =
+        sensorType === 'DURABLE'
+          ? Math.max(0, DURABLE_LIFE_MIN - elapsedMin)
+          : -1;
+      if (remainingMin >= 0) {
+        const days = Math.floor(remainingMin / 1440);
+        const hours = Math.floor((remainingMin % 1440) / 60);
+        const minutes = remainingMin % 60;
+        const sensorExpiring = remainingMin > 0 && remainingMin < 1440;
+        data.senzor.push({
+          text: `Sensor life ${days}d ${formatMinutesLong(hours * 60 + minutes)} left`,
+          warn: sensorExpiring,
+        });
+      }
     }
 
     const calibrationMinutes = patientData.timeToNextCalibrationMinutes || 0;
@@ -799,9 +849,26 @@ export class AuthenticationService {
     data.insulin.push({ text: `Reservoir ${unitsLeft} u`, warn: unitsLeft < 20 });
 
     if (isSensorConnected) {
-      data.senzor.push({ text: `Sensor battery ${sensorBattery}%`, warn: sensorBattery < 20 });
+      data.senzor.push({
+        text: `Sensor battery ${sensorBattery}%`,
+        warn: sensorBattery < 20,
+      });
     }
-    data.pump.push({ text: `Pump battery ${pumpBattery}%`, warn: pumpBattery < 20 });
+    if (pumpBattery > 0) {
+      data.pump.push({
+        text: `Pump battery ${pumpBattery}%`,
+        warn: pumpBattery < 20,
+      });
+    }
+    if (conduitBattery > 0) {
+      const status = patientData.conduitBatteryStatus
+        ? ` · ${String(patientData.conduitBatteryStatus).toLowerCase()}`
+        : '';
+      data.pump.push({
+        text: `Phone link ${conduitBattery}%${status}`,
+        warn: conduitBattery < 20 || patientData.conduitBatteryStatus === 'LOW',
+      });
+    }
 
     return data;
   }
