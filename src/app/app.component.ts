@@ -121,8 +121,12 @@ export class AppComponent implements OnInit {
   }
 
   private async bootstrap() {
-    await this.init();
-    await this.syncTokensFromPlugin();
-    this.authService.doRefresh();
+    try {
+      await this.init();
+      await this.syncTokensFromPlugin();
+      this.authService.doRefresh();
+    } catch (e) {
+      console.error('[LOGG] bootstrap failed:', e);
+    }
   }
 }

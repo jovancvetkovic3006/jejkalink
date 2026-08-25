@@ -53,9 +53,13 @@ public class GlucoseWidgetChartProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_time_since, timeSince);
         views.setInt(R.id.widget_root, "setBackgroundResource", GlucoseWidgetData.backgroundRes(sgValue));
 
-        Bitmap spark = drawSparkline(context, prefs.getString("sparkline_points", ""));
-        if (spark != null) {
-            views.setImageViewBitmap(R.id.widget_sparkline, spark);
+        try {
+            Bitmap spark = drawSparkline(context, prefs.getString("sparkline_points", ""));
+            if (spark != null) {
+                views.setImageViewBitmap(R.id.widget_sparkline, spark);
+            }
+        } catch (Exception e) {
+            // Never let widget drawing crash the app process
         }
 
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
