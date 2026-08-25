@@ -68,6 +68,7 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
 })
 export class DayPage implements OnInit, OnDestroy {
   private sub?: Subscription;
+  private syncingGaps = false;
   readings: SgReading[] = [];
   dayEvents: AppEvent[] = [];
   dayOffset = 0;
@@ -109,7 +110,11 @@ export class DayPage implements OnInit, OnDestroy {
       this.history.allSgs$,
       this.eventsStore.events$,
       this.annotations.annotations$,
-    ]).subscribe(() => this.refresh());
+    ]).subscribe(() => {
+      // syncGapsForRange emits events$ — skip re-entry while that write is in flight.
+      if (this.syncingGaps) return;
+      this.refresh();
+    });
   }
 
   ngOnDestroy() {
@@ -307,7 +312,12 @@ export class DayPage implements OnInit, OnDestroy {
       .map((b) => ({ timestamp: b.timestamp, units: b.units || 0 }));
 
     if (!this.chartPlaceholder) {
-      this.eventsStore.syncGapsForRange(inDay, this.startMs, this.endMs);
+      this.syncingGaps = true;
+      try {
+        this.eventsStore.syncGapsForRange(inDay, this.startMs, this.endMs);
+      } finally {
+        this.syncingGaps = false;
+      }
     }
 
     const notes: AppEvent[] = this.annotations.inRange(this.startMs, this.endMs).map(

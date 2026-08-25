@@ -289,6 +289,10 @@ export class EventsStore {
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       )
       .slice(0, EventsStore.MAX);
+
+    // Avoid re-emitting identical lists — Day page combines events$ into refresh().
+    if (sameEventSnapshot(this.events$.value, next)) return;
+
     this.persist(next);
     this.events$.next(next);
   }
@@ -302,7 +306,7 @@ export class EventsStore {
       if (/\d+\s*min\b/i.test(d) && /until/i.test(d)) return false;
       return true;
     });
-    if (cleaned.length === this.events$.value.length) return;
+    if (sameEventSnapshot(this.events$.value, cleaned)) return;
     this.persist(cleaned);
     this.events$.next(cleaned);
   }
@@ -329,4 +333,19 @@ export class EventsStore {
         return 'var(--muted)';
     }
   }
+}
+
+function sameEventSnapshot(a: AppEvent[], b: AppEvent[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (
+      a[i].id !== b[i].id ||
+      a[i].detail !== b[i].detail ||
+      a[i].label !== b[i].label ||
+      a[i].timestamp !== b[i].timestamp
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
