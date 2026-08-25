@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CoverageResult } from '../../analytics';
+import { formatMinutesLong } from '../../utils/duration-format.util';
 
 @Component({
   selector: 'app-coverage-strip',
@@ -85,7 +86,7 @@ export class CoverageStripComponent {
 
   get gapPart(): string {
     const gapMin = Math.round(this.display.gapMs / 60000);
-    return `${this.display.gapCount} gap · ${gapMin} min`;
+    return `${this.display.gapCount} gap · ${formatMinutesLong(gapMin)}`;
   }
 
   segmentFlex(s: { from: Date; to: Date }): number {

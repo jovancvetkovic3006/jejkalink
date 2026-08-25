@@ -7,10 +7,9 @@ import {
 } from './trend-patterns';
 
 export interface WeeklyReadCopy {
-  p1: string;
-  p2: string;
+  /** One sentence per line for readability. */
+  lines: string[];
   q: string;
-  /** Time-of-day patterns (when readings provided). */
   patterns: TrendPattern[];
 }
 
@@ -47,38 +46,55 @@ export function buildWeeklyRead(
     );
   }
 
-  let patternLine = '';
+  const lines: string[] = [];
+
   if (patterns.length) {
     const high = patterns.filter((p) => p.kind === 'high').slice(0, 2);
     const low = patterns.filter((p) => p.kind === 'low').slice(0, 2);
-    const lines = [...high, ...low].map(formatTrendPattern);
-    patternLine = `Glucose often repeated the same pattern at certain times: ${lines.join('; ')}.`;
+    const parts = [...high, ...low].map(formatTrendPattern);
+    lines.push(`Glucose often repeated the same pattern at certain times: ${parts.join('; ')}.`);
   } else if (metrics.veryLowPct >= 5) {
-    patternLine = `Very low readings (under 3.0) happened ${metrics.veryLowPct}% of the time — spread across the day rather than one time slot.`;
+    lines.push(
+      `Very low readings (under 3.0) happened ${metrics.veryLowPct}% of the time — spread across the day rather than one time slot.`
+    );
   } else if (metrics.belowPct >= 15) {
-    patternLine = `Readings below your target happened ${metrics.belowPct}% of the time — spread across the day.`;
+    lines.push(
+      `Readings below your target happened ${metrics.belowPct}% of the time — spread across the day.`
+    );
   } else if (metrics.abovePct >= 25) {
-    patternLine = `Readings above your target happened ${metrics.abovePct}% of the time — spread across the day.`;
+    lines.push(
+      `Readings above your target happened ${metrics.abovePct}% of the time — spread across the day.`
+    );
   } else if (metrics.tirPct >= 70) {
-    patternLine = `${metrics.tirPct}% of readings were in your target range (average ${metrics.meanLabel} mmol/L) with no strong repeating high or low windows.`;
+    lines.push(
+      `${metrics.tirPct}% of readings were in your target range (average ${metrics.meanLabel} mmol/L) with no strong repeating high or low windows.`
+    );
   } else {
-    patternLine = `Average glucose was ${metrics.meanLabel} mmol/L with ${metrics.tirPct}% in your target range.`;
+    lines.push(
+      `Average glucose was ${metrics.meanLabel} mmol/L with ${metrics.tirPct}% in your target range.`
+    );
   }
 
-  const tight =
-    metrics.tightTirPct > 0
-      ? `In the tighter 3.9–7.8 band, ${metrics.tightTirPct}% of readings were in range.`
-      : '';
+  if (metrics.overnightTirPct != null) {
+    lines.push(
+      `Overnight (22:00–07:00), ${metrics.overnightTirPct}% of readings were in range.`
+    );
+  } else {
+    lines.push('Not enough overnight data to summarise.');
+  }
 
-  const overnight =
-    metrics.overnightTirPct != null
-      ? `Overnight (22:00–07:00), ${metrics.overnightTirPct}% of readings were in range.`
-      : 'Not enough overnight data to summarise.';
+  if (metrics.tightTirPct > 0) {
+    lines.push(
+      `In the tighter 3.9–7.8 band, ${metrics.tightTirPct}% of readings were in range.`
+    );
+  }
 
-  const cvNote =
+  lines.push(
     metrics.cv >= 36
       ? `Glucose swung up and down more than usual (variability ${metrics.cvLabel}% — aim is under 36%).`
-      : `Glucose stayed fairly steady (variability ${metrics.cvLabel}%, under the 36% aim).`;
+      : `Glucose stayed fairly steady (variability ${metrics.cvLabel}%, under the 36% aim).`
+  );
+  lines.push(covNote);
 
   const q =
     patterns.some((p) => p.kind === 'low')
@@ -87,10 +103,5 @@ export function buildWeeklyRead(
         ? 'Worth asking your care team: do the recurring high times match meals or timing on your pump reports?'
         : 'Worth asking your care team: does this match what you see on your pump or CGM reports for the same dates?';
 
-  return {
-    p1: `${patternLine} ${overnight}${tight ? ' ' + tight : ''}`,
-    p2: `${cvNote} ${covNote}`,
-    q,
-    patterns,
-  };
+  return { lines, q, patterns };
 }

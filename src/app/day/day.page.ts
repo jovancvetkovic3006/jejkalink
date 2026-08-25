@@ -45,7 +45,7 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
     kind: 'gap',
     timestamp: new Date().toISOString(),
     label: 'Signal lost',
-    detail: '14:02–14:40 · 38 min',
+    detail: '14:02–14:40 · 00:38',
   },
 ];
 
@@ -197,12 +197,15 @@ export class DayPage implements OnInit, OnDestroy {
     this.endMs = end.getTime();
     this.periodStart = start;
     this.periodEnd = end;
-    const daySpanMs = this.endMs - this.startMs;
+    /** Charts must not paint gaps into the future for “today”. */
+    const chartWindowEnd =
+      this.dayOffset === 0 ? Math.min(this.endMs, Date.now()) : this.endMs;
+    const daySpanMs = chartWindowEnd - this.startMs;
     const window = effectiveChartWindow(
       this.history.readings(),
       this.startMs,
-      this.endMs,
-      daySpanMs
+      chartWindowEnd,
+      Math.max(daySpanMs, 60 * 60 * 1000)
     );
     this.chartStartMs = window.startMs;
     this.chartEndMs = window.endMs;

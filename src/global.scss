@@ -184,8 +184,14 @@ ion-content {
   font-size: 13px;
   line-height: 1.5;
 }
-.ai-card p + p {
+.ai-card p + p,
+.ai-card .weekly-line + .weekly-line {
   margin-top: 8px;
+}
+.ai-card .weekly-line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .ai-card .pattern-list {
   list-style: none;

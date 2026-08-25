@@ -55,9 +55,7 @@ export class TrendsPage implements OnInit, OnDestroy {
   metricsPlaceholder = false;
   targetLow = 3.9;
   targetHigh = 10.0;
-  weeklyReadP1 =
-    'Enable weekly read in Settings to see a descriptive summary from your metrics.';
-  weeklyReadP2 = '';
+  weeklyReadLines: string[] = [];
   weeklyReadQ = '';
   weeklyReadEnabled = false;
   trendPatterns: { timeLabel: string; kind: 'high' | 'low'; detail: string }[] = [];
@@ -235,8 +233,7 @@ export class TrendsPage implements OnInit, OnDestroy {
       this.targetHigh
     );
     if (read) {
-      this.weeklyReadP1 = read.p1;
-      this.weeklyReadP2 = read.p2;
+      this.weeklyReadLines = read.lines;
       this.weeklyReadQ = read.q;
       this.trendPatterns = read.patterns.map((p) => ({
         timeLabel: p.timeLabel,
@@ -244,14 +241,13 @@ export class TrendsPage implements OnInit, OnDestroy {
         detail: `${p.daysAffected}/${p.totalDays} days · ${p.typicalMmol.toFixed(1)} mmol/L`,
       }));
     } else if (!this.weeklyReadEnabled) {
-      this.weeklyReadP1 =
-        'Enable weekly read in Settings to see a descriptive summary from your metrics.';
-      this.weeklyReadP2 = '';
+      this.weeklyReadLines = [
+        'Enable weekly read in Settings to see a descriptive summary from your metrics.',
+      ];
       this.weeklyReadQ = '';
       this.trendPatterns = [];
     } else {
-      this.weeklyReadP1 = 'Not enough covered data for a weekly read yet.';
-      this.weeklyReadP2 = '';
+      this.weeklyReadLines = ['Not enough covered data for a weekly read yet.'];
       this.weeklyReadQ = '';
       this.trendPatterns = [];
     }

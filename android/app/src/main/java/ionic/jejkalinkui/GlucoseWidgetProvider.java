@@ -46,6 +46,21 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_glucose_value, glucoseValue);
         views.setTextViewText(R.id.widget_trend_arrow, trendArrow);
+
+        long lastGoodMs = prefs.getLong("last_good_reading_ms", 0);
+        if (lastGoodMs > 0) {
+            int minutes = (int) Math.max(0L, (System.currentTimeMillis() - lastGoodMs) / 60000L);
+            if (minutes == 0) {
+                timeSince = "just now";
+            } else {
+                int h = minutes / 60;
+                int rem = minutes % 60;
+                timeSince = String.format(java.util.Locale.US, "%02d:%02d ago", h, rem);
+            }
+        } else if (timeSince != null && timeSince.contains("-")) {
+            // Never show negative ages from stale prefs
+            timeSince = timeSince.replace("-", "");
+        }
         views.setTextViewText(R.id.widget_time_since, timeSince);
         views.setTextViewText(R.id.widget_status, status);
 

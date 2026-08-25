@@ -191,12 +191,18 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
     });
     const display = downsampleSgPoints(slice, this.maxPoints());
 
+    const gapEndCap = Math.min(this.endMs, Date.now());
     const gaps = detectGaps(
       this.readings,
       new Date(this.startMs),
-      new Date(this.endMs)
+      new Date(gapEndCap)
     )
-      .segments.filter((s) => !s.covered)
+      .segments.filter((s) => !s.covered && s.from.getTime() < Date.now())
+      .map((s) => ({
+        ...s,
+        to: new Date(Math.min(s.to.getTime(), Date.now())),
+      }))
+      .filter((s) => s.to.getTime() > s.from.getTime())
       .slice(0, MAX_GAP_ANNOTATIONS);
 
     const points = display.map((d) => ({

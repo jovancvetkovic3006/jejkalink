@@ -103,8 +103,7 @@
         </svg>
         Weekly read
       </div>
-      <p>{{ weeklyReadP1 }}</p>
-      <p>{{ weeklyReadP2 }}</p>
+      <p class="weekly-line" *ngFor="let line of weeklyReadLines">{{ line }}</p>
       <ul class="pattern-list" *ngIf="trendPatterns.length">
         <li *ngFor="let p of trendPatterns">
           <span class="pattern-time">{{ p.timeLabel }}</span>
@@ -114,7 +113,7 @@
           <span class="pattern-detail">{{ p.detail }}</span>
         </li>
       </ul>
-      <div class="q">{{ weeklyReadQ }}</div>
+      <div class="q" *ngIf="weeklyReadQ">{{ weeklyReadQ }}</div>
     </div>
   </div>
 </ion-content>

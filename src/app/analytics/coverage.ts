@@ -129,8 +129,14 @@ function mergeSegments(segments: CoverageSegment[]): CoverageSegment[] {
 
 export function formatCoverageCaptionEn(cov: CoverageResult): string {
   const gapMin = Math.round(cov.gapMs / 60000);
+  const hhmm = (() => {
+    const m = Math.max(0, Math.floor(Math.abs(gapMin)));
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return `${String(h).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+  })();
   if (cov.gapCount > 0) {
-    return `${cov.gapCount} gap · ${gapMin} min · ${cov.coveragePct}%`;
+    return `${cov.gapCount} gap · ${hhmm} · ${cov.coveragePct}%`;
   }
   return `${cov.coveragePct}%`;
 }

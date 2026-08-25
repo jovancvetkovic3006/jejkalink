@@ -8,7 +8,7 @@ import {
   VERY_LOW,
 } from '../domain/glucose';
 import { SgReading } from './sgs-history.service';
-import { formatStaleLabelEn } from '../utils/duration-format.util';
+import { formatStaleLabelEn, formatMinutesLong } from '../utils/duration-format.util';
 import { projectMmol, slopePerMin } from '../utils/glucose-slope.util';
 import { BackgroundWeb } from './background-web.service';
 
@@ -272,7 +272,7 @@ export class AlarmsService {
       if (heldMin >= HIGH_HOLD_MIN) {
         this.fire('high', `High ${mmol.toFixed(1)}`, last, {
           critical: false,
-          body: `Above ${s.high.toFixed(1)} mmol/L for ${Math.round(heldMin)} min.`,
+          body: `Above ${s.high.toFixed(1)} mmol/L for ${formatMinutesLong(Math.round(heldMin))}.`,
         });
       }
     } else {

@@ -79,7 +79,7 @@ export class EventsStore {
         this.add({
           kind: 'basal',
           timestamp: nowIso,
-          label: `Temp basal ${b.timeRemaining || '?'} min left`,
+          label: `Temp basal ${formatMinutesLong(Number(b.timeRemaining) || 0)} left`,
           detail: b.tempRate != null ? `${b.tempRate} u/h` : undefined,
           units: b.tempRate,
         });
@@ -143,7 +143,7 @@ export class EventsStore {
         timestamp: nowIso,
         id: `cal-${Math.floor(Date.now() / (60 * 60 * 1000))}`,
         label: 'Calibration due soon',
-        detail: `In ${Math.floor(calMin / 60)}h ${calMin % 60}m`,
+        detail: `In ${formatMinutesLong(Math.floor(calMin))}`,
       });
     }
 

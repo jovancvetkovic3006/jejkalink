@@ -12,6 +12,7 @@ import { EventsStore } from './events-store.service';
 import { CollectorHealthService } from './collector-health.service';
 import { ApiCaptureService } from './api-capture.service';
 import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
+import { formatDurationEn, formatMinutesLong } from '../utils/duration-format.util';
 
 export interface IUserInfo {
   name: string;
@@ -600,22 +601,18 @@ export class AuthenticationService {
 
   getTimeSinceLastGS(data: any): string {
     const last = this.getLastGlicemia(data);
-    if (!last) return 'No valid SG data';
+    if (!last?.timestamp) return 'No valid SG data';
 
-    const now = new Date().getTime();
+    const now = Date.now();
     const lastTime = new Date(last.timestamp).getTime();
-    const diffMs = now - lastTime;
-
-    const minutes = Math.floor(diffMs / 60000);
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-
-    return hours > 0
-      ? ` pre ${hours}h ${remainingMinutes}m`
-      : ` pre ${minutes}m`;
+    if (!Number.isFinite(lastTime)) return 'No valid SG data';
+    const minutes = Math.max(0, Math.floor((now - lastTime) / 60000));
+    if (minutes === 0) return 'just now';
+    return `${formatMinutesLong(minutes)} ago`;
   }
 
   processPatientData(recentData: any) {
+    const prev = this.patientData$.value;
     const data = {
       loading: false,
       current: 0 as string | number,
@@ -639,53 +636,90 @@ export class AuthenticationService {
     this.sgsHistory.saveRawResponse(recentData);
     this.eventsStore.ingestCareLink(patientData);
 
-    data.since = this.getTimeSinceLastGS(data);
-    const unitsLeft = patientData.reservoirRemainingUnits || 0;
-    const glicemia: string | number = formatMmol(toMmol(this.getLastGlicemia(data).sg));
+    const isSensorConnected = data.isSensorConnected = !!patientData.conduitSensorInRange;
+    const lastSgRaw = patientData.lastSG;
+    const lastSgValid =
+      lastSgRaw &&
+      Number(lastSgRaw.sg) > 0 &&
+      !!lastSgRaw.timestamp;
 
+    // When disconnected / invalid lastSG, keep last known history value + prior trend.
+    const historyReadings = this.sgsHistory.readings();
+    const historyLast =
+      historyReadings.length > 0
+        ? historyReadings[historyReadings.length - 1]
+        : undefined;
+    let glicemia: string | number;
+    let timestamp: string | number;
+    let trend: number;
+
+    if (!isSensorConnected || !lastSgValid) {
+      if (historyLast) {
+        glicemia = formatMmol(historyLast.mmol);
+        timestamp = historyLast.timestamp;
+      } else if (typeof prev.current === 'string' || typeof prev.current === 'number') {
+        glicemia = prev.current;
+        timestamp = Date.now();
+      } else {
+        glicemia = '--';
+        timestamp = Date.now();
+      }
+      trend = typeof prev.trend === 'number' ? prev.trend : 0;
+      data.senzor.push({ text: 'Sensor disconnected', warn: true });
+      data.senzor.push({
+        text: `Last reading ${formatDurationEn(
+          (Date.now() - new Date(timestamp).getTime()) / 60000
+        )}`,
+        warn: false,
+      });
+    } else {
+      glicemia = formatMmol(toMmol(this.getLastGlicemia(data).sg));
+      timestamp = lastSgRaw.timestamp || this.getLastGlicemia(data)?.timestamp || Date.now();
+      const trend_raw = patientData.lastSGTrend || '';
+      trend =
+        trend_raw === 'DOWN' || trend_raw === 'DOWN_DOUBLE'
+          ? -1
+          : trend_raw === 'UP' || trend_raw === 'UP_DOUBLE'
+            ? 1
+            : 0;
+    }
+
+    data.since = (() => {
+      const minutes = Math.max(
+        0,
+        Math.floor((Date.now() - new Date(timestamp).getTime()) / 60000)
+      );
+      return minutes === 0 ? 'just now' : `${formatMinutesLong(minutes)} ago`;
+    })();
+
+    const unitsLeft = patientData.reservoirRemainingUnits || 0;
     const sensorState = patientData.lastSG?.sensorState || 'UNKNOWN';
 
-    const timestamp = patientData.lastSG?.timestamp || this.getLastGlicemia(data)?.timestamp || Date.now();
-
     const dt = new Date(timestamp);
-
-    const datePart = dt.toLocaleDateString('en-US', {
+    const datePart = dt.toLocaleDateString('en-GB', {
       month: 'long',
       day: '2-digit',
       year: 'numeric',
     });
-    const timePart = dt.toLocaleTimeString('en-US', {
+    const timePart = dt.toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
     });
+    const lastTime = `${datePart} · ${timePart}`;
 
-
-    const lastTime = `${datePart} u ${timePart}`;
-
-    const isSensorConnected = data.isSensorConnected = patientData.conduitSensorInRange || false;
-
-    if (!isSensorConnected) {
-      data.senzor.push({ text: 'Senzor nije povezan', warn: true });
-      for (const sg of data.sgs || []) {
-        if (sg) {
-          const lastGlicemia = formatMmol(toMmol(this.getLastGlicemia(data)?.sg));
-          data.glicemia.push({ text: `Poslednja glikemija ${lastGlicemia}`, warn: false });
-          data.senzor.push({ text: `Poslednja sinhronizacija ${lastTime}`, warn: false });
-          break;
-        }
-      }
+    if (!isSensorConnected && historyLast) {
+      data.glicemia.push({ text: `Last glucose ${glicemia}`, warn: false });
+      data.glicemia.push({ text: `From ${lastTime}`, warn: false });
     }
 
-
-    const activeInsulin = patientData.activeInsulin.amount.toFixed(1);
+    const activeInsulin = patientData.activeInsulin?.amount != null
+      ? Number(patientData.activeInsulin.amount).toFixed(1)
+      : '0.0';
 
     const sensorBattery = patientData.gstBatteryLevel || 0;
     const pumpBattery = patientData.conduitBatteryLevel || 0;
 
-    const trend_raw = patientData.lastSGTrend || '';
-    const trend =
-      trend_raw === 'DOWN' ? -1 : trend_raw === 'UP' ? 1 : 0;
     const meanMmol = toMmol(patientData?.averageSG || 0);
     const gmi = formatMmol(gmiFromMean(meanMmol));
 
@@ -705,17 +739,24 @@ export class AuthenticationService {
     const hours = Math.floor((durationMinutes % 1440) / 60);
     const minutes = durationMinutes % 60;
     const sensorExpiring = durationMinutes > 0 && durationMinutes < 1440;
-    isSensorConnected && data.senzor.push({ text: `Serzor traje jos ${days}d ${hours}h ${minutes}m`, warn: sensorExpiring });
+    if (isSensorConnected) {
+      data.senzor.push({
+        text: `Sensor life ${days}d ${formatMinutesLong(hours * 60 + minutes)} left`,
+        warn: sensorExpiring,
+      });
+    }
 
     const calibrationMinutes = patientData.timeToNextCalibrationMinutes || 0;
     const calibrationSoon = calibrationMinutes > 0 && calibrationMinutes < 10;
-    isSensorConnected && data.senzor.push({
-      text: `Sledeca kalibracija za ${Math.floor(calibrationMinutes / 60)}h ${calibrationMinutes % 60}m`,
-      warn: calibrationSoon
-    });
+    if (isSensorConnected) {
+      data.senzor.push({
+        text: `Next calibration in ${formatMinutesLong(calibrationMinutes)}`,
+        warn: calibrationSoon,
+      });
+    }
 
     if (sensorState === 'CHANGE_SENSOR') {
-      data.senzor.push({ text: 'Zamenite senzor', warn: true });
+      data.senzor.push({ text: 'Replace sensor', warn: true });
     }
 
     const banner = patientData.pumpBannerState || [];
@@ -725,40 +766,42 @@ export class AuthenticationService {
       const remaining = tempBasal.timeRemaining || 0;
       const rate = patientData.lastAlarm?.tempRate ?? patientData.currentBasal?.tempRate ?? null;
       if (rate !== null) {
-        data.insulin.push({ text: `Temporalni ${rate} j/h jos ${remaining} min`, warn: false });
+        data.insulin.push({ text: `Temp basal ${rate} u/h · ${formatMinutesLong(remaining)} left`, warn: false });
       } else {
-        data.insulin.push({ text: `Temporalni tece jos ${remaining} min`, warn: false });
+        data.insulin.push({ text: `Temp basal · ${formatMinutesLong(remaining)} left`, warn: false });
       }
     }
 
     const basalRate = patientData.basal?.basalRate ?? patientData.currentBasal?.basalRate ?? null;
     if (basalRate !== null) {
-      data.insulin.push({ text: `Bazalni ${basalRate} j/h`, warn: false });
+      data.insulin.push({ text: `Basal ${basalRate} u/h`, warn: false });
     }
 
-    if (activeInsulin !== -1.0) {
-      data.insulin.push({ text: `Aktivni insulin ${activeInsulin}`, warn: false });
+    if (patientData.activeInsulin?.amount != null) {
+      data.insulin.push({ text: `Active insulin ${activeInsulin} u`, warn: false });
     }
 
     if (patientData.pumpSuspended) {
-      data.pump.push({ text: 'Pumpica je suspendovana', warn: true });
+      data.pump.push({ text: 'Pump suspended', warn: true });
     }
 
     data.glicemia.push({ text: `GMI ${gmi}%`, warn: false });
     if (meanMmol > 0) {
-      data.glicemia.push({ text: `Prosek ${formatMmol(meanMmol)}`, warn: false });
+      data.glicemia.push({ text: `Mean ${formatMmol(meanMmol)}`, warn: false });
     }
 
     if ('timeInRange' in patientData) {
-      timeInRange && data.glicemia.push({ text: `U normali je ${timeInRange}`, warn: false });
-      data.glicemia.push({ text: `Niska ${belowHypoLimit}`, warn: false });
-      data.glicemia.push({ text: `Visoka ${aboveHyperLimit}`, warn: false });
+      timeInRange && data.glicemia.push({ text: `In range ${timeInRange}`, warn: false });
+      data.glicemia.push({ text: `Low ${belowHypoLimit}`, warn: false });
+      data.glicemia.push({ text: `High ${aboveHyperLimit}`, warn: false });
     }
 
-    data.insulin.push({ text: `Preostalo jedinica ${unitsLeft}`, warn: unitsLeft < 20 });
+    data.insulin.push({ text: `Reservoir ${unitsLeft} u`, warn: unitsLeft < 20 });
 
-    isSensorConnected && data.senzor.push({ text: `Baterija senzora ${sensorBattery}%`, warn: sensorBattery < 20 });
-    data.pump.push({ text: `Baterija pumpice ${pumpBattery}%`, warn: pumpBattery < 20 });
+    if (isSensorConnected) {
+      data.senzor.push({ text: `Sensor battery ${sensorBattery}%`, warn: sensorBattery < 20 });
+    }
+    data.pump.push({ text: `Pump battery ${pumpBattery}%`, warn: pumpBattery < 20 });
 
     return data;
   }

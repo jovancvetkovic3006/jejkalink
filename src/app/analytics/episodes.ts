@@ -1,5 +1,6 @@
 import { SgReading } from '../services/sgs-history.service';
 import { LOW, LOW_CLEAR, VERY_LOW } from '../domain/glucose';
+import { formatMinutesLong } from '../utils/duration-format.util';
 
 export interface HypoEpisode {
   start: string;
@@ -103,7 +104,7 @@ export function formatHypoEpisode(e: HypoEpisode): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-  return `${t0} · ${e.durationMin} min · nadir ${e.nadirMmol.toFixed(1)} mmol/L`;
+  return `${t0} · ${formatMinutesLong(e.durationMin)} · nadir ${e.nadirMmol.toFixed(1)} mmol/L`;
 }
 
 /**

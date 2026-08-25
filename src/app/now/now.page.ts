@@ -23,7 +23,7 @@ import {
 } from '../domain/glucose';
 import { slopePerMin, projectMmol } from '../utils/glucose-slope.util';
 import { placeholderSparklineReadings } from '../utils/placeholder-data.util';
-import { formatPolledAgoEn } from '../utils/duration-format.util';
+import { formatPolledAgoEn, formatMinutesLong } from '../utils/duration-format.util';
 import {
   effectiveChartWindow,
   formatReadingScrubLabel,
@@ -50,7 +50,7 @@ const PLACEHOLDER_EVENTS: AppEvent[] = [
     kind: 'alarm',
     timestamp: new Date().toISOString(),
     label: 'Low 3.7',
-    detail: 'Recovered in 22 min',
+    detail: 'Recovered in 00:22',
   },
 ];
 
@@ -180,7 +180,7 @@ export class NowPage implements OnInit, OnDestroy {
     const projected = projectMmol(last.mmol, slope, lagMin);
     this.projectionChip =
       projected != null && lagMin > 0
-        ? `Projected ${formatMmol(projected)} in ${Math.ceil(lagMin)}m`
+        ? `Projected ${formatMmol(projected)} in ${formatMinutesLong(Math.ceil(lagMin))}`
         : projected != null
           ? `Projected ${formatMmol(projected)} now`
           : '';
