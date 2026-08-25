@@ -118,6 +118,7 @@ export class NowPage implements OnInit, OnDestroy {
     const s = this.appSettings.get();
     this.targetLow = s.targetLow;
     this.targetHigh = s.targetHigh;
+    this.eventsStore.pruneBogusGapEvents();
     this.sub = this.history.allSgs$.subscribe((sgs: SgReading[]) => {
       this.readings = sgs;
       this.refresh();
@@ -193,6 +194,11 @@ export class NowPage implements OnInit, OnDestroy {
     this.dayStart = startOfDay;
     this.dayEnd = now;
     this.coverage = detectGaps(this.readings, startOfDay, now);
+    this.eventsStore.syncGapsForRange(
+      this.readings,
+      startOfDay.getTime(),
+      nowMs
+    );
     const fullEnd = nowMs;
     const fullStart = nowMs - 3 * 60 * 60 * 1000;
     const window = effectiveChartWindow(

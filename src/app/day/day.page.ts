@@ -45,7 +45,7 @@ const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
     kind: 'gap',
     timestamp: new Date().toISOString(),
     label: 'Signal lost',
-    detail: 'Resumed 15:10',
+    detail: '14:02–14:40 · 38 min',
   },
 ];
 

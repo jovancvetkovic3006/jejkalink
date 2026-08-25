@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { detectGaps } from '../analytics/coverage';
 import { SgReading } from './sgs-history.service';
 import { formatMinutesLong } from '../utils/duration-format.util';
 
@@ -235,27 +234,77 @@ export class EventsStore {
     );
   }
 
-  /** Upsert gap rows from detectGaps for a day window (day log). */
+  /** Upsert closed signal-loss gaps between readings (not open trailing to EOD/now). */
   syncGapsForRange(readings: SgReading[], startMs: number, endMs: number) {
-    const start = new Date(startMs);
-    const end = new Date(endMs);
-    const cov = detectGaps(readings, start, end);
-    for (const seg of cov.segments) {
-      if (seg.covered) continue;
-      const durMin = Math.round((seg.to.getTime() - seg.from.getTime()) / 60000);
+    const cappedEnd = Math.min(endMs, Date.now());
+    const withoutDayGaps = this.load().filter((e) => {
+      if (e.kind !== 'gap') return true;
+      const t = new Date(e.timestamp).getTime();
+      return t < startMs || t > cappedEnd;
+    });
+
+    const inRange = readings
+      .filter((r) => {
+        const t = new Date(r.timestamp).getTime();
+        return t >= startMs && t <= cappedEnd && r.mmol > 0;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
+    const gaps: AppEvent[] = [];
+    for (let i = 0; i < inRange.length - 1; i++) {
+      const fromMs = new Date(inRange[i].timestamp).getTime();
+      const toMs = new Date(inRange[i + 1].timestamp).getTime();
+      const durMin = Math.round((toMs - fromMs) / 60_000);
       if (durMin < 10) continue;
-      const id = `gap-${seg.from.toISOString()}-${seg.to.toISOString()}`;
-      this.add({
-        id,
+
+      const from = new Date(fromMs);
+      const to = new Date(toMs);
+      const fromLabel = from.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const toLabel = to.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      gaps.push({
+        id: `gap-${from.toISOString()}-${to.toISOString()}`,
         kind: 'gap',
-        timestamp: seg.from.toISOString(),
+        timestamp: from.toISOString(),
         label: 'Signal lost',
-        detail: `${formatMinutesLong(durMin)} · until ${seg.to.toLocaleTimeString('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}`,
+        detail: `${fromLabel}–${toLabel} · ${formatMinutesLong(durMin)}`,
       });
     }
+
+    const byId = new Map<string, AppEvent>();
+    for (const e of [...gaps, ...withoutDayGaps]) {
+      if (!byId.has(e.id)) byId.set(e.id, e);
+    }
+    const next = [...byId.values()]
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )
+      .slice(0, EventsStore.MAX);
+    this.persist(next);
+    this.events$.next(next);
+  }
+
+  /** Drop legacy open-ended “until 23:59” gap rows from older builds. */
+  pruneBogusGapEvents() {
+    const cleaned = this.load().filter((e) => {
+      if (e.kind !== 'gap') return true;
+      const d = e.detail || '';
+      if (/until\s*23:59/i.test(d)) return false;
+      if (/\d+\s*min\b/i.test(d) && /until/i.test(d)) return false;
+      return true;
+    });
+    if (cleaned.length === this.events$.value.length) return;
+    this.persist(cleaned);
+    this.events$.next(cleaned);
   }
 
   static dotColor(kind: EventKind): string {
