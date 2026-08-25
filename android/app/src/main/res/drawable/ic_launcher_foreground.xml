@@ -1,18 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportHeight="108"
-    android:viewportWidth="108">
-    <!-- Blood drop shape -->
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Glucose sparkline — stays inside adaptive-icon safe zone -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,24C54,24 34,48 34,62C34,73.05 42.95,82 54,82C65.05,82 74,73.05 74,62C74,48 54,24 54,24Z" />
-    <!-- Pulse/heartbeat line inside the drop -->
-    <path
+        android:pathData="M26,62 C36,62 40,40 49,40 C58,40 58,70 67,70 C76,70 80,52 86,52"
         android:fillColor="#00000000"
-        android:pathData="M40,62L47,62L50,55L54,69L58,55L61,62L68,62"
-        android:strokeColor="#2E7D32"
-        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
+    <!-- Latest reading -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M86,52 m-7.2,0 a7.2,7.2 0 1,1 14.4,0 a7.2,7.2 0 1,1 -14.4,0" />
 </vector>
