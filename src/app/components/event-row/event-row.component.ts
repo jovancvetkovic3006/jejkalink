@@ -18,7 +18,7 @@ import { CommonModule } from '@angular/common';
         <span class="dot" [style.background]="dotColor"></span>
         <div class="body">
           <div class="h">{{ title }}</div>
-          <div class="s" [class.empty]="!subtitle">{{ subtitle || '\u00a0' }}</div>
+          <div class="s">{{ displaySubtitle }}</div>
         </div>
         <span class="rt numeral" *ngIf="rightValue && !removable">{{ rightValue }}</span>
         <button
@@ -112,9 +112,6 @@ import { CommonModule } from '@angular/common';
         min-height: 1.25em;
         line-height: 1.25;
       }
-      .s.empty {
-        visibility: hidden;
-      }
       .rt {
         font-size: 12px;
         color: var(--ink);
@@ -170,4 +167,9 @@ export class EventRowComponent {
 
   @Output() removed = new EventEmitter<void>();
   @Output() alarmTagClick = new EventEmitter<'real' | 'false'>();
+
+  get displaySubtitle(): string {
+    const s = (this.subtitle || '').trim();
+    return s || '--';
+  }
 }
