@@ -177,6 +177,37 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
     return `${when} · ${y.toFixed(1)} mmol/L`;
   }
 
+  /**
+   * Adaptive Y domain so in-range readings use the chart height.
+   * Fixed 2.5–16 crushed lows against the floor.
+   */
+  private computeYDomain(values: number[]): { min: number; max: number } {
+    if (!values.length) {
+      return { min: 3.0, max: 12.0 };
+    }
+    const dMin = Math.min(...values);
+    const dMax = Math.max(...values);
+    const low = this.targetLow;
+    const high = this.targetHigh;
+
+    let yMin = Math.min(dMin - 0.7, low - 0.5);
+    let yMax = Math.max(dMax + 0.7, high + 0.6);
+    yMin = Math.max(2.0, yMin);
+    yMax = Math.min(22, yMax);
+
+    if (yMax - yMin < 6) {
+      const mid = (yMin + yMax) / 2;
+      yMin = Math.max(2.0, mid - 3);
+      yMax = Math.min(22, yMin + 6);
+      if (yMax - yMin < 6) yMin = Math.max(2.0, yMax - 6);
+    }
+
+    yMin = Math.floor(yMin * 2) / 2;
+    yMax = Math.ceil(yMax * 2) / 2;
+    if (yMax <= yMin) yMax = yMin + 6;
+    return { min: yMin, max: yMax };
+  }
+
   private render() {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas || !this.startMs || !this.endMs) return;
@@ -227,6 +258,9 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
 
     const low = this.targetLow;
     const high = this.targetHigh;
+    const yDomain = this.computeYDomain(
+      data.map((p) => p.y).filter((y): y is number => y != null && y > 0)
+    );
     const hatch = hatchPattern();
     const annotations: Record<string, unknown> = {};
 
@@ -265,7 +299,8 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
       })
       .map((b) => ({
         x: new Date(b.timestamp).getTime(),
-        y: Math.min(5.5, 2.2 + b.units * 0.45),
+        // Sit just above the floor of the adaptive Y domain
+        y: Math.min(yDomain.min + 0.35 + b.units * 0.12, yDomain.min + 1.4),
       }));
 
     const lastIdx = data.length - 1;
@@ -383,18 +418,30 @@ export class GlucoseChartComponent implements AfterViewInit, OnChanges {
             grid: { color: 'rgba(227, 231, 237, 1)', drawTicks: false },
           },
           y: {
-            min: 2.5,
-            max: this.sparkline ? 15 : 16,
+            min: yDomain.min,
+            max: yDomain.max,
             display: true,
+            afterBuildTicks: (axis: { ticks: { value: number }[] }) => {
+              const wanted = [yDomain.min, low, high, yDomain.max]
+                .filter((v, i, arr) => arr.findIndex((x) => Math.abs(x - v) < 0.05) === i)
+                .sort((a, b) => a - b);
+              axis.ticks = wanted.map((value) => ({ value }));
+            },
             ticks: {
               color: '#707C91',
               font: { size: 8.5, family: 'IBM Plex Mono' },
               padding: this.sparkline ? 0 : 3,
+              autoSkip: false,
               callback: (v) => {
                 const n = Number(v);
                 if (Math.abs(n - low) < 0.05) return low.toFixed(1);
                 if (Math.abs(n - high) < 0.05) return high.toFixed(1);
-                if (!this.sparkline && (n === 15 || n === 16)) return '15';
+                if (Math.abs(n - yDomain.max) < 0.05 && Math.abs(yDomain.max - high) > 0.2) {
+                  return yDomain.max % 1 === 0 ? String(yDomain.max) : yDomain.max.toFixed(1);
+                }
+                if (Math.abs(n - yDomain.min) < 0.05 && Math.abs(yDomain.min - low) > 0.2) {
+                  return yDomain.min % 1 === 0 ? String(yDomain.min) : yDomain.min.toFixed(1);
+                }
                 return '';
               },
             },

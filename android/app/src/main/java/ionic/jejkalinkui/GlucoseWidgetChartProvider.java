@@ -9,8 +9,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Shader;
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -85,71 +87,113 @@ public class GlucoseWidgetChartProvider extends AppWidgetProvider {
         }
     }
 
-    /** Fixed pixel size — avoid density-blown bitmaps that break binder / launcher. */
+    /** High-res modern sparkline (sharp when scaled into the widget). */
     private static Bitmap drawSparkline(String csv) {
         float[] points = parsePoints(csv);
-        int w = 320;
-        int h = 72;
+        // Render dense enough for xxxhdpi home screens without binder blowups
+        int w = 720;
+        int h = 200;
+        int padX = 8;
+        int padY = 14;
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
+        float yMin;
+        float yMax;
+        if (points.length >= 1) {
+            float dMin = points[0];
+            float dMax = points[0];
+            for (float p : points) {
+                if (p < dMin) dMin = p;
+                if (p > dMax) dMax = p;
+            }
+            yMin = Math.min(dMin - 0.6f, 3.4f);
+            yMax = Math.max(dMax + 0.6f, 10.2f);
+            if (yMax - yMin < 5f) {
+                float mid = (yMin + yMax) / 2f;
+                yMin = mid - 2.5f;
+                yMax = mid + 2.5f;
+            }
+            yMin = Math.max(2.0f, yMin);
+            yMax = Math.min(20f, yMax);
+        } else {
+            yMin = 3.0f;
+            yMax = 12.0f;
+        }
+
+        // Target band
         Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
-        band.setColor(0x33FFFFFF);
-        float yLow = mapY(3.9f, h);
-        float yHigh = mapY(10.0f, h);
-        canvas.drawRect(0, Math.min(yLow, yHigh), w, Math.max(yLow, yHigh), band);
+        band.setColor(0x28FFFFFF);
+        float bandTop = mapY(10.0f, h, padY, yMin, yMax);
+        float bandBot = mapY(3.9f, h, padY, yMin, yMax);
+        canvas.drawRect(padX, Math.min(bandTop, bandBot), w - padX, Math.max(bandTop, bandBot), band);
+
+        // Guide lines
+        Paint guide = new Paint(Paint.ANTI_ALIAS_FLAG);
+        guide.setColor(0x40FFFFFF);
+        guide.setStrokeWidth(1.5f);
+        canvas.drawLine(padX, bandTop, w - padX, bandTop, guide);
+        canvas.drawLine(padX, bandBot, w - padX, bandBot, guide);
 
         if (points.length < 2) {
             Paint muted = new Paint(Paint.ANTI_ALIAS_FLAG);
             muted.setColor(0x66FFFFFF);
             muted.setStrokeWidth(3f);
-            canvas.drawLine(0, h / 2f, w, h / 2f, muted);
+            canvas.drawLine(padX, h / 2f, w - padX, h / 2f, muted);
             return bmp;
         }
 
-        float min = points[0];
-        float max = points[0];
-        for (float p : points) {
-            if (p < min) min = p;
-            if (p > max) max = p;
-        }
-        min = Math.min(min, 3.5f);
-        max = Math.max(max, 10.5f);
-        if (max - min < 1.5f) {
-            float mid = (min + max) / 2f;
-            min = mid - 0.75f;
-            max = mid + 0.75f;
-        }
-
-        Path path = new Path();
+        Path linePath = new Path();
+        Path fillPath = new Path();
+        float plotW = w - 2f * padX;
         for (int i = 0; i < points.length; i++) {
-            float x = points.length == 1 ? w / 2f : (i / (float) (points.length - 1)) * (w - 2);
-            float y = h - ((points[i] - min) / (max - min)) * (h - 4) - 2;
-            if (i == 0) path.moveTo(x, y);
-            else path.lineTo(x, y);
+            float x = padX + (points.length == 1 ? plotW / 2f
+                : (i / (float) (points.length - 1)) * plotW);
+            float y = mapY(points[i], h, padY, yMin, yMax);
+            if (i == 0) {
+                linePath.moveTo(x, y);
+                fillPath.moveTo(x, h - padY);
+                fillPath.lineTo(x, y);
+            } else {
+                linePath.lineTo(x, y);
+                fillPath.lineTo(x, y);
+            }
         }
+        float lastX = padX + plotW;
+        float lastY = mapY(points[points.length - 1], h, padY, yMin, yMax);
+        fillPath.lineTo(lastX, h - padY);
+        fillPath.close();
+
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setStyle(Paint.Style.FILL);
+        fill.setShader(new LinearGradient(
+            0, padY, 0, h - padY,
+            0x55FFFFFF, 0x00FFFFFF,
+            Shader.TileMode.CLAMP));
+        canvas.drawPath(fillPath, fill);
 
         Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
         line.setStyle(Paint.Style.STROKE);
-        line.setStrokeWidth(3f);
+        line.setStrokeWidth(5f);
         line.setColor(0xFFFFFFFF);
         line.setStrokeCap(Paint.Cap.ROUND);
         line.setStrokeJoin(Paint.Join.ROUND);
-        canvas.drawPath(path, line);
+        canvas.drawPath(linePath, line);
 
-        float lastX = w - 2;
-        float lastY = h - ((points[points.length - 1] - min) / (max - min)) * (h - 4) - 2;
+        // Current reading dot + soft halo
+        Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        halo.setColor(0x55FFFFFF);
+        canvas.drawCircle(lastX, lastY, 10f, halo);
         Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
         dot.setColor(0xFFFFFFFF);
-        canvas.drawCircle(lastX, lastY, 4f, dot);
+        canvas.drawCircle(lastX, lastY, 6f, dot);
 
         return bmp;
     }
 
-    private static float mapY(float mmol, int h) {
-        float min = 3f;
-        float max = 15f;
-        return h - ((mmol - min) / (max - min)) * h;
+    private static float mapY(float mmol, int h, int padY, float yMin, float yMax) {
+        float usable = h - 2f * padY;
+        return (h - padY) - ((mmol - yMin) / (yMax - yMin)) * usable;
     }
 
     private static float[] parsePoints(String csv) {
