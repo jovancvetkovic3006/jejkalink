@@ -46,7 +46,7 @@
             android:layout_height="wrap_content"
             android:text="mmol/L"
             android:textSize="9sp"
-            android:textColor="#B0FFFFFF"
+            android:textColor="#CCFFFFFF"
             android:layout_marginStart="4dp"
             android:includeFontPadding="false" />
     </LinearLayout>
@@ -64,7 +64,7 @@
             android:layout_height="wrap_content"
             android:text="--"
             android:textSize="10sp"
-            android:textColor="#DDFFFFFF"
+            android:textColor="#EEEEEE"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -75,7 +75,7 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textSize="8sp"
-            android:textColor="#EEFFFFFF"
+            android:textColor="#FFFFFF"
             android:maxLines="1"
             android:ellipsize="end"
             android:includeFontPadding="false" />

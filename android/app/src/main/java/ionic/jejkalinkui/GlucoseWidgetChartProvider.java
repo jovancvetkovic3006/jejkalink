@@ -11,11 +11,12 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.util.DisplayMetrics;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 /** Wide 4×2 — value, trend, and last-3h sparkline. */
 public class GlucoseWidgetChartProvider extends AppWidgetProvider {
+    private static final String TAG = "GlucoseWidgetChart";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -37,60 +38,72 @@ public class GlucoseWidgetChartProvider extends AppWidgetProvider {
     }
 
     private void update(Context context, AppWidgetManager mgr, int appWidgetId) {
-        SharedPreferences prefs = GlucoseWidgetData.prefs(context);
-        String glucoseValue = prefs.getString("glucose_value", "--");
-        String trendArrow = prefs.getString("trend_arrow", "");
-        String timeSince = GlucoseWidgetData.formatAge(prefs);
-        double sgValue = 0;
         try {
-            sgValue = Double.parseDouble(prefs.getString("sg_double", "0"));
-        } catch (Exception ignored) {
-        }
-
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_glucose_chart);
-        views.setTextViewText(R.id.widget_glucose_value, glucoseValue);
-        views.setTextViewText(R.id.widget_trend_arrow, trendArrow);
-        views.setTextViewText(R.id.widget_time_since, timeSince);
-        views.setInt(R.id.widget_root, "setBackgroundResource", GlucoseWidgetData.backgroundRes(sgValue));
-
-        try {
-            Bitmap spark = drawSparkline(context, prefs.getString("sparkline_points", ""));
-            if (spark != null) {
-                views.setImageViewBitmap(R.id.widget_sparkline, spark);
+            SharedPreferences prefs = GlucoseWidgetData.prefs(context);
+            String glucoseValue = prefs.getString("glucose_value", "--");
+            String trendArrow = prefs.getString("trend_arrow", "");
+            String timeSince = GlucoseWidgetData.formatAge(prefs);
+            double sgValue = 0;
+            try {
+                sgValue = Double.parseDouble(prefs.getString("sg_double", "0"));
+            } catch (Exception ignored) {
             }
-        } catch (Exception e) {
-            // Never let widget drawing crash the app process
-        }
 
-        Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-        if (launch != null) {
-            PendingIntent pi = PendingIntent.getActivity(
-                context, 2, launch,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            views.setOnClickPendingIntent(R.id.widget_root, pi);
+            RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_glucose_chart);
+            views.setTextViewText(R.id.widget_glucose_value, glucoseValue);
+            views.setTextViewText(R.id.widget_trend_arrow, trendArrow);
+            views.setTextViewText(R.id.widget_time_since, timeSince);
+            views.setInt(R.id.widget_root, "setBackgroundResource", GlucoseWidgetData.backgroundRes(sgValue));
+
+            try {
+                Bitmap spark = drawSparkline(prefs.getString("sparkline_points", ""));
+                if (spark != null) {
+                    views.setImageViewBitmap(R.id.widget_sparkline, spark);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "sparkline draw failed", e);
+            }
+
+            Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            if (launch != null) {
+                PendingIntent pi = PendingIntent.getActivity(
+                    context, 2, launch,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                views.setOnClickPendingIntent(R.id.widget_root, pi);
+            }
+            mgr.updateAppWidget(appWidgetId, views);
+        } catch (Exception e) {
+            Log.e(TAG, "update failed; posting minimal widget", e);
+            try {
+                RemoteViews fallback = new RemoteViews(context.getPackageName(), R.layout.widget_glucose_chart);
+                fallback.setTextViewText(R.id.widget_glucose_value, "--");
+                fallback.setTextViewText(R.id.widget_trend_arrow, "");
+                fallback.setTextViewText(R.id.widget_time_since, "");
+                mgr.updateAppWidget(appWidgetId, fallback);
+            } catch (Exception ignored) {
+            }
         }
-        mgr.updateAppWidget(appWidgetId, views);
     }
 
-    private static Bitmap drawSparkline(Context context, String csv) {
+    /** Fixed pixel size — avoid density-blown bitmaps that break binder / launcher. */
+    private static Bitmap drawSparkline(String csv) {
         float[] points = parsePoints(csv);
-        DisplayMetrics dm = context.getResources().getDisplayMetrics();
-        int w = Math.round(280 * dm.density);
-        int h = Math.round(56 * dm.density);
-        Bitmap bmp = Bitmap.createBitmap(Math.max(w, 120), Math.max(h, 40), Bitmap.Config.ARGB_8888);
+        int w = 320;
+        int h = 72;
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
         Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
         band.setColor(0x33FFFFFF);
         float yLow = mapY(3.9f, h);
         float yHigh = mapY(10.0f, h);
-        canvas.drawRect(0, Math.min(yLow, yHigh), bmp.getWidth(), Math.max(yLow, yHigh), band);
+        canvas.drawRect(0, Math.min(yLow, yHigh), w, Math.max(yLow, yHigh), band);
 
         if (points.length < 2) {
             Paint muted = new Paint(Paint.ANTI_ALIAS_FLAG);
             muted.setColor(0x66FFFFFF);
-            muted.setStrokeWidth(2f * dm.density);
-            canvas.drawLine(0, h / 2f, bmp.getWidth(), h / 2f, muted);
+            muted.setStrokeWidth(3f);
+            canvas.drawLine(0, h / 2f, w, h / 2f, muted);
             return bmp;
         }
 
@@ -110,34 +123,30 @@ public class GlucoseWidgetChartProvider extends AppWidgetProvider {
 
         Path path = new Path();
         for (int i = 0; i < points.length; i++) {
-            float x = points.length == 1 ? bmp.getWidth() / 2f
-                : (i / (float) (points.length - 1)) * (bmp.getWidth() - 2);
-            float y = bmp.getHeight() - ((points[i] - min) / (max - min)) * (bmp.getHeight() - 4) - 2;
+            float x = points.length == 1 ? w / 2f : (i / (float) (points.length - 1)) * (w - 2);
+            float y = h - ((points[i] - min) / (max - min)) * (h - 4) - 2;
             if (i == 0) path.moveTo(x, y);
             else path.lineTo(x, y);
         }
 
         Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
         line.setStyle(Paint.Style.STROKE);
-        line.setStrokeWidth(2.4f * dm.density);
+        line.setStrokeWidth(3f);
         line.setColor(0xFFFFFFFF);
         line.setStrokeCap(Paint.Cap.ROUND);
         line.setStrokeJoin(Paint.Join.ROUND);
         canvas.drawPath(path, line);
 
-        // Last point dot
-        float lastX = bmp.getWidth() - 2;
-        float lastY = bmp.getHeight()
-            - ((points[points.length - 1] - min) / (max - min)) * (bmp.getHeight() - 4) - 2;
+        float lastX = w - 2;
+        float lastY = h - ((points[points.length - 1] - min) / (max - min)) * (h - 4) - 2;
         Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
         dot.setColor(0xFFFFFFFF);
-        canvas.drawCircle(lastX, lastY, 3.2f * dm.density, dot);
+        canvas.drawCircle(lastX, lastY, 4f, dot);
 
         return bmp;
     }
 
     private static float mapY(float mmol, int h) {
-        // Approximate for band preview only (3–15 scale)
         float min = 3f;
         float max = 15f;
         return h - ((mmol - min) / (max - min)) * h;

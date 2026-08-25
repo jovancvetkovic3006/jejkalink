@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 1×1 — value only -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="8dp"
+    android:padding="4dp"
     android:background="@drawable/widget_background">
 
     <TextView
@@ -13,20 +14,19 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="--"
-        android:textSize="36sp"
+        android:textSize="28sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
-        android:fontFamily="sans-serif-medium"
         android:includeFontPadding="false"
-        android:gravity="center" />
+        android:gravity="center"
+        android:maxLines="1" />
 
     <TextView
         android:id="@+id/widget_unit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="mmol/L"
-        android:textSize="11sp"
-        android:textColor="#B0FFFFFF"
-        android:layout_marginTop="2dp"
+        android:textSize="9sp"
+        android:textColor="#CCFFFFFF"
         android:includeFontPadding="false" />
 </LinearLayout>

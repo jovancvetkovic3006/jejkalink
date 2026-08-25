@@ -9,7 +9,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.widget.RemoteViews;
 
-/** Compact 2×2 — value only, range-colored. */
+/** Compact 1×1 — value only, range-colored. */
 public class GlucoseWidgetCompactProvider extends AppWidgetProvider {
 
     @Override
