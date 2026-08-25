@@ -6,12 +6,18 @@ import { collectorPollCoverage, PollEvent } from '../analytics/collector-coverag
 export class CollectorHealthService {
   private static readonly FAIL_KEY = 'collector_failures';
   private static readonly LAST_OK_KEY = 'collector_last_ok_ms';
+  private static readonly LAST_READING_KEY = 'collector_last_reading_ms';
   private static readonly POLL_LOG_KEY = 'collector_poll_log_v1';
   private static readonly MAX_POLL_EVENTS = 4000;
+  private static readonly PHASE_MINUTE = 2;
+  private static readonly PHASE_OFFSET_SEC = 30;
 
   public failures$ = new BehaviorSubject<number>(this.loadFailures());
   public lastOkAt$ = new BehaviorSubject<number | null>(this.loadLastOk());
   public pollEvents$ = new BehaviorSubject<PollEvent[]>(this.loadPollLog());
+  public lastReadingTsMs$ = new BehaviorSubject<number | null>(this.loadLastReading());
+  public receiveDelayMs$ = new BehaviorSubject<number | null>(null);
+  public skippedReason$ = new BehaviorSubject<string | null>(null);
 
   private loadFailures(): number {
     return Number(localStorage.getItem(CollectorHealthService.FAIL_KEY) || 0);
@@ -22,6 +28,13 @@ export class CollectorHealthService {
     if (!raw) return null;
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
+  }
+
+  private loadLastReading(): number | null {
+    const raw = localStorage.getItem(CollectorHealthService.LAST_READING_KEY);
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
   }
 
   private loadPollLog(): PollEvent[] {
@@ -52,15 +65,53 @@ export class CollectorHealthService {
     return n;
   }
 
-  recordSuccess() {
+  recordSuccess(meta?: { readingTsMs?: number; skipped?: string | null }) {
     this.appendPollEvent(true);
     const now = Date.now();
     localStorage.setItem(CollectorHealthService.LAST_OK_KEY, String(now));
     this.lastOkAt$.next(now);
+    this.skippedReason$.next(meta?.skipped ?? null);
+    if (meta?.readingTsMs && Number.isFinite(meta.readingTsMs) && meta.readingTsMs > 0) {
+      localStorage.setItem(
+        CollectorHealthService.LAST_READING_KEY,
+        String(meta.readingTsMs)
+      );
+      this.lastReadingTsMs$.next(meta.readingTsMs);
+      this.receiveDelayMs$.next(Math.max(0, now - meta.readingTsMs));
+    } else if (meta?.skipped) {
+      this.receiveDelayMs$.next(null);
+    }
     if (this.loadFailures() > 0) {
       localStorage.setItem(CollectorHealthService.FAIL_KEY, '0');
       this.failures$.next(0);
     }
+  }
+
+  /** Next phase-aligned poll, matching the native :02 + 30s scheduler. */
+  nextPollAtMs(pollIntervalMin: number): number | null {
+    const now = Date.now();
+    const lastReading = this.lastReadingTsMs$.value;
+    if (lastReading && lastReading > 0) {
+      const target =
+        lastReading +
+        pollIntervalMin * 60_000 +
+        CollectorHealthService.PHASE_OFFSET_SEC * 1000;
+      if (target > now) return target;
+    }
+    const lastOk = this.lastOkAt$.value;
+    const from = lastOk && lastOk > 0 ? lastOk : now;
+    const d = new Date(from);
+    d.setSeconds(CollectorHealthService.PHASE_OFFSET_SEC, 0);
+    for (let i = 0; i < 24 * 60; i++) {
+      if (i > 0) d.setMinutes(d.getMinutes() + 1);
+      const minute = d.getMinutes();
+      if ((minute - CollectorHealthService.PHASE_MINUTE + 60) % pollIntervalMin !== 0) {
+        continue;
+      }
+      const target = d.getTime();
+      if (target > now + 2000) return target;
+    }
+    return now + pollIntervalMin * 60_000;
   }
 
   setFailures(n: number) {

@@ -40,6 +40,41 @@
       </div>
       <div class="set">
         <div class="body">
+          <div class="h">Last poll</div>
+          <div class="s">Successful CareLink fetch</div>
+        </div>
+        <span class="rt">{{ lastPollLabel }}</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Next poll</div>
+          <div class="s">Phase-aligned :02 + 30s</div>
+        </div>
+        <span class="rt">{{ nextPollLabel }}</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Latest reading</div>
+          <div class="s">Sensor timestamp vs now</div>
+        </div>
+        <span class="rt">{{ readingAgeLabel }}</span>
+      </div>
+      <div class="set">
+        <div class="body">
+          <div class="h">Receive delay</div>
+          <div class="s">Reading taken → arrived here</div>
+        </div>
+        <span class="rt">{{ receiveDelayLabel }}</span>
+      </div>
+      <div class="set" *ngIf="skippedReason">
+        <div class="body">
+          <div class="h">Last snapshot</div>
+          <div class="s">Pump clock was unreliable</div>
+        </div>
+        <span class="chip-pill warn">Ignored</span>
+      </div>
+      <div class="set">
+        <div class="body">
           <div class="h">Patient</div>
           <div class="s">CareLink username</div>
         </div>

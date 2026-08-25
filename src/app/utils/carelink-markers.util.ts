@@ -10,6 +10,49 @@ export type CareLinkMarkerEvent = {
   units?: number;
 };
 
+function markerTimestamp(m: any): string | null {
+  const ts = m?.displayTime || m?.timestamp || m?.dateTime || m?.datetime || m?.time;
+  if (ts == null || ts === '') return null;
+  return String(ts);
+}
+
+function dataValues(m: any): any {
+  return m?.data?.dataValues || m?.dataValues || {};
+}
+
+function num(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Fast + extended when both exist (xDrip parity). */
+export function insulinAmountFromMarker(m: any): number {
+  const dv = dataValues(m);
+  const fast = num(
+    dv.deliveredFastAmount ?? m.deliveredFastAmount ?? dv.programmedFastAmount
+  );
+  const ext = num(
+    dv.deliveredExtendedAmount ?? m.deliveredExtendedAmount
+  );
+  if (fast > 0 || ext > 0) return fast + ext;
+  const units = num(dv.insulinUnits);
+  if (units > 0) return units;
+  return num(m?.amount ?? m?.bolusAmount ?? m?.value);
+}
+
+function carbAmountFromMarker(m: any): number {
+  const dv = dataValues(m);
+  return num(m?.amount ?? dv.amount ?? m?.carbs ?? m?.carbohydrates ?? dv.carbAmount);
+}
+
+function bgMmolFromMarker(m: any): number | null {
+  const dv = dataValues(m);
+  const raw = num(m?.value ?? dv.unitValue ?? dv.bg);
+  if (!(raw > 0)) return null;
+  // CareLink often labels MMOL_L while unitValue is mg/dL.
+  return raw > 40 ? toMmol(raw) : raw;
+}
+
 /**
  * Map CareLink BLENGP markers (and legacy flat shapes) to app events.
  * Exported for fixture tests.
@@ -19,27 +62,35 @@ export function eventsFromCareLinkMarkers(
 ): CareLinkMarkerEvent[] {
   if (!markers?.length) return [];
   const out: CareLinkMarkerEvent[] = [];
+  const mealsByIndex = new Map<number, any>();
+  const insulinIndexes = new Set<number>();
 
   for (const m of markers) {
     if (!m) continue;
     const type = String(m.type || m.kind || '').toUpperCase();
-    const ts = m.timestamp || m.time || m.displayTime;
+    if (type === 'INSULIN' && m.index != null) insulinIndexes.add(Number(m.index));
+    if (type === 'MEAL' && m.index != null) mealsByIndex.set(Number(m.index), m);
+  }
+
+  for (const m of markers) {
+    if (!m) continue;
+    const type = String(m.type || m.kind || '').toUpperCase();
+    const ts = markerTimestamp(m);
     if (!ts) continue;
-    const tsId = carelinkWallClock(String(ts));
-    const dv = m.data?.dataValues || m.dataValues || {};
+    const tsId = carelinkWallClock(ts);
+    const dv = dataValues(m);
+
+    if (type === 'AUTO_MODE_STATUS' || type === 'AUTO_BASAL_DELIVERY') {
+      continue;
+    }
 
     if (type === 'INSULIN') {
-      const amount = Number(
-        dv.deliveredFastAmount ??
-          dv.programmedFastAmount ??
-          m.amount ??
-          m.bolusAmount ??
-          m.value
-      );
+      const amount = insulinAmountFromMarker(m);
       if (!(amount > 0)) continue;
-      const carbs = m.carbs ?? m.carbohydrates ?? dv.carbAmount;
+      const meal = m.index != null ? mealsByIndex.get(Number(m.index)) : undefined;
+      const carbs = carbAmountFromMarker(meal) || carbAmountFromMarker(m);
       const detailParts: string[] = [];
-      if (carbs && Number(carbs) > 0) detailParts.push(`${carbs} g carbs`);
+      if (carbs > 0) detailParts.push(`${carbs} g carbs`);
       if (dv.bolusType) detailParts.push(String(dv.bolusType).toLowerCase());
       out.push({
         id: `insulin-${tsId}`,
@@ -48,6 +99,20 @@ export function eventsFromCareLinkMarkers(
         label: `Bolus ${amount.toFixed(1)} u`,
         detail: detailParts.length ? detailParts.join(' · ') : undefined,
         units: amount,
+      });
+      continue;
+    }
+
+    if (type === 'MEAL') {
+      if (m.index != null && insulinIndexes.has(Number(m.index))) continue;
+      const carbs = carbAmountFromMarker(m);
+      if (!(carbs > 0)) continue;
+      out.push({
+        id: `meal-${tsId}`,
+        kind: 'meal',
+        timestamp: ts,
+        label: 'Carbs logged',
+        detail: `${carbs} g carbs`,
       });
       continue;
     }
@@ -63,36 +128,39 @@ export function eventsFromCareLinkMarkers(
       continue;
     }
 
-    if (type === 'CALIBRATION') {
-      const ok =
-        dv.calibrationSuccess === true ||
-        dv.calibrationType === 'CALIBRATION_COMPLETE';
-      const unitValue = Number(dv.unitValue);
-      // CareLink labels bgUnits MMOL_L but unitValue is mg/dL in observed dumps.
-      const mmol =
-        Number.isFinite(unitValue) && unitValue > 0
-          ? formatMmol(toMmol(unitValue))
-          : null;
-      out.push({
-        id: `cal-${tsId}`,
-        kind: 'sensor',
-        timestamp: ts,
-        label: ok ? 'Calibration accepted' : 'Calibration',
-        detail: mmol ? `${mmol} mmol/L` : undefined,
-      });
+    if (type === 'CALIBRATION' || type === 'BG_READING' || type === 'BG') {
+      const mmol = bgMmolFromMarker(m);
+      const mmolLabel = mmol != null ? `${formatMmol(mmol)} mmol/L` : undefined;
+      if (type === 'CALIBRATION') {
+        const ok =
+          dv.calibrationSuccess === true ||
+          dv.calibrationType === 'CALIBRATION_COMPLETE' ||
+          m.calibrationSuccess === true;
+        out.push({
+          id: `cal-${tsId}`,
+          kind: 'sensor',
+          timestamp: ts,
+          label: ok ? 'Calibration accepted' : 'Calibration',
+          detail: mmolLabel,
+        });
+      } else {
+        out.push({
+          id: `bg-${tsId}`,
+          kind: 'sensor',
+          timestamp: ts,
+          label: mmolLabel ? `Finger BG ${mmolLabel}` : 'Finger BG',
+          detail: 'Meter reading',
+        });
+      }
       continue;
     }
 
-    if (type === 'AUTO_MODE_STATUS') {
-      continue;
-    }
-
-    const amount = Number(m.amount ?? m.bolusAmount ?? m.value);
-    const carbs = m.carbs ?? m.carbohydrates;
+    const amount = num(m.amount ?? m.bolusAmount ?? m.value);
+    const carbs = num(m.carbs ?? m.carbohydrates);
     const meal = m.meal ?? m.mealType ?? m.foodType;
     if (amount > 0) {
       const detailParts: string[] = [];
-      if (carbs) detailParts.push(`${carbs} g carbs`);
+      if (carbs > 0) detailParts.push(`${carbs} g carbs`);
       if (meal) detailParts.push(String(meal).toLowerCase());
       out.push({
         id: `bolus-${tsId}-${amount}`,
@@ -102,7 +170,7 @@ export function eventsFromCareLinkMarkers(
         detail: detailParts.length ? detailParts.join(' · ') : undefined,
         units: amount,
       });
-    } else if (carbs && Number(carbs) > 0) {
+    } else if (carbs > 0) {
       const detailParts: string[] = [`${carbs} g carbs`];
       if (meal) detailParts.push(String(meal).toLowerCase());
       out.push({

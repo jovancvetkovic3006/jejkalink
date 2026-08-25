@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IonContent } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,8 @@ import { EventsStore } from '../services/events-store.service';
 import { AnnotationsStore } from '../services/annotations-store.service';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
 import { parseCareLinkCsv, csvImportSummary } from '../utils/carelink-csv.util';
+import { formatDurationEn, formatMinutesLong } from '../utils/duration-format.util';
+import { tokenExpiresAtMs } from '../utils/token.util';
 import {
   buildClinicReportHtml,
   downloadHtmlReport,
@@ -73,9 +75,9 @@ const GLOSSARY: { term: string; meaning: string }[] = [
     TabSwipeDirective,
   ],
 })
-export class SettingsPage implements OnInit {
+export class SettingsPage implements OnInit, OnDestroy {
   patientUsername = '';
-  appVersion = '1.34.0';
+  appVersion = '1.36.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   apiCaptures$ = this.apiCapture.captures$;
@@ -109,6 +111,12 @@ export class SettingsPage implements OnInit {
   lastArchiveLabel = 'None yet';
   lastExportLabel = 'Never';
   hotRetentionDays = HOT_RETENTION_DAYS;
+  lastPollLabel = 'Never';
+  nextPollLabel = '—';
+  readingAgeLabel = 'None yet';
+  receiveDelayLabel = '—';
+  skippedReason: string | null = null;
+  private collectorTick: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly authService: AuthenticationService,
@@ -139,7 +147,15 @@ export class SettingsPage implements OnInit {
     this.targetHigh = s.targetHigh;
     this.collectorHealth.failures$.subscribe((n) => (this.failures = n));
     this.collectorHealth.pollEvents$.subscribe(() => this.refreshUptime());
+    this.collectorHealth.lastOkAt$.subscribe(() => this.refreshCollectorStatus());
+    this.collectorHealth.lastReadingTsMs$.subscribe(() => this.refreshCollectorStatus());
+    this.collectorHealth.receiveDelayMs$.subscribe(() => this.refreshCollectorStatus());
+    this.collectorHealth.skippedReason$.subscribe((r) => {
+      this.skippedReason = r;
+    });
     this.refreshUptime();
+    this.refreshCollectorStatus();
+    this.collectorTick = setInterval(() => this.refreshCollectorStatus(), 30_000);
     this.history.allSgs$.subscribe(() => {
       this.readingsCount = this.history.readings().length;
       this.refreshUptime();
@@ -147,6 +163,43 @@ export class SettingsPage implements OnInit {
     });
     this.retention.storageWarning$.subscribe((w) => (this.storageWarning = w));
     this.refreshRetention();
+  }
+
+  ngOnDestroy() {
+    if (this.collectorTick) {
+      clearInterval(this.collectorTick);
+      this.collectorTick = null;
+    }
+  }
+
+  ionViewWillEnter() {
+    this.updateTokenStatus();
+    this.refreshCollectorStatus();
+  }
+
+  private refreshCollectorStatus() {
+    const lastOk = this.collectorHealth.lastOkAt$.value;
+    this.lastPollLabel = lastOk
+      ? formatDurationEn((Date.now() - lastOk) / 60000)
+      : 'Never';
+    const next = this.collectorHealth.nextPollAtMs(this.pollInterval);
+    if (next) {
+      const clock = new Date(next).toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      this.nextPollLabel = `${clock} · in ${formatMinutesLong((next - Date.now()) / 60000)}`;
+    } else {
+      this.nextPollLabel = '—';
+    }
+    const readingTs = this.collectorHealth.lastReadingTsMs$.value;
+    this.readingAgeLabel = readingTs
+      ? formatDurationEn((Date.now() - readingTs) / 60000)
+      : 'None yet';
+    const delay = this.collectorHealth.receiveDelayMs$.value;
+    this.receiveDelayLabel =
+      delay != null ? formatMinutesLong(delay / 60000) : '—';
+    this.skippedReason = this.collectorHealth.skippedReason$.value;
   }
 
   private refreshRetention() {
@@ -184,19 +237,19 @@ export class SettingsPage implements OnInit {
     if (this.authService.isTokenExpired()) {
       this.tokenStatus = 'Expired';
       this.sessionDetail = 'Sign in again';
+      return;
+    }
+    const expMs = tokenExpiresAtMs(this.authService.getToken());
+    this.tokenStatus = 'Live';
+    if (expMs && expMs > Date.now()) {
+      this.sessionDetail =
+        `Expires in ${formatMinutesLong((expMs - Date.now()) / 60000)} · ` +
+        new Date(expMs).toLocaleString('en-GB');
+    } else if (expMs) {
+      this.tokenStatus = 'Expired';
+      this.sessionDetail = 'Sign in again';
     } else {
-      try {
-        const token = this.authService.getToken();
-        const parts = token.split('.');
-        const padded = parts[1] + '='.repeat((4 - (parts[1].length % 4)) % 4);
-        const payload = JSON.parse(atob(padded));
-        const exp = new Date(payload.exp * 1000);
-        this.tokenStatus = 'Live';
-        this.sessionDetail = 'Valid until ' + exp.toLocaleString('en-GB');
-      } catch {
-        this.tokenStatus = 'Live';
-        this.sessionDetail = '';
-      }
+      this.sessionDetail = '';
     }
   }
 

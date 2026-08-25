@@ -5,11 +5,19 @@ import {
   carelinkTsMs,
   carelinkWallClock,
   filterAcceptedSgs,
+  isUnreliablePumpClock,
   latestAcceptedSg,
   offsetMinFromClockAndServer,
   serverCutoffMs,
 } from './carelink-time.util';
-import { eventsFromCareLinkMarkers } from './carelink-markers.util';
+import {
+  eventsFromCareLinkMarkers,
+  insulinAmountFromMarker,
+} from './carelink-markers.util';
+import {
+  carelinkAlertLabel,
+  eventsFromCareLinkAlerts,
+} from './carelink-alerts.util';
 import {
   mapCareLinkTrend,
   slopePerMinWindow,
@@ -135,6 +143,102 @@ describe('carelink-markers', () => {
     const cal = events.find((e) => e.id.startsWith('cal-'));
     expect(cal?.label).toBe('Calibration accepted');
     expect(cal?.detail).toContain('mmol/L');
+  });
+
+  it('adds fast + extended insulin amounts', () => {
+    expect(
+      insulinAmountFromMarker({
+        type: 'INSULIN',
+        data: {
+          dataValues: {
+            deliveredFastAmount: 3.15,
+            deliveredExtendedAmount: 1.85,
+          },
+        },
+      })
+    ).toBe(5);
+  });
+
+  it('pairs MEAL carbs onto INSULIN with the same index', () => {
+    const events = eventsFromCareLinkMarkers([
+      {
+        type: 'MEAL',
+        index: 4,
+        timestamp: '2026-08-25T12:00:00',
+        amount: 40,
+      },
+      {
+        type: 'INSULIN',
+        index: 4,
+        timestamp: '2026-08-25T12:00:02',
+        data: { dataValues: { deliveredFastAmount: 4.5 } },
+      },
+    ]);
+    expect(events.filter((e) => e.kind === 'meal').length).toBe(0);
+    expect(events.length).toBe(1);
+    expect(events[0].kind).toBe('bolus');
+    expect(events[0].units).toBe(4.5);
+    expect(events[0].detail).toContain('40 g carbs');
+  });
+
+  it('maps BG_READING finger sticks in mmol/L', () => {
+    const events = eventsFromCareLinkMarkers([
+      {
+        type: 'BG_READING',
+        displayTime: '2026-08-25T08:10:00',
+        data: { dataValues: { unitValue: '108' } },
+      },
+    ]);
+    expect(events.length).toBe(1);
+    expect(events[0].id).toBe('bg-2026-08-25T08:10:00');
+    expect(events[0].label).toContain('Finger BG');
+    expect(events[0].label).toContain('mmol/L');
+  });
+});
+
+describe('carelink-alerts', () => {
+  it('maps NGP 809 to suspend on low', () => {
+    expect(
+      carelinkAlertLabel({ deviceFamily: 'NGP', faultId: '809' })
+    ).toBe('Suspend on low. Delivery stopped');
+    const events = eventsFromCareLinkAlerts({
+      medicalDeviceFamily: 'NGP',
+      lastAlarm: {
+        code: '809',
+        datetime: '2026-08-25T03:12:00',
+      },
+    });
+    expect(events[0]?.label).toBe('Suspend on low. Delivery stopped');
+    expect(events[0]?.kind).toBe('alarm');
+  });
+});
+
+describe('unreliable pump clock', () => {
+  it('skips NGP/CC snapshots when the pump is unreachable', () => {
+    expect(
+      isUnreliablePumpClock({
+        medicalDeviceFamily: 'NGP',
+        pumpCommunicationState: false,
+      })
+    ).toBe(true);
+    expect(
+      isUnreliablePumpClock({
+        medicalDeviceFamily: 'CC',
+        pumpCommunicationState: false,
+      })
+    ).toBe(true);
+    expect(
+      isUnreliablePumpClock({
+        medicalDeviceFamily: 'NGP',
+        pumpCommunicationState: true,
+      })
+    ).toBe(false);
+    expect(
+      isUnreliablePumpClock({
+        medicalDeviceFamily: 'GUARDIAN',
+        pumpCommunicationState: false,
+      })
+    ).toBe(false);
   });
 });
 

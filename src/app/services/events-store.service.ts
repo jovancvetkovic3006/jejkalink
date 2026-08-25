@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { SgReading } from './sgs-history.service';
 import { formatMinutesLong } from '../utils/duration-format.util';
 import { eventsFromCareLinkMarkers } from '../utils/carelink-markers.util';
+import { eventsFromCareLinkAlerts } from '../utils/carelink-alerts.util';
 
 export type EventKind =
   | 'bolus'
@@ -173,6 +174,9 @@ export class EventsStore {
     for (const ev of eventsFromCareLinkMarkers(markers)) {
       this.add(ev);
     }
+    for (const ev of eventsFromCareLinkAlerts(patientData)) {
+      this.add(ev);
+    }
 
     const reservoir = patientData.reservoirRemainingUnits;
     this.add({
@@ -184,6 +188,19 @@ export class EventsStore {
         reservoir != null && reservoir >= 0
           ? `Pump reservoir ${reservoir} u`
           : 'CareLink refresh',
+    });
+  }
+
+  /** Status-only event when an NGP snapshot is dropped for a bad pump clock. */
+  ingestPumpDisconnected(patientData: any) {
+    const nowIso = new Date().toISOString();
+    const dayBucket = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
+    this.add({
+      kind: 'alarm',
+      timestamp: nowIso,
+      id: `pump-disconnect-${dayBucket}`,
+      label: 'Pump disconnected',
+      detail: 'Snapshot ignored — clock unreliable',
     });
   }
 

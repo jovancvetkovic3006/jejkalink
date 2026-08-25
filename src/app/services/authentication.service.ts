@@ -16,6 +16,7 @@ import { formatDurationEn, formatMinutesLong } from '../utils/duration-format.ut
 import {
   carelinkOffsetMin,
   filterAcceptedSgs,
+  isUnreliablePumpClock,
   latestAcceptedSg,
   normalizePatientTimestamps,
   serverCutoffMs,
@@ -481,6 +482,8 @@ export class AuthenticationService {
             conduitBatteryLevel: response.data?.patientData?.conduitBatteryLevel ?? -1,
             pumpBatteryLevelPercent:
               response.data?.patientData?.pumpBatteryLevelPercent ?? -1,
+            medicalDeviceFamily: response.data?.patientData?.medicalDeviceFamily,
+            pumpCommunicationState: response.data?.patientData?.pumpCommunicationState,
           });
           this.refreshCycleInProgress = false;
           (event?.target as HTMLIonRefresherElement)?.complete();
@@ -526,7 +529,6 @@ export class AuthenticationService {
       'CareLink display/message',
       typeof raw === 'string' ? raw : body
     );
-    this.collectorHealth.recordSuccess();
     this.patientData$.next(this.processPatientData(body));
     this.addDebug(
       'ingestCareLinkPayload: ok sgs=' +
@@ -651,6 +653,44 @@ export class AuthenticationService {
     };
 
     const patientData = recentData.patientData || {};
+    const clockUnreliable = isUnreliablePumpClock(patientData);
+    if (clockUnreliable) {
+      this.sgsHistory.saveRawResponse(recentData);
+      this.eventsStore.ingestPumpDisconnected(patientData);
+      const historyReadings = this.sgsHistory.readings();
+      const historyLast =
+        historyReadings.length > 0
+          ? historyReadings[historyReadings.length - 1]
+          : undefined;
+      data.isSensorConnected = !!patientData.conduitSensorInRange;
+      if (historyLast) {
+        data.current = formatMmol(historyLast.mmol);
+        const minutes = Math.max(
+          0,
+          Math.floor(
+            (Date.now() - new Date(historyLast.timestamp).getTime()) / 60000
+          )
+        );
+        data.since =
+          minutes === 0 ? 'just now' : `${formatMinutesLong(minutes)} ago`;
+        data.trend =
+          mapCareLinkTrend(patientData.lastSGTrend) ??
+          trendFromSlope(slopePerMinWindow(historyReadings)) ??
+          (typeof prev.trend === 'number' ? prev.trend : 0);
+      } else {
+        data.current = prev.current || '--';
+        data.since = prev.since || '';
+        data.trend = typeof prev.trend === 'number' ? prev.trend : 0;
+      }
+      data.pump.push({
+        text: 'Pump disconnected — snapshot ignored (clock unreliable)',
+        warn: true,
+      });
+      this.collectorHealth.recordSuccess({ skipped: 'pump-disconnected' });
+      this.addDebug('processPatientData: skipped NGP snapshot, pumpCommunicationState=false');
+      return data;
+    }
+
     normalizePatientTimestamps(patientData, carelinkOffsetMin(patientData));
     const cutoff = serverCutoffMs(patientData);
 
@@ -873,6 +913,10 @@ export class AuthenticationService {
       });
     }
 
+    const readingTsMs = new Date(timestamp).getTime();
+    this.collectorHealth.recordSuccess({
+      readingTsMs: Number.isFinite(readingTsMs) ? readingTsMs : undefined,
+    });
     return data;
   }
 

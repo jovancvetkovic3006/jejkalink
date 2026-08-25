@@ -29,6 +29,17 @@ export function isTokenExpiringSoon(token: string | null, bufferSeconds = 120): 
   }
 }
 
+export function tokenExpiresAtMs(token: string | null): number | null {
+  try {
+    if (!token) return null;
+    const decoded = jwt_decode.jwtDecode<JWTPayload>(token);
+    if (!decoded.exp) return null;
+    return decoded.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
 export function getTokenMag(token: string | null): string {
   try {
     if (!token) return '';

@@ -157,6 +157,41 @@ export function normalizePatientTimestamps(
       }
     }
   }
+  const lastAlarm = patientData.lastAlarm;
+  if (lastAlarm) {
+    for (const key of ['datetime', 'dateTime', 'timestamp'] as const) {
+      if (typeof lastAlarm[key] === 'string') {
+        lastAlarm[key] = applyCarelinkOffset(lastAlarm[key], offsetMin);
+      }
+    }
+  }
+  const hist = patientData.notificationHistory;
+  if (hist) {
+    for (const row of [
+      ...(hist.activeNotifications || []),
+      ...(hist.clearedNotifications || []),
+    ]) {
+      if (!row) continue;
+      for (const key of [
+        'dateTime',
+        'datetime',
+        'timestamp',
+        'triggeredDateTime',
+      ] as const) {
+        if (typeof row[key] === 'string') {
+          row[key] = applyCarelinkOffset(row[key], offsetMin);
+        }
+      }
+    }
+  }
+}
+
+/** MiniMed 7xxG clock is wrong while the pump is unreachable — skip the snapshot. */
+export function isUnreliablePumpClock(patientData: any): boolean {
+  if (!patientData) return false;
+  const fam = String(patientData.medicalDeviceFamily || '').toUpperCase();
+  if (fam !== 'NGP' && fam !== 'CC') return false;
+  return patientData.pumpCommunicationState === false;
 }
 
 export function carelinkTsMs(iso: string | number | null | undefined): number {
