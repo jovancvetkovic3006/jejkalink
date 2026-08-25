@@ -10,3 +10,12 @@ alwaysApply: true
 - Never suggest insulin doses, basal rates, carb ratios, or pump settings.
 - Prefer design tokens from `src/theme/tokens.css` over raw hex in new UI.
 - Analytics metrics are computed in `src/app/analytics/` only — not inside page components.
+
+## Releases
+
+When shipping a version (build / push / tag), **always** also:
+
+1. Bump `versionCode` / `versionName` in `android/app/build.gradle` to match the tag.
+2. `ng build` → `npx cap sync android` → `android/gradlew assembleDebug`.
+3. Copy `android/app/build/outputs/apk/debug/app-debug.apk` → `carelink.apk`.
+4. Create (or update) the GitHub release for that tag with `carelink.apk` attached via `gh release create`.
