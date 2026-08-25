@@ -10,8 +10,9 @@ export interface ApiCaptureEntry {
 @Injectable({ providedIn: 'root' })
 export class ApiCaptureService {
   private static readonly KEY = 'api_capture_v1';
-  private static readonly MAX = 24;
-  private static readonly MAX_CHARS = 80_000;
+  private static readonly MAX = 16;
+  /** Full CareLink bodies — sent as a zip attachment, not in mailto. */
+  private static readonly MAX_CHARS = 100_000;
 
   public captures$ = new BehaviorSubject<ApiCaptureEntry[]>(this.load());
 
@@ -52,6 +53,7 @@ export class ApiCaptureService {
     this.captures$.next([]);
   }
 
+  /** Full text for zip attachment (no email-size truncation). */
   formatForEmail(): string {
     return this.load()
       .map((e) => {

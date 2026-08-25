@@ -925,11 +925,15 @@ export class AuthenticationService {
   }
 
   sendLogsViaEmail() {
-    const logs = this.debugLog$.value.join('\n');
-    const subject = encodeURIComponent('JejkaLink Debug Logs - ' + new Date().toLocaleString());
+    const logs = this.debugLog$.value.join('\n') || '(no logs)';
+    const subject = encodeURIComponent(
+      'JejkaLink Debug Logs - ' + new Date().toLocaleString()
+    );
     const body = encodeURIComponent(logs);
-    const mailto = `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`;
-    window.open(mailto, '_system');
+    window.open(
+      `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`,
+      '_system'
+    );
   }
 
   clearDebugLogs() {
@@ -937,13 +941,24 @@ export class AuthenticationService {
     this.debugLog$.next([]);
   }
 
-  sendApiCapturesViaEmail(captures: { formatForEmail(): string }) {
-    const text = captures.formatForEmail();
-    const subject = encodeURIComponent(
-      'JejkaLink API payloads - ' + new Date().toLocaleString()
-    );
-    const body = encodeURIComponent(text || '(no captures)');
-    const mailto = `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`;
-    window.open(mailto, '_system');
+  /** Zip full API captures and open the share/email sheet with the attachment. */
+  async sendApiCapturesViaEmail(captures: { formatForEmail(): string }) {
+    const text = captures.formatForEmail() || '(no captures)';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    try {
+      await this.bckg.shareEmailZip({
+        text,
+        subject: 'JejkaLink API payloads - ' + new Date().toLocaleString(),
+        email: 'jovanca.cvetkovic@gmail.com',
+        body: 'Full API captures are in the attached zip.',
+        fileName: `jejkalink-api-${stamp}.zip`,
+        entryName: 'api-captures.txt',
+      });
+      this.addDebug('sendApiCaptures: zip share opened (' + text.length + ' chars)');
+    } catch (e) {
+      this.addDebug(
+        'sendApiCaptures failed: ' + ((e as Error)?.message || String(e))
+      );
+    }
   }
 }

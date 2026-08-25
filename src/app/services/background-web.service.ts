@@ -28,6 +28,14 @@ export interface BackgroundPlugin {
     requestTokenRefresh(): Promise<{ success: boolean; accessToken: string; refreshToken: string }>;
     startPolling(): Promise<void>;
     stopPolling(): Promise<void>;
+    shareEmailZip(options: {
+        text: string;
+        subject?: string;
+        email?: string;
+        body?: string;
+        fileName?: string;
+        entryName?: string;
+    }): Promise<{ success: boolean; bytes?: number }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -96,5 +104,16 @@ export class BackgroundWeb extends WebPlugin implements BackgroundPlugin {
         console.warn('Notification permission not granted. Requesting...');
         const result = await this.requestPermissions();
         return result.granted ?? false;
+    }
+
+    shareEmailZip(options: {
+        text: string;
+        subject?: string;
+        email?: string;
+        body?: string;
+        fileName?: string;
+        entryName?: string;
+    }): Promise<{ success: boolean; bytes?: number }> {
+        return (window as any).Capacitor.Plugins.Background.shareEmailZip(options);
     }
 }
