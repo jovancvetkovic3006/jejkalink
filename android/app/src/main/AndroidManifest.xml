@@ -49,6 +49,32 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/glucose_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".GlucoseWidgetCompactProvider"
+            android:exported="true"
+            android:label="@string/widget_compact_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ionic.jejkalinkui.UPDATE_GLUCOSE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glucose_widget_compact_info" />
+        </receiver>
+
+        <receiver
+            android:name=".GlucoseWidgetChartProvider"
+            android:exported="true"
+            android:label="@string/widget_chart_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ionic.jejkalinkui.UPDATE_GLUCOSE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glucose_widget_chart_info" />
+        </receiver>
     </application>
 
 </manifest>

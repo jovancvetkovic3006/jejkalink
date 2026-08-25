@@ -9,10 +9,11 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.widget.RemoteViews;
 
+/** Wide strip — glucose, trend, and time since last reading. */
 public class GlucoseWidgetProvider extends AppWidgetProvider {
 
-    public static final String ACTION_UPDATE_WIDGET = "ionic.jejkalinkui.UPDATE_GLUCOSE_WIDGET";
-    private static final String PREFS_NAME = "glucose_widget_prefs";
+    public static final String ACTION_UPDATE_WIDGET = GlucoseWidgetData.ACTION_UPDATE;
+    private static final String PREFS_NAME = GlucoseWidgetData.PREFS;
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -24,7 +25,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
-        if (ACTION_UPDATE_WIDGET.equals(intent.getAction())) {
+        if (GlucoseWidgetData.ACTION_UPDATE.equals(intent.getAction())) {
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
             ComponentName widget = new ComponentName(context, GlucoseWidgetProvider.class);
             int[] appWidgetIds = appWidgetManager.getAppWidgetIds(widget);
@@ -35,46 +36,25 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
     }
 
     private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = GlucoseWidgetData.prefs(context);
         String glucoseValue = prefs.getString("glucose_value", "--");
         String trendArrow = prefs.getString("trend_arrow", "");
-        String timeSince = prefs.getString("time_since", "--");
+        String timeSince = GlucoseWidgetData.formatAge(prefs);
         String status = prefs.getString("status", "");
-        double sgValue = Double.parseDouble(prefs.getString("sg_double", "0"));
+        double sgValue = 0;
+        try {
+            sgValue = Double.parseDouble(prefs.getString("sg_double", "0"));
+        } catch (Exception ignored) {
+        }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_glucose);
 
         views.setTextViewText(R.id.widget_glucose_value, glucoseValue);
         views.setTextViewText(R.id.widget_trend_arrow, trendArrow);
-
-        long lastGoodMs = prefs.getLong("last_good_reading_ms", 0);
-        if (lastGoodMs > 0) {
-            int minutes = (int) Math.max(0L, (System.currentTimeMillis() - lastGoodMs) / 60000L);
-            if (minutes == 0) {
-                timeSince = "just now";
-            } else {
-                int h = minutes / 60;
-                int rem = minutes % 60;
-                timeSince = String.format(java.util.Locale.US, "%02d:%02d ago", h, rem);
-            }
-        } else if (timeSince != null && timeSince.contains("-")) {
-            // Never show negative ages from stale prefs
-            timeSince = timeSince.replace("-", "");
-        }
         views.setTextViewText(R.id.widget_time_since, timeSince);
         views.setTextViewText(R.id.widget_status, status);
+        views.setInt(R.id.widget_root, "setBackgroundResource", GlucoseWidgetData.backgroundRes(sgValue));
 
-        // Color-coded background based on glucose level
-        // mmol/L bands: low < 3.9, in-range 3.9–10.0, high > 10.0
-        if (sgValue > 0 && sgValue < 3.9) {
-            views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background_red);
-        } else if (sgValue > 10.0) {
-            views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background_orange);
-        } else {
-            views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_background);
-        }
-
-        // Open app on tap
         Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (launchIntent != null) {
             PendingIntent pendingIntent = PendingIntent.getActivity(
@@ -86,10 +66,7 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
-    /**
-     * Static helper to save glucose data and trigger widget update.
-     * Called from BackgroundPlugin after each data fetch.
-     */
+    /** Persist glucose fields and refresh every widget size. */
     public static void updateGlucoseData(Context context, String glucoseValue, String trendArrow,
             String timeSince, String status, double sgValue) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -100,10 +77,6 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
                 .putString("status", status)
                 .putString("sg_double", String.valueOf(sgValue))
                 .apply();
-
-        // Broadcast to update all widget instances
-        Intent intent = new Intent(ACTION_UPDATE_WIDGET);
-        intent.setComponent(new ComponentName(context, GlucoseWidgetProvider.class));
-        context.sendBroadcast(intent);
+        GlucoseWidgetData.notifyAll(context);
     }
 }

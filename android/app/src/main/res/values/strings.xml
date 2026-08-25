@@ -4,6 +4,10 @@
     <string name="title_activity_main">jejkalinkui</string>
     <string name="package_name">ionic.jejkalinkui</string>
     <string name="custom_url_scheme">ionic.jejkalinkui</string>
-    <string name="widget_description">Shows current glucose, trend, and time since last reading</string>
-    <string name="widget_label">JejkaLink Glucose</string>
+    <string name="widget_description">Wide strip · glucose, trend, and time since last reading</string>
+    <string name="widget_label">JejkaLink · strip</string>
+    <string name="widget_compact_description">Compact · glucose value only</string>
+    <string name="widget_compact_label">JejkaLink · value</string>
+    <string name="widget_chart_description">Wide · glucose, trend, and last 3 hours</string>
+    <string name="widget_chart_label">JejkaLink · 3h chart</string>
 </resources>
