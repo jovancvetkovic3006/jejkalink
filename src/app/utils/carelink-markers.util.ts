@@ -1,4 +1,5 @@
 import { formatMmol, toMmol } from '../domain/glucose';
+import { carelinkWallClock } from './carelink-time.util';
 
 export type CareLinkMarkerEvent = {
   id: string;
@@ -24,6 +25,7 @@ export function eventsFromCareLinkMarkers(
     const type = String(m.type || m.kind || '').toUpperCase();
     const ts = m.timestamp || m.time || m.displayTime;
     if (!ts) continue;
+    const tsId = carelinkWallClock(String(ts));
     const dv = m.data?.dataValues || m.dataValues || {};
 
     if (type === 'INSULIN') {
@@ -40,7 +42,7 @@ export function eventsFromCareLinkMarkers(
       if (carbs && Number(carbs) > 0) detailParts.push(`${carbs} g carbs`);
       if (dv.bolusType) detailParts.push(String(dv.bolusType).toLowerCase());
       out.push({
-        id: `insulin-${ts}`,
+        id: `insulin-${tsId}`,
         kind: 'bolus',
         timestamp: ts,
         label: `Bolus ${amount.toFixed(1)} u`,
@@ -52,7 +54,7 @@ export function eventsFromCareLinkMarkers(
 
     if (type === 'LOW_GLUCOSE_SUSPENDED') {
       out.push({
-        id: `lgs-${ts}`,
+        id: `lgs-${tsId}`,
         kind: 'alarm',
         timestamp: ts,
         label: 'Suspended before low',
@@ -72,7 +74,7 @@ export function eventsFromCareLinkMarkers(
           ? formatMmol(toMmol(unitValue))
           : null;
       out.push({
-        id: `cal-${ts}`,
+        id: `cal-${tsId}`,
         kind: 'sensor',
         timestamp: ts,
         label: ok ? 'Calibration accepted' : 'Calibration',
@@ -93,7 +95,7 @@ export function eventsFromCareLinkMarkers(
       if (carbs) detailParts.push(`${carbs} g carbs`);
       if (meal) detailParts.push(String(meal).toLowerCase());
       out.push({
-        id: `bolus-${ts}-${amount}`,
+        id: `bolus-${tsId}-${amount}`,
         kind: 'bolus',
         timestamp: ts,
         label: `Bolus ${amount.toFixed(1)} u`,
@@ -104,7 +106,7 @@ export function eventsFromCareLinkMarkers(
       const detailParts: string[] = [`${carbs} g carbs`];
       if (meal) detailParts.push(String(meal).toLowerCase());
       out.push({
-        id: `meal-${ts}`,
+        id: `meal-${tsId}`,
         kind: 'meal',
         timestamp: ts,
         label: 'Carbs logged',

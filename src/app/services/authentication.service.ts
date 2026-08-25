@@ -14,8 +14,10 @@ import { ApiCaptureService } from './api-capture.service';
 import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
 import { formatDurationEn, formatMinutesLong } from '../utils/duration-format.util';
 import {
+  carelinkOffsetMin,
   filterAcceptedSgs,
   latestAcceptedSg,
+  normalizePatientTimestamps,
   serverCutoffMs,
 } from '../utils/carelink-time.util';
 import {
@@ -649,6 +651,7 @@ export class AuthenticationService {
     };
 
     const patientData = recentData.patientData || {};
+    normalizePatientTimestamps(patientData, carelinkOffsetMin(patientData));
     const cutoff = serverCutoffMs(patientData);
 
     const acceptedSgs = filterAcceptedSgs(patientData.sgs, cutoff)

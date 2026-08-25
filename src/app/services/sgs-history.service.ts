@@ -3,6 +3,11 @@ import { BehaviorSubject } from 'rxjs';
 import { toMmol } from '../domain/glucose';
 import { AppSettingsService } from './app-settings.service';
 import { DataRetentionService } from './data-retention.service';
+import {
+  carelinkWallClock,
+  deviceUtcOffsetMin,
+  offsetMinFromIso,
+} from '../utils/carelink-time.util';
 
 export interface SgReading {
   /** Original CareLink mg/dL (if known). */
@@ -10,7 +15,7 @@ export interface SgReading {
   /** mmol/L — converted once at the boundary. */
   mmol: number;
   timestamp: string;
-  /** Local UTC offset minutes at capture time, if known. */
+  /** CareLink/conduit UTC offset minutes at capture, if known. */
   utcOffsetMin?: number;
 }
 
@@ -54,7 +59,8 @@ export class SgsHistoryService {
           sg: e.sg,
           mmol: toMmol(e.sg),
           timestamp: e.timestamp,
-          utcOffsetMin: -new Date(e.timestamp).getTimezoneOffset(),
+          utcOffsetMin:
+            offsetMinFromIso(e.timestamp) ?? deviceUtcOffsetMin(),
         }));
       const pruned = this.prune(migrated);
       this.persist(pruned);
@@ -117,7 +123,7 @@ export class SgsHistoryService {
         sg: e.sg,
         mmol: toMmol(e.sg),
         timestamp: e.timestamp,
-        utcOffsetMin: -new Date(e.timestamp).getTimezoneOffset(),
+        utcOffsetMin: offsetMinFromIso(e.timestamp) ?? deviceUtcOffsetMin(),
       });
     }
 
@@ -127,7 +133,7 @@ export class SgsHistoryService {
   }
 
   private upsertKey(patientId: string, timestamp: string): string {
-    return `${patientId}|${timestamp}`;
+    return `${patientId}|${carelinkWallClock(timestamp)}`;
   }
 
   saveRawResponse(body: unknown) {

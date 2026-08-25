@@ -1,7 +1,12 @@
 import {
   CARELINK_SERVER_SKEW_MS,
+  applyCarelinkOffset,
+  carelinkOffsetMin,
+  carelinkTsMs,
+  carelinkWallClock,
   filterAcceptedSgs,
   latestAcceptedSg,
+  offsetMinFromClockAndServer,
   serverCutoffMs,
 } from './carelink-time.util';
 import { eventsFromCareLinkMarkers } from './carelink-markers.util';
@@ -39,6 +44,55 @@ describe('carelink-time', () => {
     const best = latestAcceptedSg(sgs, cutoff, lastSG);
     expect(best?.sg).toBe(130);
     expect(best?.timestamp).toBe('2026-08-25T16:50:00');
+  });
+});
+
+describe('carelink conduit offset', () => {
+  const serverMs = Date.parse('2026-08-25T19:20:00.000Z');
+
+  it('infers CET (+01) from conduit clock vs server epoch', () => {
+    expect(
+      offsetMinFromClockAndServer('2026-08-25T20:20:00', serverMs)
+    ).toBe(60);
+    expect(
+      carelinkOffsetMin({
+        lastConduitDateTime: '2026-08-25T20:20:00',
+        lastConduitUpdateServerDateTime: serverMs,
+      })
+    ).toBe(60);
+  });
+
+  it('infers CEST (+02) when conduit digits are summer time', () => {
+    expect(
+      offsetMinFromClockAndServer('2026-08-25T21:20:00.000+02:00', serverMs)
+    ).toBe(120);
+  });
+
+  it('stamps naive SG so the instant matches server, not the phone TZ', () => {
+    const offset = 60;
+    const stamped = applyCarelinkOffset('2026-08-25T20:15:00', offset);
+    expect(stamped).toBe('2026-08-25T20:15:00+01:00');
+    expect(carelinkTsMs(stamped)).toBe(Date.parse('2026-08-25T19:15:00.000Z'));
+    expect(serverMs - carelinkTsMs(stamped)).toBe(5 * 60 * 1000);
+  });
+
+  it('replaces a lying Z suffix with the conduit offset', () => {
+    expect(applyCarelinkOffset('2026-08-25T20:15:00.000Z', 60)).toBe(
+      '2026-08-25T20:15:00.000+01:00'
+    );
+    expect(carelinkWallClock('2026-08-25T20:15:00+01:00')).toBe(
+      '2026-08-25T20:15:00'
+    );
+  });
+
+  it('does not take offset from a phantom future lastSG', () => {
+    expect(
+      carelinkOffsetMin({
+        lastConduitDateTime: '2026-08-25T20:20:00',
+        lastConduitUpdateServerDateTime: serverMs,
+        lastSG: { timestamp: '2026-08-25T21:15:00' },
+      } as any)
+    ).toBe(60);
   });
 });
 
