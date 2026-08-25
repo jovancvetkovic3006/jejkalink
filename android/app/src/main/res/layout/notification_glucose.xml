@@ -1,193 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Compact ongoing glucose notification — Live Activity style -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notif_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="12dp"
-    android:background="@android:color/transparent">
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:background="#0E9B8A">
 
-    <!-- ROW 1: Glucose icon + trend + spacer + time -->
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-        <!-- Glucose circle icon (set programmatically as Bitmap) -->
-        <ImageView
-            android:id="@+id/notif_glucose_icon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:scaleType="fitCenter" />
-
-        <!-- Trend arrow -->
-        <TextView
-            android:id="@+id/notif_trend"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="↗"
-            android:textSize="28sp"
-            android:textColor="#FFFFFF"
-            android:layout_marginStart="6dp"
-            android:includeFontPadding="false" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <!-- mmol/L label -->
-        <TextView
-            android:id="@+id/notif_unit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="mmol/L"
-            android:textSize="11sp"
-            android:textColor="#9E9E9E"
-            android:layout_marginStart="4dp"
-            android:includeFontPadding="false" />
+            <TextView
+                android:id="@+id/notif_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--"
+                android:textColor="#FFFFFF"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false"
+                android:letterSpacing="-0.02" />
 
-        <!-- Spacer -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            <TextView
+                android:id="@+id/notif_trend"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text=""
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:includeFontPadding="false" />
 
-        <!-- Time since (far right) -->
-        <TextView
-            android:id="@+id/notif_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="pre 2m"
-            android:textSize="13sp"
-            android:textColor="#9E9E9E"
-            android:includeFontPadding="false" />
-    </LinearLayout>
-
-    <!-- ROW 2: Status warning (low/high) -->
-    <TextView
-        android:id="@+id/notif_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:textColor="#FF8A80"
-        android:layout_marginTop="12dp"
-        android:visibility="gone"
-        android:includeFontPadding="false" />
-
-    <!-- ROW 3: Details - insulin + reservoir + temporal -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="6dp"
-        android:gravity="center_vertical">
+            <TextView
+                android:id="@+id/notif_unit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="mmol/L"
+                android:textColor="#B3FFFFFF"
+                android:textSize="12sp"
+                android:includeFontPadding="false" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/notif_insulin"
-            android:layout_width="wrap_content"
+            android:id="@+id/notif_status"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="💉 0.0 U"
-            android:textSize="12sp"
-            android:textColor="#B0BEC5"
-            android:includeFontPadding="false" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="  •  "
-            android:textSize="12sp"
-            android:textColor="#616161" />
-
-        <TextView
-            android:id="@+id/notif_reservoir"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🛢️ 0 U"
-            android:textSize="12sp"
-            android:textColor="#B0BEC5"
-            android:includeFontPadding="false" />
-
-        <TextView
-            android:id="@+id/notif_temporal_sep"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="  •  "
-            android:textSize="12sp"
-            android:textColor="#616161"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/notif_temporal"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:text=""
+            android:textColor="#E6FFFFFF"
             android:textSize="12sp"
-            android:textColor="#80CBC4"
             android:includeFontPadding="false"
-            android:visibility="gone" />
+            android:maxLines="1"
+            android:ellipsize="end" />
     </LinearLayout>
 
-    <!-- ROW 4: Battery - sensor + pump with icons -->
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/notif_age"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="6dp"
-        android:gravity="center_vertical">
-
-        <!-- Sensor battery -->
-        <ImageView
-            android:id="@+id/notif_sensor_bat_icon"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:scaleType="fitCenter" />
-
-        <TextView
-            android:id="@+id/notif_sensor_bat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Senzor 0%"
-            android:textSize="11sp"
-            android:textColor="#9E9E9E"
-            android:layout_marginStart="3dp"
-            android:includeFontPadding="false" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="    "
-            android:textSize="11sp" />
-
-        <!-- Pump battery -->
-        <ImageView
-            android:id="@+id/notif_pump_bat_icon"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:scaleType="fitCenter" />
-
-        <TextView
-            android:id="@+id/notif_pump_bat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pumpa 0%"
-            android:textSize="11sp"
-            android:textColor="#9E9E9E"
-            android:layout_marginStart="3dp"
-            android:includeFontPadding="false" />
-
-        <!-- Spacer -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <!-- Average + TIR -->
-        <TextView
-            android:id="@+id/notif_avg_tir"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="11sp"
-            android:textColor="#9E9E9E"
-            android:includeFontPadding="false" />
-    </LinearLayout>
-
+        android:layout_marginStart="8dp"
+        android:text="--"
+        android:textColor="#E6FFFFFF"
+        android:textSize="12sp"
+        android:gravity="end"
+        android:includeFontPadding="false" />
 </LinearLayout>
