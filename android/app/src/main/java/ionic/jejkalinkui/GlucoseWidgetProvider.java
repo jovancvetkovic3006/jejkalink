@@ -9,7 +9,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.widget.RemoteViews;
 
-/** Wide strip — glucose, trend, and time since last reading. */
+/** 2×1 strip — glucose value and trend arrow only. */
 public class GlucoseWidgetProvider extends AppWidgetProvider {
 
     public static final String ACTION_UPDATE_WIDGET = GlucoseWidgetData.ACTION_UPDATE;
@@ -39,8 +39,6 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = GlucoseWidgetData.prefs(context);
         String glucoseValue = prefs.getString("glucose_value", "--");
         String trendArrow = prefs.getString("trend_arrow", "");
-        String timeSince = GlucoseWidgetData.formatAge(prefs);
-        String status = prefs.getString("status", "");
         double sgValue = 0;
         try {
             sgValue = Double.parseDouble(prefs.getString("sg_double", "0"));
@@ -48,11 +46,8 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
         }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_glucose);
-
         views.setTextViewText(R.id.widget_glucose_value, glucoseValue);
         views.setTextViewText(R.id.widget_trend_arrow, trendArrow);
-        views.setTextViewText(R.id.widget_time_since, timeSince);
-        views.setTextViewText(R.id.widget_status, status);
         views.setInt(R.id.widget_root, "setBackgroundResource", GlucoseWidgetData.backgroundRes(sgValue));
 
         Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());

@@ -4,7 +4,7 @@
     <string name="title_activity_main">jejkalinkui</string>
     <string name="package_name">ionic.jejkalinkui</string>
     <string name="custom_url_scheme">ionic.jejkalinkui</string>
-    <string name="widget_description">2×1 strip · glucose, trend, and age</string>
+    <string name="widget_description">2×1 strip · glucose and trend</string>
     <string name="widget_label">JejkaLink · 2×1 strip</string>
     <string name="widget_compact_description">1×1 · glucose value only</string>
     <string name="widget_compact_label">JejkaLink · 1×1 value</string>
