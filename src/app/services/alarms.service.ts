@@ -313,6 +313,10 @@ export class AlarmsService {
 
   firedThisWeek(): FiredAlarm[] {
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return this.fired$.value.filter((f) => new Date(f.timestamp).getTime() >= weekAgo);
+    return this.fired$.value
+      .filter((f) => new Date(f.timestamp).getTime() >= weekAgo)
+      .sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
   }
 }

@@ -261,7 +261,7 @@
       </div>
       <div class="log-container" *ngIf="logsExpanded && logs.length > 0">
         <div class="log-scroll">
-          <div class="log-entry" *ngFor="let log of logs; trackBy: trackLog">
+          <div class="log-entry" *ngFor="let log of logs.slice().reverse(); trackBy: trackLog">
             {{ log }}
           </div>
         </div>

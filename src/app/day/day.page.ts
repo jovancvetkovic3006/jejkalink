@@ -334,7 +334,7 @@ export class DayPage implements OnInit, OnDestroy {
       ...this.eventsStore.eventsInRange(this.startMs, this.endMs),
       ...notes,
     ].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
     this.eventsPlaceholder = this.dayEvents.length === 0;
     this.displayEvents = this.eventsPlaceholder ? PLACEHOLDER_DAY_EVENTS : this.dayEvents;
