@@ -9,7 +9,7 @@ import { CollectorHealthService } from '../services/collector-health.service';
 import { AppSettingsService } from '../services/app-settings.service';
 import { CoverageStripComponent } from '../components/coverage-strip/coverage-strip.component';
 import { StaleChipComponent } from '../components/stale-chip/stale-chip.component';
-import { GlucoseChartComponent } from '../components/glucose-chart/glucose-chart.component';
+import { GlucoseChartComponent, BolusMark } from '../components/glucose-chart/glucose-chart.component';
 import { PageTbarComponent } from '../components/page-tbar/page-tbar.component';
 import { TrendArrowComponent } from '../components/trend-arrow/trend-arrow.component';
 import { EventRowComponent } from '../components/event-row/event-row.component';
@@ -90,6 +90,10 @@ export class NowPage implements OnInit, OnDestroy {
   coverage: CoverageResult | null = null;
   sparkStart = 0;
   sparkEnd = 0;
+  sparkPeriodStart = new Date();
+  sparkPeriodEnd = new Date();
+  sparkCoverage: CoverageResult | null = null;
+  sparkBoluses: BolusMark[] = [];
   periodLabel = 'Coverage today';
   whoPill = '';
   pollStatus = '';
@@ -209,6 +213,16 @@ export class NowPage implements OnInit, OnDestroy {
     );
     this.sparkStart = window.startMs;
     this.sparkEnd = window.endMs;
+    this.sparkPeriodStart = new Date(window.startMs);
+    this.sparkPeriodEnd = new Date(window.endMs);
+    this.sparkCoverage = detectGaps(
+      this.readings,
+      this.sparkPeriodStart,
+      this.sparkPeriodEnd
+    );
+    this.sparkBoluses = this.eventsStore
+      .bolusesInRange(window.startMs, window.endMs)
+      .map((b) => ({ timestamp: b.timestamp, units: b.units || 0 }));
     this.updatePollStatus();
 
     const s = this.appSettings.get();

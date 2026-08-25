@@ -35,20 +35,26 @@
       </app-glass-panel>
     </div>
 
-    <div class="card-surface flush spark-card">
+    <div class="card-surface flush chart-card">
       <div class="lbl">Last 3 hours</div>
       <app-glass-panel [placeholder]="sparkPlaceholder" message="No data yet">
-        <div class="spark">
+        <div class="chart">
           <app-glucose-chart
             [readings]="sparkReadings"
             [startMs]="sparkStart"
             [endMs]="sparkEnd"
-            [sparkline]="true"
+            [boluses]="sparkBoluses"
             [targetLow]="targetLow"
             [targetHigh]="targetHigh"
             [lastReadingLabel]="sparkChartLabel"
           ></app-glucose-chart>
         </div>
+        <app-coverage-strip
+          [coverage]="sparkCoverage"
+          [periodStart]="sparkPeriodStart"
+          [periodEnd]="sparkPeriodEnd"
+          periodLabel="Last 3 hours"
+        ></app-coverage-strip>
       </app-glass-panel>
     </div>
 
