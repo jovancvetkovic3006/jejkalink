@@ -84,43 +84,64 @@ export function deviceUtcOffsetMin(atMs = Date.now()): number {
   return -new Date(atMs).getTimezoneOffset();
 }
 
-/**
- * CareLink/conduit UTC offset in minutes. Prefer conduit clock vs server epoch
- * so DST on the phone cannot shift reading times by an hour.
- */
-export function carelinkOffsetMin(patientData: {
+function inferredCarelinkOffsetMin(patientData: {
   lastConduitDateTime?: string | number | null;
   sMedicalDeviceTime?: string | null;
   medicalDeviceTimeAsString?: string | null;
   lastConduitUpdateServerDateTime?: number | null;
   lastConduitUpdateServerTime?: number | null;
   lastMedicalDeviceDataUpdateServerTime?: number | null;
-  currentServerTime?: number | null;
-  clientTimeZoneName?: string | null;
-} | null | undefined): number {
-  const server = firstPositiveMs(
-    patientData?.lastConduitUpdateServerDateTime,
-    patientData?.lastConduitUpdateServerTime,
-    patientData?.lastMedicalDeviceDataUpdateServerTime,
-    patientData?.currentServerTime
+} | null | undefined): number | null {
+  // xDrip correctTimeInRecentData: device clock vs device-update server time.
+  const devicePair = offsetMinFromClockAndServer(
+    firstClockString(
+      patientData?.sMedicalDeviceTime,
+      patientData?.medicalDeviceTimeAsString
+    ) || '',
+    firstPositiveMs(patientData?.lastMedicalDeviceDataUpdateServerTime)
   );
-  const clock = firstClockString(
-    patientData?.lastConduitDateTime,
-    patientData?.sMedicalDeviceTime,
-    patientData?.medicalDeviceTimeAsString
+  if (devicePair != null) return devicePair;
+  // xDrip correctTimeInDisplayMessage (v11): conduit clock vs conduit-update server.
+  // Do not pair a stale conduit clock with currentServerTime — that infers CET in CEST.
+  return offsetMinFromClockAndServer(
+    firstClockString(patientData?.lastConduitDateTime) || '',
+    firstPositiveMs(
+      patientData?.lastConduitUpdateServerDateTime,
+      patientData?.lastConduitUpdateServerTime
+    )
   );
-  if (clock && server) {
-    const inferred = offsetMinFromClockAndServer(clock, server);
-    if (inferred != null) return inferred;
+}
+
+/**
+ * CareLink/conduit UTC offset in minutes.
+ * v11 EU dates have no timezone. Infer from the matching clock/server pair,
+ * then reject a 60-minute DST miss against the named CareLink TZ or the phone.
+ */
+export function carelinkOffsetMin(
+  patientData: {
+    lastConduitDateTime?: string | number | null;
+    sMedicalDeviceTime?: string | null;
+    medicalDeviceTimeAsString?: string | null;
+    lastConduitUpdateServerDateTime?: number | null;
+    lastConduitUpdateServerTime?: number | null;
+    lastMedicalDeviceDataUpdateServerTime?: number | null;
+    currentServerTime?: number | null;
+    clientTimeZoneName?: string | null;
+  } | null | undefined,
+  nowMs = Date.now(),
+  deviceOffsetMin = deviceUtcOffsetMin(nowMs)
+): number {
+  const named = patientData?.clientTimeZoneName
+    ? offsetMinForTimeZone(patientData.clientTimeZoneName, nowMs)
+    : null;
+  const inferred = inferredCarelinkOffsetMin(patientData);
+  const dstAnchor = named ?? deviceOffsetMin;
+  if (inferred != null && Math.abs(inferred - dstAnchor) === 60) {
+    return dstAnchor;
   }
-  if (patientData?.clientTimeZoneName) {
-    const named = offsetMinForTimeZone(
-      patientData.clientTimeZoneName,
-      server || Date.now()
-    );
-    if (named != null) return named;
-  }
-  return deviceUtcOffsetMin(server || Date.now());
+  if (inferred != null) return inferred;
+  if (named != null) return named;
+  return deviceOffsetMin;
 }
 
 export function normalizePatientTimestamps(

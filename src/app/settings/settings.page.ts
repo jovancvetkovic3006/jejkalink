@@ -77,7 +77,7 @@ const GLOSSARY: { term: string; meaning: string }[] = [
 })
 export class SettingsPage implements OnInit, OnDestroy {
   patientUsername = '';
-  appVersion = '1.36.0';
+  appVersion = '1.37.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   apiCaptures$ = this.apiCapture.captures$;

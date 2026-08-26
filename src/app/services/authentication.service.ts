@@ -15,6 +15,7 @@ import { formatMmol, gmiFromMean, toMmol } from '../domain/glucose';
 import { formatDurationEn, formatMinutesLong } from '../utils/duration-format.util';
 import {
   carelinkOffsetMin,
+  deviceUtcOffsetMin,
   filterAcceptedSgs,
   isUnreliablePumpClock,
   latestAcceptedSg,
@@ -691,7 +692,17 @@ export class AuthenticationService {
       return data;
     }
 
-    normalizePatientTimestamps(patientData, carelinkOffsetMin(patientData));
+    const offsetMin = carelinkOffsetMin(patientData);
+    this.addDebug(
+      'carelink offset min=' +
+        offsetMin +
+        ' phone=' +
+        deviceUtcOffsetMin() +
+        (patientData.clientTimeZoneName
+          ? ' tz=' + patientData.clientTimeZoneName
+          : '')
+    );
+    normalizePatientTimestamps(patientData, offsetMin);
     const cutoff = serverCutoffMs(patientData);
 
     const acceptedSgs = filterAcceptedSgs(patientData.sgs, cutoff)

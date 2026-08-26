@@ -66,7 +66,7 @@ describe('carelink conduit offset', () => {
       carelinkOffsetMin({
         lastConduitDateTime: '2026-08-25T20:20:00',
         lastConduitUpdateServerDateTime: serverMs,
-      })
+      }, serverMs, 60)
     ).toBe(60);
   });
 
@@ -99,8 +99,53 @@ describe('carelink conduit offset', () => {
         lastConduitDateTime: '2026-08-25T20:20:00',
         lastConduitUpdateServerDateTime: serverMs,
         lastSG: { timestamp: '2026-08-25T21:15:00' },
-      } as any)
+      } as any, serverMs, 60)
     ).toBe(60);
+  });
+
+  it('rejects CET inference when the phone is on CEST (9:12 must not become 10:12)', () => {
+    const cetConsistentServer = Date.parse('2026-08-26T08:12:00.000Z');
+    expect(
+      offsetMinFromClockAndServer('2026-08-26T09:12:00', cetConsistentServer)
+    ).toBe(60);
+    expect(
+      carelinkOffsetMin(
+        {
+          lastConduitDateTime: '2026-08-26T09:12:00',
+          lastConduitUpdateServerDateTime: cetConsistentServer,
+          clientTimeZoneName: 'Europe/Belgrade',
+        },
+        Date.parse('2026-08-26T09:15:00+02:00'),
+        120
+      )
+    ).toBe(120);
+    expect(
+      carelinkOffsetMin(
+        {
+          lastConduitDateTime: '2026-08-26T09:12:00',
+          lastConduitUpdateServerDateTime: cetConsistentServer,
+        },
+        Date.parse('2026-08-26T09:15:00+02:00'),
+        120
+      )
+    ).toBe(120);
+    expect(
+      applyCarelinkOffset('2026-08-26T09:12:00', 120)
+    ).toBe('2026-08-26T09:12:00+02:00');
+  });
+
+  it('does not pair a stale conduit clock with currentServerTime', () => {
+    const now = Date.parse('2026-08-26T09:15:00.000Z');
+    expect(
+      carelinkOffsetMin(
+        {
+          lastConduitDateTime: '2026-08-26T08:15:00',
+          currentServerTime: now,
+        },
+        now,
+        120
+      )
+    ).toBe(120);
   });
 });
 
