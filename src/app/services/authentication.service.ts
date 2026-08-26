@@ -17,6 +17,8 @@ import {
   carelinkOffsetMin,
   deviceUtcOffsetMin,
   filterAcceptedSgs,
+  formatCarelinkClock,
+  formatCarelinkDate,
   isUnreliablePumpClock,
   latestAcceptedSg,
   normalizePatientTimestamps,
@@ -786,18 +788,21 @@ export class AuthenticationService {
       patientData.lastSG?.sensorState ||
       'UNKNOWN';
 
-    const dt = new Date(timestamp);
-    const datePart = dt.toLocaleDateString('en-GB', {
-      month: 'long',
-      day: '2-digit',
-      year: 'numeric',
-    });
-    const timePart = dt.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    const lastTime = `${datePart} · ${timePart}`;
+    const lastTime =
+      typeof timestamp === 'string'
+        ? `${formatCarelinkDate(timestamp)} · ${formatCarelinkClock(timestamp)}`
+        : (() => {
+            const dt = new Date(timestamp);
+            return `${dt.toLocaleDateString('en-GB', {
+              month: 'long',
+              day: '2-digit',
+              year: 'numeric',
+            })} · ${dt.toLocaleTimeString('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            })}`;
+          })();
 
     if (!isSensorConnected && historyLast) {
       data.glicemia.push({ text: `Last glucose ${glicemia}`, warn: false });

@@ -5,9 +5,11 @@ import {
   carelinkTsMs,
   carelinkWallClock,
   filterAcceptedSgs,
+  formatCarelinkClock,
   isUnreliablePumpClock,
   latestAcceptedSg,
   offsetMinFromClockAndServer,
+  restampCarelinkStoredIso,
   serverCutoffMs,
 } from './carelink-time.util';
 import {
@@ -147,6 +149,14 @@ describe('carelink conduit offset', () => {
       )
     ).toBe(120);
   });
+
+  it('prints bolus log time from wall-clock digits, not CET→CEST conversion', () => {
+    expect(formatCarelinkClock('2026-08-26T09:12:00+01:00')).toBe('09:12');
+    expect(formatCarelinkClock('2026-08-26T09:12:00+02:00')).toBe('09:12');
+    expect(restampCarelinkStoredIso('2026-08-26T09:12:00+01:00', 120)).toBe(
+      '2026-08-26T09:12:00+02:00'
+    );
+  });
 });
 
 describe('carelink-markers', () => {
@@ -238,6 +248,19 @@ describe('carelink-markers', () => {
     expect(events[0].id).toBe('bg-2026-08-25T08:10:00');
     expect(events[0].label).toContain('Finger BG');
     expect(events[0].label).toContain('mmol/L');
+  });
+
+  it('prefers timestamp over displayTime when they disagree by an hour', () => {
+    const events = eventsFromCareLinkMarkers([
+      {
+        type: 'INSULIN',
+        displayTime: '2026-08-26T10:12:00',
+        timestamp: '2026-08-26T09:12:00',
+        data: { dataValues: { deliveredFastAmount: 2.5 } },
+      },
+    ]);
+    expect(events[0].id).toBe('insulin-2026-08-26T09:12:00');
+    expect(formatCarelinkClock(events[0].timestamp)).toBe('09:12');
   });
 });
 

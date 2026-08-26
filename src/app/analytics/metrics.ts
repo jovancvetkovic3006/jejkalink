@@ -10,6 +10,7 @@ import {
   VERY_LOW,
 } from '../domain/glucose';
 import { CoverageResult, detectGaps } from './coverage';
+import { captureLocalHour } from './agp';
 
 export interface PeriodMetrics {
   count: number;
@@ -141,7 +142,7 @@ export function periodMetrics(
   const coveredMs = tir.coveredMs;
 
   const overnight = inPeriod.filter((r) => {
-    const h = new Date(r.timestamp).getHours();
+    const h = captureLocalHour(r);
     return h >= 22 || h < 7;
   });
   let overnightTirPct: number | null = null;

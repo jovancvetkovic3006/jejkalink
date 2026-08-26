@@ -1,5 +1,6 @@
 import { SgReading } from '../services/sgs-history.service';
 import { readingMmol } from './chart-data.util';
+import { formatCarelinkClock } from './carelink-time.util';
 
 export interface ChartWindow {
   startMs: number;
@@ -38,9 +39,5 @@ export function effectiveChartWindow(
 }
 
 export function formatReadingScrubLabel(r: SgReading): string {
-  const when = new Date(r.timestamp).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  return `${when} · ${readingMmol(r).toFixed(1)} mmol/L`;
+  return `${formatCarelinkClock(r.timestamp)} · ${readingMmol(r).toFixed(1)} mmol/L`;
 }

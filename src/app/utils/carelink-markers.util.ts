@@ -11,7 +11,9 @@ export type CareLinkMarkerEvent = {
 };
 
 function markerTimestamp(m: any): string | null {
-  const ts = m?.displayTime || m?.timestamp || m?.dateTime || m?.datetime || m?.time;
+  // v11 hour-shift is applied to timestamp; displayTime can sit 1h ahead of the pump.
+  const ts =
+    m?.timestamp || m?.dateTime || m?.datetime || m?.displayTime || m?.time;
   if (ts == null || ts === '') return null;
   return String(ts);
 }

@@ -9,6 +9,77 @@ export function carelinkWallClock(iso: string): string {
   return iso.replace(TZ_SUFFIX, '');
 }
 
+/** HH:mm from CareLink wall-clock digits — not timezone-converted. */
+export function formatCarelinkClock(
+  iso: string | number | null | undefined
+): string {
+  if (iso == null || iso === '') return '--';
+  if (typeof iso === 'number') {
+    if (!Number.isFinite(iso)) return '--';
+    return new Date(iso).toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+  const s = String(iso);
+  const existing = offsetMinFromIso(s);
+  if (existing === 0) {
+    const t = new Date(s).getTime();
+    if (!Number.isFinite(t)) return '--';
+    return new Date(t).toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+  const wall = carelinkWallClock(s);
+  const m = wall.match(/T(\d{2}):(\d{2})/);
+  if (m) return `${m[1]}:${m[2]}`;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '--';
+  return new Date(t).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+/** Calendar day from CareLink wall-clock digits. */
+export function formatCarelinkDate(iso: string): string {
+  const wall = carelinkWallClock(iso);
+  const m = wall.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const d = m
+    ? new Date(`${m[1]}-${m[2]}-${m[3]}T12:00:00`)
+    : new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', {
+    month: 'long',
+    day: '2-digit',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Restamp a stored CareLink ISO whose offset is a 60-min DST miss (CET vs CEST).
+ * Leaves real UTC (`Z`) alone — notes/sync use that.
+ */
+export function restampCarelinkStoredIso(
+  iso: string,
+  deviceOffsetMin = deviceUtcOffsetMin()
+): string {
+  if (!iso || typeof iso !== 'string' || !iso.includes('T')) return iso;
+  const existing = offsetMinFromIso(iso);
+  if (existing == null) {
+    return applyCarelinkOffset(iso, deviceOffsetMin);
+  }
+  if (existing === 0) return iso;
+  if (Math.abs(existing - deviceOffsetMin) === 60) {
+    return applyCarelinkOffset(iso, deviceOffsetMin);
+  }
+  return iso;
+}
+
 export function offsetMinFromIso(iso: string): number | null {
   const m = iso.match(/([Zz]|([+-])(\d{2}):(\d{2}))$/);
   if (!m) return null;

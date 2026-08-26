@@ -1,6 +1,10 @@
 import { SgReading } from '../services/sgs-history.service';
 import { LOW, LOW_CLEAR, VERY_LOW } from '../domain/glucose';
 import { formatMinutesLong } from '../utils/duration-format.util';
+import {
+  formatCarelinkClock,
+  formatCarelinkDate,
+} from '../utils/carelink-time.util';
 
 export interface HypoEpisode {
   start: string;
@@ -98,12 +102,9 @@ export function detectVeryLowEpisodes(
 }
 
 export function formatHypoEpisode(e: HypoEpisode): string {
-  const t0 = new Date(e.start).toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const date = formatCarelinkDate(e.start);
+  const clock = formatCarelinkClock(e.start);
+  const t0 = date ? `${date}, ${clock}` : clock;
   return `${t0} · ${formatMinutesLong(e.durationMin)} · nadir ${e.nadirMmol.toFixed(1)} mmol/L`;
 }
 

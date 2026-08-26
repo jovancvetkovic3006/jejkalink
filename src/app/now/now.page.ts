@@ -24,6 +24,7 @@ import {
 import { slopePerMin, projectMmol } from '../utils/glucose-slope.util';
 import { placeholderSparklineReadings } from '../utils/placeholder-data.util';
 import { formatPolledAgoEn, formatMinutesLong } from '../utils/duration-format.util';
+import { formatCarelinkClock } from '../utils/carelink-time.util';
 import {
   effectiveChartWindow,
   formatReadingScrubLabel,
@@ -150,10 +151,7 @@ export class NowPage implements OnInit, OnDestroy {
   }
 
   eventTime(e: AppEvent): string {
-    return new Date(e.timestamp).toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatCarelinkClock(e.timestamp);
   }
 
   eventDot(e: AppEvent): string {

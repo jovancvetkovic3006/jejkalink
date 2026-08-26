@@ -24,6 +24,7 @@ import {
   formatReadingScrubLabel,
 } from '../utils/chart-window.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
+import { formatCarelinkClock } from '../utils/carelink-time.util';
 
 const PLACEHOLDER_DAY_EVENTS: AppEvent[] = [
   {
@@ -158,10 +159,7 @@ export class DayPage implements OnInit, OnDestroy {
   }
 
   eventTime(e: AppEvent): string {
-    return new Date(e.timestamp).toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatCarelinkClock(e.timestamp);
   }
 
   eventDot(e: AppEvent): string {

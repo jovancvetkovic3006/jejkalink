@@ -22,6 +22,14 @@ function percentile(sorted: number[], p: number): number {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
+/** Local wall-clock hour at capture using stored utcOffsetMin (DST-safe). */
+export function captureLocalHour(r: SgReading): number {
+  const ts = new Date(r.timestamp).getTime();
+  const offsetMin =
+    r.utcOffsetMin ?? -new Date(r.timestamp).getTimezoneOffset();
+  return new Date(ts + offsetMin * 60 * 1000).getUTCHours();
+}
+
 /** Local wall-clock minutes at capture using stored utcOffsetMin (DST-safe). */
 export function slotMinForReading(r: SgReading): number {
   const ts = new Date(r.timestamp).getTime();

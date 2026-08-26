@@ -7,6 +7,7 @@ import {
   carelinkWallClock,
   deviceUtcOffsetMin,
   offsetMinFromIso,
+  restampCarelinkStoredIso,
 } from '../utils/carelink-time.util';
 
 export interface SgReading {
@@ -40,7 +41,21 @@ export class SgsHistoryService {
     try {
       const raw = localStorage.getItem(SgsHistoryService.STORAGE_KEY);
       if (raw) {
-        return this.prune(JSON.parse(raw) as SgReading[]);
+        const parsed = JSON.parse(raw) as SgReading[];
+        let changed = false;
+        const restamped = parsed.map((e) => {
+          const ts = restampCarelinkStoredIso(e.timestamp);
+          if (ts === e.timestamp) return e;
+          changed = true;
+          return {
+            ...e,
+            timestamp: ts,
+            utcOffsetMin: offsetMinFromIso(ts) ?? e.utcOffsetMin,
+          };
+        });
+        const pruned = this.prune(restamped);
+        if (changed) this.persist(pruned);
+        return pruned;
       }
       return this.migrateLegacy();
     } catch {
@@ -55,13 +70,15 @@ export class SgsHistoryService {
       const entries: { sg: number; timestamp: string }[] = JSON.parse(legacy);
       const migrated: SgReading[] = entries
         .filter((e) => e.sg > 0 && e.timestamp)
-        .map((e) => ({
-          sg: e.sg,
-          mmol: toMmol(e.sg),
-          timestamp: e.timestamp,
-          utcOffsetMin:
-            offsetMinFromIso(e.timestamp) ?? deviceUtcOffsetMin(),
-        }));
+        .map((e) => {
+          const ts = restampCarelinkStoredIso(e.timestamp);
+          return {
+            sg: e.sg,
+            mmol: toMmol(e.sg),
+            timestamp: ts,
+            utcOffsetMin: offsetMinFromIso(ts) ?? deviceUtcOffsetMin(),
+          };
+        });
       const pruned = this.prune(migrated);
       this.persist(pruned);
       return pruned;

@@ -4,6 +4,10 @@ import { SgReading } from './sgs-history.service';
 import { formatMinutesLong } from '../utils/duration-format.util';
 import { eventsFromCareLinkMarkers } from '../utils/carelink-markers.util';
 import { eventsFromCareLinkAlerts } from '../utils/carelink-alerts.util';
+import {
+  formatCarelinkClock,
+  restampCarelinkStoredIso,
+} from '../utils/carelink-time.util';
 
 export type EventKind =
   | 'bolus'
@@ -36,9 +40,19 @@ export class EventsStore {
     try {
       const raw = localStorage.getItem(EventsStore.STORAGE_KEY);
       if (!raw) return [];
-      return (JSON.parse(raw) as AppEvent[]).sort(
+      const list = JSON.parse(raw) as AppEvent[];
+      let changed = false;
+      const next = list.map((e) => {
+        const ts = restampCarelinkStoredIso(e.timestamp);
+        if (ts === e.timestamp) return e;
+        changed = true;
+        return { ...e, timestamp: ts };
+      });
+      const sorted = next.sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
+      if (changed) this.persist(sorted);
+      return sorted;
     } catch {
       return [];
     }
@@ -54,9 +68,19 @@ export class EventsStore {
 
   add(event: Omit<AppEvent, 'id'> & { id?: string }) {
     const list = this.load();
-    const id = event.id || `${event.kind}-${event.timestamp}-${Math.random().toString(36).slice(2, 7)}`;
-    if (list.some((e) => e.id === id)) return;
-    const next = [{ ...event, id }, ...list].slice(0, EventsStore.MAX);
+    const timestamp = restampCarelinkStoredIso(event.timestamp);
+    const id = event.id || `${event.kind}-${timestamp}-${Math.random().toString(36).slice(2, 7)}`;
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx >= 0) {
+      const prev = list[idx];
+      if (timestamp && timestamp !== prev.timestamp) {
+        list[idx] = { ...prev, ...event, id, timestamp };
+        this.persist(list);
+        this.events$.next(list);
+      }
+      return;
+    }
+    const next = [{ ...event, id, timestamp }, ...list].slice(0, EventsStore.MAX);
     this.persist(next);
     this.events$.next(next);
   }
@@ -272,14 +296,8 @@ export class EventsStore {
 
       const from = new Date(fromMs);
       const to = new Date(toMs);
-      const fromLabel = from.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      const toLabel = to.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const fromLabel = formatCarelinkClock(inRange[i].timestamp);
+      const toLabel = formatCarelinkClock(inRange[i + 1].timestamp);
       gaps.push({
         id: `gap-${from.toISOString()}-${to.toISOString()}`,
         kind: 'gap',

@@ -9,6 +9,7 @@ import {
 } from '../domain/glucose';
 import { SgReading } from './sgs-history.service';
 import { formatStaleLabelEn, formatMinutesLong } from '../utils/duration-format.util';
+import { formatCarelinkClock } from '../utils/carelink-time.util';
 import { projectMmol, slopePerMin } from '../utils/glucose-slope.util';
 import { BackgroundWeb } from './background-web.service';
 
@@ -244,10 +245,7 @@ export class AlarmsService {
     if (mmol < s.urgentLow) {
       this.fire('urgent_low', `Urgent low ${mmol.toFixed(1)}`, last, {
         critical: true,
-        body: `Reading ${mmol.toFixed(1)} mmol/L at ${readingAt.toLocaleTimeString('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}. Backup alarm — keep pump alerts on.`,
+        body: `Reading ${mmol.toFixed(1)} mmol/L at ${formatCarelinkClock(last.timestamp)}. Backup alarm — keep pump alerts on.`,
       });
       this.lowActive = true;
     } else if (mmol < low) {
