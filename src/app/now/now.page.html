@@ -59,6 +59,34 @@
     </div>
 
     <div class="card-surface">
+      <div class="lbl">Pump</div>
+      <div class="set" *ngFor="let row of device.pump">
+        <div class="body">
+          <div class="h">{{ row.label }}</div>
+          <div class="s">{{ row.detail }}</div>
+        </div>
+        <span class="rt numeral" [class.warn]="row.warn">{{ row.value }}</span>
+      </div>
+    </div>
+
+    <div class="card-surface">
+      <div class="lbl">Sensor</div>
+      <div class="set" *ngFor="let row of device.sensor">
+        <div class="body">
+          <div class="h">{{ row.label }}</div>
+          <div class="s">{{ row.detail }}</div>
+        </div>
+        <span
+          class="chip-pill"
+          *ngIf="row.chip"
+          [class.ok]="row.chip === 'ok'"
+          [class.warn]="row.chip === 'warn'"
+        >{{ row.value }}</span>
+        <span class="rt numeral" *ngIf="!row.chip" [class.warn]="row.warn">{{ row.value }}</span>
+      </div>
+    </div>
+
+    <div class="card-surface">
       <div class="lbl">Recent events</div>
       <app-glass-panel [placeholder]="eventsPlaceholder" message="No data yet">
         <app-event-row

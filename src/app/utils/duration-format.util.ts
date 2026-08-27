@@ -12,6 +12,15 @@ export function formatMinutesLong(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
 }
 
+/** e.g. "4d 12:18", or "05:40" when under a day. */
+export function formatRemainingLife(minutes: number): string {
+  const m = floorAbsMinutes(minutes);
+  const days = Math.floor(m / 1440);
+  const rest = m % 1440;
+  if (days <= 0) return formatMinutesLong(rest);
+  return `${days}d ${formatMinutesLong(rest)}`;
+}
+
 /** e.g. "00:40 ago", or "just now" */
 export function formatDurationEn(minutes: number, prefix = 'ago'): string {
   const m = floorAbsMinutes(minutes);

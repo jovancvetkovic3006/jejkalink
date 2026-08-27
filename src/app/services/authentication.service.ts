@@ -31,6 +31,10 @@ import {
   slopePerMinWindow,
   trendFromSlope,
 } from '../utils/glucose-slope.util';
+import {
+  deviceStatusFromPatientData,
+  EMPTY_DEVICE_STATUS,
+} from '../utils/device-status.util';
 
 export interface IUserInfo {
   name: string;
@@ -131,6 +135,7 @@ export class AuthenticationService {
     insulin: [] as string[],
     pump: [] as string[],
     senzor: [] as string[],
+    device: EMPTY_DEVICE_STATUS,
   });
 
   constructor(
@@ -655,10 +660,12 @@ export class AuthenticationService {
       pump: [] as { text: string; warn: boolean }[],
       senzor: [] as { text: string; warn: boolean }[],
       sgs: [] as any[],
-      isSensorConnected: false
+      isSensorConnected: false,
+      device: EMPTY_DEVICE_STATUS,
     };
 
     const patientData = recentData.patientData || {};
+    data.device = deviceStatusFromPatientData(patientData);
     const clockUnreliable = isUnreliablePumpClock(patientData);
     if (clockUnreliable) {
       this.sgsHistory.saveRawResponse(recentData);

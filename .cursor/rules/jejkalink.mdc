@@ -13,9 +13,10 @@ alwaysApply: true
 
 ## Releases
 
-When shipping a version (build / push / tag), **always** also:
+After finishing user-facing work, **always ship** — do not wait to be asked. Build, push, tag, and attach the APK.
 
-1. Bump `versionCode` / `versionName` in `android/app/build.gradle` to match the tag.
-2. `ng build` → `npx cap sync android` → `android/gradlew assembleDebug`.
-3. Copy `android/app/build/outputs/apk/debug/app-debug.apk` → `carelink.apk`.
-4. Create (or update) the GitHub release for that tag with `carelink.apk` attached via `gh release create`.
+1. Bump `versionCode` / `versionName` in `android/app/build.gradle` and `appVersion` in Settings to match the tag.
+2. If `ionic.jejkalinkui.plugins.background` changed, commit and push that repo to `origin/main` first, then update the gitlink SHA here.
+3. `ng build` → `npx cap sync android` → `android/gradlew assembleDebug`.
+4. Copy `android/app/build/outputs/apk/debug/app-debug.apk` → `carelink.apk`.
+5. Commit, push the branch, `git tag vN.N` / `git push origin vN.N`, then `gh release create` with `carelink.apk`.

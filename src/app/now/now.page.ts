@@ -30,6 +30,10 @@ import {
   formatReadingScrubLabel,
 } from '../utils/chart-window.util';
 import { TabSwipeDirective } from '../directives/tab-swipe.directive';
+import {
+  DeviceStatus,
+  EMPTY_DEVICE_STATUS,
+} from '../utils/device-status.util';
 
 const PLACEHOLDER_EVENTS: AppEvent[] = [
   {
@@ -110,6 +114,7 @@ export class NowPage implements OnInit, OnDestroy {
   heroPlaceholder = false;
   targetLow = 3.9;
   targetHigh = 10.0;
+  device: DeviceStatus = EMPTY_DEVICE_STATUS;
 
   constructor(
     public auth: AuthenticationService,
@@ -243,6 +248,7 @@ export class NowPage implements OnInit, OnDestroy {
     const data = this.auth.patientData$.value;
     this.trend = data?.trend ?? 0;
     this.whoPill = this.buildWhoPill();
+    this.device = data?.device || EMPTY_DEVICE_STATUS;
 
     const last = this.readings[this.readings.length - 1];
     if (!last) {

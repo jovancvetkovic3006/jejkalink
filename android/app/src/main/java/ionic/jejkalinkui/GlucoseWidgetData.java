@@ -1,8 +1,6 @@
 package ionic.jejkalinkui;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 
 /** Shared prefs + broadcast for all glucose home-screen widgets. */
@@ -39,16 +37,9 @@ public final class GlucoseWidgetData {
     }
 
     public static void notifyAll(Context context) {
-        String[] providers = {
-            "ionic.jejkalinkui.GlucoseWidgetProvider",
-            "ionic.jejkalinkui.GlucoseWidgetCompactProvider",
-            "ionic.jejkalinkui.GlucoseWidgetChartProvider",
-            "ionic.jejkalinkui.GlucoseWidgetDayMetricsProvider",
-        };
-        for (String name : providers) {
-            Intent intent = new Intent(ACTION_UPDATE);
-            intent.setComponent(new ComponentName(context, name));
-            context.sendBroadcast(intent);
-        }
+        GlucoseWidgetProvider.refreshAll(context);
+        GlucoseWidgetCompactProvider.refreshAll(context);
+        GlucoseWidgetChartProvider.refreshAll(context);
+        GlucoseWidgetDayMetricsProvider.refreshAll(context);
     }
 }

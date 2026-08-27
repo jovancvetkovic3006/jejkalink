@@ -107,6 +107,14 @@ ion-content {
   background: #f1faf8;
   color: #0a7a6c;
 }
+.chip-pill.warn {
+  border-color: #f5c2d1;
+  color: var(--low);
+  background: #fff5f8;
+}
+.set .rt.warn {
+  color: var(--low);
+}
 
 .stepper {
   display: flex;

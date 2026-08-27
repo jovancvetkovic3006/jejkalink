@@ -23,15 +23,19 @@ public class GlucoseWidgetCompactProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         if (GlucoseWidgetData.ACTION_UPDATE.equals(intent.getAction())) {
-            AppWidgetManager mgr = AppWidgetManager.getInstance(context);
-            ComponentName widget = new ComponentName(context, GlucoseWidgetCompactProvider.class);
-            for (int id : mgr.getAppWidgetIds(widget)) {
-                update(context, mgr, id);
-            }
+            refreshAll(context);
         }
     }
 
-    private void update(Context context, AppWidgetManager mgr, int appWidgetId) {
+    static void refreshAll(Context context) {
+        AppWidgetManager mgr = AppWidgetManager.getInstance(context);
+        int[] ids = mgr.getAppWidgetIds(new ComponentName(context, GlucoseWidgetCompactProvider.class));
+        for (int id : ids) {
+            update(context, mgr, id);
+        }
+    }
+
+    private static void update(Context context, AppWidgetManager mgr, int appWidgetId) {
         SharedPreferences prefs = GlucoseWidgetData.prefs(context);
         String glucoseValue = prefs.getString("glucose_value", "--");
         double sgValue = 0;

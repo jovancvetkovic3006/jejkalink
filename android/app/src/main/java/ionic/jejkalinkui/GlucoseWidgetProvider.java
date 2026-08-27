@@ -26,16 +26,20 @@ public class GlucoseWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         if (GlucoseWidgetData.ACTION_UPDATE.equals(intent.getAction())) {
-            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-            ComponentName widget = new ComponentName(context, GlucoseWidgetProvider.class);
-            int[] appWidgetIds = appWidgetManager.getAppWidgetIds(widget);
-            for (int appWidgetId : appWidgetIds) {
-                updateWidget(context, appWidgetManager, appWidgetId);
-            }
+            refreshAll(context);
         }
     }
 
-    private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+    static void refreshAll(Context context) {
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
+            new ComponentName(context, GlucoseWidgetProvider.class));
+        for (int appWidgetId : appWidgetIds) {
+            updateWidget(context, appWidgetManager, appWidgetId);
+        }
+    }
+
+    private static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         SharedPreferences prefs = GlucoseWidgetData.prefs(context);
         String glucoseValue = prefs.getString("glucose_value", "--");
         String trendArrow = prefs.getString("trend_arrow", "");
