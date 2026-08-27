@@ -1,5 +1,6 @@
 package ionic.jejkalinkui;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
@@ -9,6 +10,8 @@ import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+
+import androidx.core.content.res.ResourcesCompat;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -35,7 +38,34 @@ final class GlucoseWidgetTiles {
     private static final float VERY_LOW = 3.0f;
     private static final long GAP_MS = 10L * 60L * 1000L;
 
+    private static volatile Typeface plexRegular;
+    private static volatile Typeface plexSemi;
+
     private GlucoseWidgetTiles() {}
+
+    private static Typeface plex(Context context, boolean semi) {
+        if (plexRegular == null || plexSemi == null) {
+            synchronized (GlucoseWidgetTiles.class) {
+                if (plexRegular == null) {
+                    plexRegular = loadFont(context, R.font.ibm_plex_mono_regular, Typeface.MONOSPACE);
+                }
+                if (plexSemi == null) {
+                    plexSemi = loadFont(context, R.font.ibm_plex_mono_semibold,
+                        Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+                }
+            }
+        }
+        return semi ? plexSemi : plexRegular;
+    }
+
+    private static Typeface loadFont(Context context, int resId, Typeface fallback) {
+        try {
+            Typeface t = ResourcesCompat.getFont(context.getApplicationContext(), resId);
+            return t != null ? t : fallback;
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
 
     static class Pt {
         long t;
@@ -57,7 +87,7 @@ final class GlucoseWidgetTiles {
         }
     }
 
-    static Bitmap dayChart(SharedPreferences prefs) {
+    static Bitmap dayChart(Context context, SharedPreferences prefs) {
         List<Pt> points = parseTimedPoints(prefs.getString("sparkline_points", ""));
         long dayStart = prefs.getLong("sparkline_day_start_ms", 0);
         if (dayStart <= 0) dayStart = localMidnight();
@@ -95,7 +125,7 @@ final class GlucoseWidgetTiles {
         Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         titlePaint.setColor(COLOR_INK);
         titlePaint.setTextSize(typeTitle);
-        titlePaint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL));
+        titlePaint.setTypeface(plex(context, false));
         Paint.FontMetrics tm = titlePaint.getFontMetrics();
         canvas.drawText(title, pad, pad - tm.ascent, titlePaint);
 
@@ -122,7 +152,7 @@ final class GlucoseWidgetTiles {
         Paint yLabel = new Paint(Paint.ANTI_ALIAS_FLAG);
         yLabel.setColor(COLOR_MUTED);
         yLabel.setTextSize(typeAxis);
-        yLabel.setTypeface(Typeface.MONOSPACE);
+        yLabel.setTypeface(plex(context, false));
         yLabel.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText("3.9", padL - 6 * s, bandBot + typeAxis * 0.35f, yLabel);
         canvas.drawText("10.0", padL - 6 * s, bandTop + typeAxis * 0.35f, yLabel);
@@ -138,7 +168,7 @@ final class GlucoseWidgetTiles {
         Paint gapWord = new Paint(Paint.ANTI_ALIAS_FLAG);
         gapWord.setColor(COLOR_MUTED);
         gapWord.setTextSize(typeAxis);
-        gapWord.setTypeface(Typeface.MONOSPACE);
+        gapWord.setTypeface(plex(context, false));
         int gapLabels = 0;
         for (Seg g : plotGaps) {
             if (g.covered) continue;
@@ -204,7 +234,7 @@ final class GlucoseWidgetTiles {
         Paint xPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         xPaint.setColor(COLOR_MUTED);
         xPaint.setTextSize(typeAxis);
-        xPaint.setTypeface(Typeface.MONOSPACE);
+        xPaint.setTypeface(plex(context, false));
         xPaint.setTextAlign(Paint.Align.CENTER);
         long plotSpan = plotEnd - dayStart;
         float xTickY = plotBot + typeAxis + 4 * s;
@@ -244,7 +274,7 @@ final class GlucoseWidgetTiles {
         Paint meta = new Paint(Paint.ANTI_ALIAS_FLAG);
         meta.setColor(COLOR_MUTED);
         meta.setTextSize(typeMeta);
-        meta.setTypeface(Typeface.MONOSPACE);
+        meta.setTypeface(plex(context, false));
         meta.setTextAlign(Paint.Align.LEFT);
         Paint.FontMetrics mm = meta.getFontMetrics();
         float metaY = barY + barH + 6 * s - mm.ascent;
@@ -255,7 +285,7 @@ final class GlucoseWidgetTiles {
         return bmp;
     }
 
-    static Bitmap dayMetrics(SharedPreferences prefs) {
+    static Bitmap dayMetrics(Context context, SharedPreferences prefs) {
         String tir = nz(prefs.getString("day_tir", null), "--");
         String mean = nz(prefs.getString("day_mean", null), "--");
         String below = nz(prefs.getString("day_below", null), "--");
@@ -282,14 +312,16 @@ final class GlucoseWidgetTiles {
         float gap = Math.max(2f, 1f / 324f * w);
         float cellW = (w - gap) / 2f;
         float cellH = (h - gap) / 2f;
+        Typeface regular = plex(context, false);
+        Typeface semi = plex(context, true);
         drawMetricCell(canvas, 0, 0, cellW, cellH, "IN RANGE", has ? tir : "--", has ? "%" : "",
-            "3.9–10.0", COLOR_INK, COLOR_MUTED);
+            "3.9–10.0", COLOR_INK, COLOR_MUTED, regular, semi);
         drawMetricCell(canvas, cellW + gap, 0, cellW, cellH, "MEAN", has ? mean : "--", "",
-            "mmol/L", COLOR_INK, COLOR_MUTED);
+            "mmol/L", COLOR_INK, COLOR_MUTED, regular, semi);
         drawMetricCell(canvas, 0, cellH + gap, cellW, cellH, "BELOW 3.9", has ? below : "--", has ? "%" : "",
-            has ? vlow + "% under 3.0" : "under 3.0", COLOR_LOW, COLOR_LOW);
+            has ? vlow + "% under 3.0" : "under 3.0", COLOR_LOW, COLOR_LOW, regular, semi);
         drawMetricCell(canvas, cellW + gap, cellH + gap, cellW, cellH, "ABOVE 10.0", has ? above : "--", has ? "%" : "",
-            has ? vhigh + "% over 13.9" : "over 13.9", COLOR_AMBER, COLOR_LOW);
+            has ? vhigh + "% over 13.9" : "over 13.9", COLOR_AMBER, COLOR_LOW, regular, semi);
         return bmp;
     }
 
@@ -299,7 +331,8 @@ final class GlucoseWidgetTiles {
      */
     private static void drawMetricCell(
         Canvas canvas, float x, float y, float w, float h,
-        String key, String value, String suffix, String delta, int valueColor, int deltaColor
+        String key, String value, String suffix, String delta, int valueColor, int deltaColor,
+        Typeface regular, Typeface semi
     ) {
         Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
         bg.setColor(COLOR_SURFACE);
@@ -318,31 +351,30 @@ final class GlucoseWidgetTiles {
 
         float padX = dPadX * sc;
         float padY = dPadY * sc;
-        Typeface mono = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL);
-        Typeface monoBold = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD);
 
         Paint k = new Paint(Paint.ANTI_ALIAS_FLAG);
         k.setColor(COLOR_MUTED);
         k.setTextSize(dKey * sc);
         k.setLetterSpacing(0.1f);
-        k.setTypeface(mono);
+        k.setTypeface(regular);
         Paint.FontMetrics kfm = k.getFontMetrics();
 
         Paint v = new Paint(Paint.ANTI_ALIAS_FLAG);
         v.setColor(valueColor);
         v.setTextSize(dValue * sc);
-        v.setTypeface(monoBold);
+        v.setLetterSpacing(-0.02f);
+        v.setTypeface(semi);
         Paint.FontMetrics vfm = v.getFontMetrics();
 
         Paint suf = new Paint(Paint.ANTI_ALIAS_FLAG);
         suf.setColor(valueColor);
         suf.setTextSize(dSuf * sc);
-        suf.setTypeface(mono);
+        suf.setTypeface(regular);
 
         Paint d = new Paint(Paint.ANTI_ALIAS_FLAG);
         d.setColor(deltaColor);
         d.setTextSize(dDelta * sc);
-        d.setTypeface(mono);
+        d.setTypeface(regular);
         Paint.FontMetrics dfm = d.getFontMetrics();
 
         float cx = x + padX;

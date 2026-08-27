@@ -20,6 +20,7 @@
         android:textSize="28sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
+        android:fontFamily="@font/ibm_plex_mono"
         android:includeFontPadding="false" />
 
     <TextView
@@ -29,6 +30,7 @@
         android:text=""
         android:textSize="22sp"
         android:textColor="#FFFFFF"
+        android:fontFamily="@font/ibm_plex_mono"
         android:layout_marginStart="4dp"
         android:includeFontPadding="false" />
 </LinearLayout>

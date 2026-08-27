@@ -17,6 +17,7 @@
         android:textSize="28sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
+        android:fontFamily="@font/ibm_plex_mono"
         android:includeFontPadding="false"
         android:gravity="center"
         android:maxLines="1" />
@@ -28,5 +29,6 @@
         android:text="mmol/L"
         android:textSize="9sp"
         android:textColor="#CCFFFFFF"
+        android:fontFamily="@font/ibm_plex_mono"
         android:includeFontPadding="false" />
 </LinearLayout>

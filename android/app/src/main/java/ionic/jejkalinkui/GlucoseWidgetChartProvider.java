@@ -40,7 +40,7 @@ public class GlucoseWidgetChartProvider extends AppWidgetProvider {
     private static void update(Context context, AppWidgetManager mgr, int appWidgetId) {
         try {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_glucose_chart);
-            Bitmap tile = GlucoseWidgetTiles.dayChart(GlucoseWidgetData.prefs(context));
+            Bitmap tile = GlucoseWidgetTiles.dayChart(context, GlucoseWidgetData.prefs(context));
             views.setImageViewBitmap(R.id.widget_tile, tile);
             bindClick(context, views, 2);
             mgr.updateAppWidget(appWidgetId, views);

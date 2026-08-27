@@ -40,7 +40,7 @@ public class GlucoseWidgetDayMetricsProvider extends AppWidgetProvider {
     private static void update(Context context, AppWidgetManager mgr, int appWidgetId) {
         try {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_day_metrics);
-            Bitmap tile = GlucoseWidgetTiles.dayMetrics(GlucoseWidgetData.prefs(context));
+            Bitmap tile = GlucoseWidgetTiles.dayMetrics(context, GlucoseWidgetData.prefs(context));
             views.setImageViewBitmap(R.id.widget_tile, tile);
             Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
             if (launch != null) {
