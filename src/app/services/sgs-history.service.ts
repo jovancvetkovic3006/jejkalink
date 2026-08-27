@@ -8,6 +8,7 @@ import {
   deviceUtcOffsetMin,
   offsetMinFromIso,
   restampCarelinkStoredIso,
+  shiftCarelinkWallHours,
 } from '../utils/carelink-time.util';
 
 export interface SgReading {
@@ -151,6 +152,32 @@ export class SgsHistoryService {
 
   private upsertKey(patientId: string, timestamp: string): string {
     return `${patientId}|${carelinkWallClock(timestamp)}`;
+  }
+
+  /** One-shot rewrite of stored CareLink walls (skips real UTC / notes). */
+  shiftAllWallHours(hours: number) {
+    if (!hours) return;
+    const patientId =
+      localStorage.getItem('patientUsername')?.trim() || 'default';
+    const byKey = new Map<string, SgReading>();
+    let changed = false;
+    for (const e of this.allSgs$.value) {
+      if (offsetMinFromIso(e.timestamp) === 0) {
+        byKey.set(this.upsertKey(patientId, e.timestamp), e);
+        continue;
+      }
+      const ts = shiftCarelinkWallHours(e.timestamp, hours);
+      if (ts === e.timestamp) {
+        byKey.set(this.upsertKey(patientId, e.timestamp), e);
+        continue;
+      }
+      changed = true;
+      byKey.set(this.upsertKey(patientId, ts), { ...e, timestamp: ts });
+    }
+    if (!changed) return;
+    const pruned = this.prune([...byKey.values()]);
+    this.persist(pruned);
+    this.allSgs$.next(pruned);
   }
 
   saveRawResponse(body: unknown) {

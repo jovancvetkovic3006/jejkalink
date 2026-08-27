@@ -5,8 +5,11 @@ import { formatMinutesLong } from '../utils/duration-format.util';
 import { eventsFromCareLinkMarkers } from '../utils/carelink-markers.util';
 import { eventsFromCareLinkAlerts } from '../utils/carelink-alerts.util';
 import {
+  carelinkWallClock,
   formatCarelinkClock,
+  offsetMinFromIso,
   restampCarelinkStoredIso,
+  shiftCarelinkWallHours,
 } from '../utils/carelink-time.util';
 
 export type EventKind =
@@ -81,6 +84,35 @@ export class EventsStore {
       return;
     }
     const next = [{ ...event, id, timestamp }, ...list].slice(0, EventsStore.MAX);
+    this.persist(next);
+    this.events$.next(next);
+  }
+
+  /** Rewrite stored CareLink event walls by whole hours (skips real UTC sync/notes). */
+  shiftAllWallHours(hours: number) {
+    if (!hours) return;
+    let changed = false;
+    const byId = new Map<string, AppEvent>();
+    for (const e of this.events$.value) {
+      if (offsetMinFromIso(e.timestamp) === 0) {
+        byId.set(e.id, e);
+        continue;
+      }
+      const oldWall = carelinkWallClock(e.timestamp);
+      const timestamp = shiftCarelinkWallHours(e.timestamp, hours);
+      if (timestamp === e.timestamp) {
+        byId.set(e.id, e);
+        continue;
+      }
+      changed = true;
+      const newWall = carelinkWallClock(timestamp);
+      const id = e.id.includes(oldWall) ? e.id.replace(oldWall, newWall) : e.id;
+      byId.set(id, { ...e, id, timestamp });
+    }
+    if (!changed) return;
+    const next = [...byId.values()].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
     this.persist(next);
     this.events$.next(next);
   }

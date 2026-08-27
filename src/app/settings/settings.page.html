@@ -182,6 +182,17 @@
       </div>
       <div class="set">
         <div class="body">
+          <div class="h">Pump clock</div>
+          <div class="s">Hours to add if the pump is fast or slow</div>
+        </div>
+        <div class="stepper">
+          <button type="button" (click)="stepPumpClockOffset(-1)" [disabled]="pumpClockOffsetHours <= -3">−</button>
+          <b class="numeral">{{ pumpClockOffsetLabel() }}</b>
+          <button type="button" (click)="stepPumpClockOffset(1)" [disabled]="pumpClockOffsetHours >= 3">+</button>
+        </div>
+      </div>
+      <div class="set">
+        <div class="body">
           <div class="h">Target low</div>
           <div class="s">Shaded band lower edge</div>
         </div>

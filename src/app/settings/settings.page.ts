@@ -77,7 +77,7 @@ const GLOSSARY: { term: string; meaning: string }[] = [
 })
 export class SettingsPage implements OnInit, OnDestroy {
   patientUsername = '';
-  appVersion = '1.38.0';
+  appVersion = '1.39.0';
   saved = false;
   debugLog$ = this.authService.debugLog$;
   apiCaptures$ = this.apiCapture.captures$;
@@ -99,6 +99,7 @@ export class SettingsPage implements OnInit, OnDestroy {
   flagUnusualDays = false;
   targetLow = 3.9;
   targetHigh = 10.0;
+  pumpClockOffsetHours = 0;
   uptimeCoverage: ReturnType<typeof detectGaps> | null = null;
   uptimeStart = new Date();
   uptimeEnd = new Date();
@@ -145,6 +146,7 @@ export class SettingsPage implements OnInit, OnDestroy {
     this.failureAlertAt = s.failureAlertAt;
     this.targetLow = s.targetLow;
     this.targetHigh = s.targetHigh;
+    this.pumpClockOffsetHours = s.pumpClockOffsetHours || 0;
     this.collectorHealth.failures$.subscribe((n) => (this.failures = n));
     this.collectorHealth.pollEvents$.subscribe(() => this.refreshUptime());
     this.collectorHealth.lastOkAt$.subscribe(() => this.refreshCollectorStatus());
@@ -282,6 +284,21 @@ export class SettingsPage implements OnInit, OnDestroy {
   toggleWeekStart() {
     this.weekStart = this.weekStart === 'monday' ? 'sunday' : 'monday';
     this.appSettings.patch({ weekStart: this.weekStart });
+  }
+
+  pumpClockOffsetLabel(): string {
+    const n = this.pumpClockOffsetHours;
+    return `${n > 0 ? '+' : ''}${n} h`;
+  }
+
+  stepPumpClockOffset(delta: number) {
+    const next = Math.min(3, Math.max(-3, this.pumpClockOffsetHours + delta));
+    if (next === this.pumpClockOffsetHours) return;
+    const hours = next - this.pumpClockOffsetHours;
+    this.pumpClockOffsetHours = next;
+    this.appSettings.patch({ pumpClockOffsetHours: next });
+    this.history.shiftAllWallHours(hours);
+    this.eventsStore.shiftAllWallHours(hours);
   }
 
   stepPoll(delta: number) {

@@ -11,6 +11,8 @@ import {
   offsetMinFromClockAndServer,
   restampCarelinkStoredIso,
   serverCutoffMs,
+  shiftCarelinkWallHours,
+  shiftPatientDeviceWallClocks,
 } from './carelink-time.util';
 import {
   eventsFromCareLinkMarkers,
@@ -156,6 +158,38 @@ describe('carelink conduit offset', () => {
     expect(restampCarelinkStoredIso('2026-08-26T09:12:00+01:00', 120)).toBe(
       '2026-08-26T09:12:00+02:00'
     );
+  });
+
+  it('applies a pump-clock hour offset to SG and marker digits, not conduit', () => {
+    expect(shiftCarelinkWallHours('2026-08-26T20:04:44', -1)).toBe(
+      '2026-08-26T19:04:44'
+    );
+    expect(shiftCarelinkWallHours('2026-08-27T06:15:59', -1)).toBe(
+      '2026-08-27T05:15:59'
+    );
+    const patientData = {
+      lastConduitDateTime: '2026-08-27T05:25:15',
+      lastSG: { timestamp: '2026-08-27T06:20:00' },
+      markers: [
+        {
+          type: 'INSULIN',
+          timestamp: '2026-08-26T20:04:44',
+          displayTime: '2026-08-26T20:04:45',
+        },
+        {
+          type: 'CALIBRATION',
+          timestamp: '2026-08-27T06:15:59',
+          displayTime: '2026-08-27T06:16:00',
+        },
+      ],
+    };
+    shiftPatientDeviceWallClocks(patientData, -1);
+    expect(patientData.lastConduitDateTime).toBe('2026-08-27T05:25:15');
+    expect(patientData.lastSG.timestamp).toBe('2026-08-27T05:20:00');
+    expect(patientData.markers[0].timestamp).toBe('2026-08-26T19:04:44');
+    expect(patientData.markers[1].timestamp).toBe('2026-08-27T05:15:59');
+    expect(formatCarelinkClock(patientData.markers[0].timestamp)).toBe('19:04');
+    expect(formatCarelinkClock(patientData.markers[1].timestamp)).toBe('05:15');
   });
 });
 

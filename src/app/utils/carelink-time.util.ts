@@ -102,6 +102,17 @@ export function applyCarelinkOffset(iso: string, offsetMin: number): string {
   return carelinkWallClock(iso) + formatUtcOffset(offsetMin);
 }
 
+/** Shift wall-clock digits by whole hours. Keeps any existing offset suffix. */
+export function shiftCarelinkWallHours(iso: string, hours: number): string {
+  if (!iso || !hours || !iso.includes('T')) return iso;
+  const wall = carelinkWallClock(iso);
+  const suffix = iso.slice(wall.length);
+  const parsed = Date.parse(wall + 'Z');
+  if (!Number.isFinite(parsed)) return iso;
+  const next = new Date(parsed + hours * 3_600_000).toISOString();
+  return next.slice(0, 19) + suffix;
+}
+
 /**
  * Conduit offset from a clock string vs a UTC epoch. Wall digits are local;
  * the epoch is the same instant. Rounds to 15 min (DST / TZ steps).
@@ -215,37 +226,37 @@ export function carelinkOffsetMin(
   return deviceOffsetMin;
 }
 
-export function normalizePatientTimestamps(
+const MARKER_TIME_KEYS = [
+  'timestamp',
+  'time',
+  'displayTime',
+  'dateTime',
+  'datetime',
+] as const;
+
+function mapDeviceClockStrings(
   patientData: any,
-  offsetMin: number
+  map: (iso: string) => string
 ): void {
-  if (!patientData || !Number.isFinite(offsetMin)) return;
+  if (!patientData) return;
   if (Array.isArray(patientData.sgs)) {
     for (const sg of patientData.sgs) {
-      if (sg && typeof sg.timestamp === 'string') {
-        sg.timestamp = applyCarelinkOffset(sg.timestamp, offsetMin);
-      }
+      if (!sg) continue;
+      if (typeof sg.timestamp === 'string') sg.timestamp = map(sg.timestamp);
+      if (typeof sg.datetime === 'string') sg.datetime = map(sg.datetime);
     }
   }
-  if (patientData.lastSG && typeof patientData.lastSG.timestamp === 'string') {
-    patientData.lastSG.timestamp = applyCarelinkOffset(
-      patientData.lastSG.timestamp,
-      offsetMin
-    );
+  const lastSG = patientData.lastSG;
+  if (lastSG) {
+    for (const key of ['timestamp', 'datetime', 'dateTime'] as const) {
+      if (typeof lastSG[key] === 'string') lastSG[key] = map(lastSG[key]);
+    }
   }
   if (Array.isArray(patientData.markers)) {
     for (const m of patientData.markers) {
       if (!m) continue;
-      for (const key of [
-        'timestamp',
-        'time',
-        'displayTime',
-        'dateTime',
-        'datetime',
-      ] as const) {
-        if (typeof m[key] === 'string') {
-          m[key] = applyCarelinkOffset(m[key], offsetMin);
-        }
+      for (const key of MARKER_TIME_KEYS) {
+        if (typeof m[key] === 'string') m[key] = map(m[key]);
       }
     }
   }
@@ -253,7 +264,7 @@ export function normalizePatientTimestamps(
   if (lastAlarm) {
     for (const key of ['datetime', 'dateTime', 'timestamp'] as const) {
       if (typeof lastAlarm[key] === 'string') {
-        lastAlarm[key] = applyCarelinkOffset(lastAlarm[key], offsetMin);
+        lastAlarm[key] = map(lastAlarm[key]);
       }
     }
   }
@@ -270,12 +281,40 @@ export function normalizePatientTimestamps(
         'timestamp',
         'triggeredDateTime',
       ] as const) {
-        if (typeof row[key] === 'string') {
-          row[key] = applyCarelinkOffset(row[key], offsetMin);
-        }
+        if (typeof row[key] === 'string') row[key] = map(row[key]);
       }
     }
   }
+  for (const key of [
+    'sMedicalDeviceTime',
+    'medicalDeviceTimeAsString',
+    'sLastSensorTime',
+    'lastSensorTSAsString',
+  ] as const) {
+    if (typeof patientData[key] === 'string') {
+      patientData[key] = map(patientData[key]);
+    }
+  }
+}
+
+export function shiftPatientDeviceWallClocks(
+  patientData: any,
+  hours: number
+): void {
+  if (!patientData || !hours) return;
+  mapDeviceClockStrings(patientData, (iso) =>
+    shiftCarelinkWallHours(iso, hours)
+  );
+}
+
+export function normalizePatientTimestamps(
+  patientData: any,
+  offsetMin: number
+): void {
+  if (!patientData || !Number.isFinite(offsetMin)) return;
+  mapDeviceClockStrings(patientData, (iso) =>
+    applyCarelinkOffset(iso, offsetMin)
+  );
 }
 
 /** MiniMed 7xxG clock is wrong while the pump is unreachable — skip the snapshot. */

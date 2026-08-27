@@ -23,7 +23,9 @@ import {
   latestAcceptedSg,
   normalizePatientTimestamps,
   serverCutoffMs,
+  shiftPatientDeviceWallClocks,
 } from '../utils/carelink-time.util';
+import { AppSettingsService } from './app-settings.service';
 import {
   mapCareLinkTrend,
   slopePerMinWindow,
@@ -137,7 +139,8 @@ export class AuthenticationService {
     private readonly sgsHistory: SgsHistoryService,
     private readonly eventsStore: EventsStore,
     private readonly collectorHealth: CollectorHealthService,
-    private readonly apiCapture: ApiCaptureService
+    private readonly apiCapture: ApiCaptureService,
+    private readonly appSettings: AppSettingsService
   ) {
     this.restorePersistedTokens();
     this.setupDeepLinkListener();
@@ -692,6 +695,12 @@ export class AuthenticationService {
       this.collectorHealth.recordSuccess({ skipped: 'pump-disconnected' });
       this.addDebug('processPatientData: skipped NGP snapshot, pumpCommunicationState=false');
       return data;
+    }
+
+    const pumpClockOffsetHours = this.appSettings.get().pumpClockOffsetHours || 0;
+    if (pumpClockOffsetHours) {
+      shiftPatientDeviceWallClocks(patientData, pumpClockOffsetHours);
+      this.addDebug('pump clock offset hours=' + pumpClockOffsetHours);
     }
 
     const offsetMin = carelinkOffsetMin(patientData);

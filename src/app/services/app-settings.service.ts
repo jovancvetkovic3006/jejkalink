@@ -10,6 +10,8 @@ export interface AppSettings {
   pollIntervalMin: number;
   /** Alert after this many consecutive collector failures. */
   failureAlertAt: number;
+  /** Hours to add to pump/SG/marker times. Pump clock 1h fast → -1. */
+  pumpClockOffsetHours: number;
   targetLow: number;
   targetHigh: number;
 }
@@ -23,6 +25,7 @@ const DEFAULTS: AppSettings = {
   flagUnusualDays: false,
   pollIntervalMin: 5,
   failureAlertAt: 3,
+  pumpClockOffsetHours: 0,
   targetLow: LOW,
   targetHigh: HIGH,
 };
