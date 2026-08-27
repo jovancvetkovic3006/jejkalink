@@ -43,6 +43,7 @@ public final class GlucoseWidgetData {
             "ionic.jejkalinkui.GlucoseWidgetProvider",
             "ionic.jejkalinkui.GlucoseWidgetCompactProvider",
             "ionic.jejkalinkui.GlucoseWidgetChartProvider",
+            "ionic.jejkalinkui.GlucoseWidgetDayMetricsProvider",
         };
         for (String name : providers) {
             Intent intent = new Intent(ACTION_UPDATE);

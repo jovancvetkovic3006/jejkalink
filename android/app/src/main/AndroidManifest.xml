@@ -95,6 +95,19 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/glucose_widget_chart_info" />
         </receiver>
+
+        <receiver
+            android:name=".GlucoseWidgetDayMetricsProvider"
+            android:exported="true"
+            android:label="@string/widget_day_metrics_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ionic.jejkalinkui.UPDATE_GLUCOSE_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glucose_widget_day_metrics_info" />
+        </receiver>
     </application>
 
 </manifest>

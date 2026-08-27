@@ -8,6 +8,8 @@
     <string name="widget_label">JejkaLink · 2×1 strip</string>
     <string name="widget_compact_description">1×1 · glucose value only</string>
     <string name="widget_compact_label">JejkaLink · 1×1 value</string>
-    <string name="widget_chart_description">4×2 · glucose, trend, and last 3 hours</string>
-    <string name="widget_chart_label">JejkaLink · 4×2 chart</string>
+    <string name="widget_chart_description">4×2 · glucose today from 00:00</string>
+    <string name="widget_chart_label">JejkaLink · 4×2 today</string>
+    <string name="widget_day_metrics_description">4×2 · in range, mean, below, above</string>
+    <string name="widget_day_metrics_label">JejkaLink · 4×2 day</string>
 </resources>
