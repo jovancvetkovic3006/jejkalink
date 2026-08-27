@@ -99,57 +99,40 @@ final class GlucoseWidgetTiles {
             plotEnd = Math.min(Math.max(prefs.getLong("sparkline_plot_end_ms", 0), dayStart + 60_000L), dayEnd);
         }
 
-        String title = prefs.getString("sparkline_label", "");
-        if (title == null || title.isEmpty()) title = "Today · glucose";
-
-        // 4×2 ~250×110 dp. Paint at that aspect; 1 dp = h/110 px so chrome
-        // (14 dp corners, ~12 dp card pad) stays visible after fitXY.
+        // 4×2 ~250×110. Same edge pad as a metrics cell; no title / coverage.
         int w = 1000;
         int h = 440;
-        float dp = h / 110f;
-        float pad = 12f * dp;
-        float typeTitle = 12f * dp;
-        float typeAxis = 8f * dp;
-        float typeMeta = 9.5f * dp;
-        float lineW = 1.7f * dp;
-        float titleGap = 5f * dp;
-        float yLabelW = 26f * dp;
-        float plotPadR = 14f * dp;
-        float plotPadY = 4f * dp;
-        float barH = 5f * dp;
-        float covGap = 5f * dp;
-        float xTickGap = 3f * dp;
-        float covBlock = barH + covGap + typeMeta * 1.2f;
+        float pad = metricsCellPad(w, h);
+        float typeAxis = Math.max(12f, pad * (8.5f / 11f));
+        float lineW = Math.max(1.2f, 1.15f * (h / 110f));
+        float yLabelW = typeAxis * 3.4f;
+        float xTickH = typeAxis * 1.25f;
         float plotL = pad + yLabelW;
-        float plotR = w - pad - plotPadR;
-        float plotTop = pad + typeTitle + titleGap;
-        float covTop = h - pad - covBlock;
-        float plotBot = covTop - typeAxis - xTickGap - 3f * dp;
-        float lineTop = plotTop + plotPadY;
-        float lineBot = plotBot - plotPadY;
-        float plotW = plotR - plotL;
-        float lineWpx = Math.max(8f * dp, plotW * 0.86f);
-        float lineL = plotL + (plotW - lineWpx) * 0.22f;
-        float lineR = lineL + lineWpx;
+        float plotR = w - pad;
+        float plotTop = pad;
+        float plotBot = h - pad - xTickH;
+        float inner = Math.max(6f, 0.04f * (plotR - plotL));
+        float lineL = plotL + inner;
+        float lineR = plotR - inner;
+        float lineWpx = lineR - lineL;
+        float lineTop = plotTop + inner * 0.35f;
+        float lineBot = plotBot - inner * 0.25f;
 
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
+        Path clip = new Path();
+        float radius = 14f / 324f * w;
+        clip.addRoundRect(new RectF(0, 0, w, h), radius, radius, Path.Direction.CW);
+        canvas.clipPath(clip);
         canvas.drawColor(COLOR_SURFACE);
 
-        Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        titlePaint.setColor(COLOR_INK);
-        titlePaint.setTextSize(typeTitle);
-        titlePaint.setTypeface(plex(context, true));
-        titlePaint.setLetterSpacing(-0.01f);
-        Paint.FontMetrics tm = titlePaint.getFontMetrics();
-        canvas.drawText(title, pad, pad - tm.ascent, titlePaint);
-
+        Typeface axisFace = plex(context, false);
         float[] mmol = new float[points.size()];
         for (int i = 0; i < points.size(); i++) mmol[i] = points.get(i).mmol;
         float[] domain = computeYDomain(mmol);
         float yMin = domain[0];
         float yMax = domain[1];
-        long span = Math.max(1L, plotEnd - dayStart);
+        long span = Math.max(1L, dayEnd - dayStart);
 
         Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
         band.setColor(COLOR_BAND);
@@ -159,16 +142,16 @@ final class GlucoseWidgetTiles {
 
         Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
         grid.setColor(COLOR_LINE);
-        grid.setStrokeWidth(Math.max(1f, lineW * 0.7f));
+        grid.setStrokeWidth(Math.max(1f, lineW * 0.55f));
         canvas.drawLine(lineL, bandTop, lineR, bandTop, grid);
         canvas.drawLine(lineL, bandBot, lineR, bandBot, grid);
 
         Paint yLabel = new Paint(Paint.ANTI_ALIAS_FLAG);
         yLabel.setColor(COLOR_MUTED);
         yLabel.setTextSize(typeAxis);
-        yLabel.setTypeface(plex(context, false));
+        yLabel.setTypeface(axisFace);
         yLabel.setTextAlign(Paint.Align.RIGHT);
-        float yLabelX = lineL - 5f * dp;
+        float yLabelX = lineL - inner * 0.45f;
         canvas.drawText("3.9", yLabelX, bandBot + typeAxis * 0.35f, yLabel);
         canvas.drawText("10.0", yLabelX, bandTop + typeAxis * 0.35f, yLabel);
         if (Math.abs(yMax - HIGH) > 0.2f) {
@@ -180,21 +163,12 @@ final class GlucoseWidgetTiles {
 
         List<Seg> plotGaps = gapsInWindow(points, dayStart, plotEnd);
         Paint hatch = hatchPaint();
-        Paint gapWord = new Paint(Paint.ANTI_ALIAS_FLAG);
-        gapWord.setColor(COLOR_MUTED);
-        gapWord.setTextSize(typeAxis);
-        gapWord.setTypeface(plex(context, false));
-        int gapLabels = 0;
         for (Seg g : plotGaps) {
             if (g.covered) continue;
             float x0 = mapX(g.from, dayStart, span, lineL, lineWpx);
             float x1 = mapX(g.to, dayStart, span, lineL, lineWpx);
             if (x1 <= x0) continue;
             canvas.drawRect(x0, lineTop, x1, lineBot, hatch);
-            if (gapLabels < 4 && x1 - x0 > 22 * dp) {
-                canvas.drawText("gap", x0 + 3 * dp, lineTop + typeAxis + 4 * dp, gapWord);
-                gapLabels++;
-            }
         }
 
         if (points.size() >= 2) {
@@ -230,73 +204,38 @@ final class GlucoseWidgetTiles {
                 if (v < VERY_LOW) pt.setColor(COLOR_VERY_LOW);
                 else if (v < LOW) pt.setColor(COLOR_LOW);
                 else pt.setColor(COLOR_HIGH);
-                canvas.drawCircle(x, y, (v < LOW ? 2.0f : 1.6f) * dp, pt);
+                canvas.drawCircle(x, y, (v < LOW ? 1.6f : 1.3f) * (h / 220f), pt);
             }
 
             Pt last = lastAtOrBefore(points, plotEnd);
             if (last != null) {
                 float lastX = mapX(last.t, dayStart, span, lineL, lineWpx);
                 float lastY = mapY(last.mmol, lineBot, lineTop, yMin, yMax);
+                float ringR = 2.4f * (h / 110f);
                 Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
                 ring.setColor(0xFFFFFFFF);
-                canvas.drawCircle(lastX, lastY, 5.5f * dp, ring);
+                canvas.drawCircle(lastX, lastY, ringR, ring);
                 Paint lastP = new Paint(Paint.ANTI_ALIAS_FLAG);
                 lastP.setColor(COLOR_TEAL);
-                canvas.drawCircle(lastX, lastY, 3.6f * dp, lastP);
+                canvas.drawCircle(lastX, lastY, ringR * 0.64f, lastP);
             }
         }
 
         Paint xPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         xPaint.setColor(COLOR_MUTED);
         xPaint.setTextSize(typeAxis);
-        xPaint.setTypeface(plex(context, false));
-        xPaint.setTextAlign(Paint.Align.CENTER);
-        long plotSpan = plotEnd - dayStart;
-        float xTickY = plotBot + typeAxis + xTickGap;
-        if (plotSpan >= 20L * 60L * 60L * 1000L) {
-            int[] hours = { 0, 6, 12, 18, 24 };
-            for (int hr : hours) {
-                long t = dayStart + hr * 3600_000L;
-                if (hr == 24) t = plotEnd;
-                if (t < dayStart || t > plotEnd + 60_000L) continue;
-                float x = mapX(Math.min(t, plotEnd), dayStart, span, lineL, lineWpx);
-                canvas.drawText(String.format(Locale.UK, "%02d", hr), x, xTickY, xPaint);
-            }
-        } else {
-            int ticks = 5;
-            for (int i = 0; i < ticks; i++) {
-                long t = dayStart + plotSpan * i / (ticks - 1);
-                float x = mapX(t, dayStart, span, lineL, lineWpx);
-                canvas.drawText(hhmm(t), x, xTickY, xPaint);
-            }
+        xPaint.setTypeface(axisFace);
+        float xTickY = plotBot + typeAxis * 1.05f;
+        int[] hours = { 0, 6, 12, 18, 24 };
+        for (int i = 0; i < hours.length; i++) {
+            int hr = hours[i];
+            long t = hr == 24 ? dayEnd : dayStart + hr * 3600_000L;
+            float x = mapX(t, dayStart, span, lineL, lineWpx);
+            if (i == 0) xPaint.setTextAlign(Paint.Align.LEFT);
+            else if (i == hours.length - 1) xPaint.setTextAlign(Paint.Align.RIGHT);
+            else xPaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(String.format(Locale.UK, "%02d", hr), x, xTickY, xPaint);
         }
-
-        List<Seg> dayGaps = gapsInWindow(points, dayStart, dayEnd);
-        float barY = covTop;
-        float barL = pad;
-        float barR = w - pad;
-        Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
-        track.setColor(COLOR_GAP);
-        canvas.drawRoundRect(barL, barY, barR, barY + barH, 3 * dp, 3 * dp, track);
-        long daySpan = Math.max(1L, dayEnd - dayStart);
-        Paint on = new Paint(Paint.ANTI_ALIAS_FLAG);
-        on.setColor(COLOR_TEAL);
-        for (Seg sg : dayGaps) {
-            if (!sg.covered) continue;
-            float x0 = barL + (sg.from - dayStart) / (float) daySpan * (barR - barL);
-            float x1 = barL + (sg.to - dayStart) / (float) daySpan * (barR - barL);
-            canvas.drawRect(x0, barY, x1, barY + barH, on);
-        }
-
-        Paint meta = new Paint(Paint.ANTI_ALIAS_FLAG);
-        meta.setColor(COLOR_MUTED);
-        meta.setTextSize(typeMeta);
-        meta.setTypeface(plex(context, false));
-        meta.setTextAlign(Paint.Align.LEFT);
-        float metaY = barY + barH + covGap - meta.getFontMetrics().ascent;
-        canvas.drawText("00:00–24:00", barL, metaY, meta);
-        meta.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText(coverageCaption(dayGaps, dayStart, dayEnd), barR, metaY, meta);
 
         return bmp;
     }
@@ -400,6 +339,14 @@ final class GlucoseWidgetTiles {
         canvas.drawText(delta, cx, deltaTop + deltaH * 0.82f, d);
     }
 
+    /** Same inset the 2×2 metric cells use (15% of the shorter cell side). */
+    private static float metricsCellPad(int w, int h) {
+        float gap = Math.max(2f, 1f / 324f * w);
+        float cellW = (w - gap) / 2f;
+        float cellH = (h - gap) / 2f;
+        return 0.15f * Math.min(cellW, cellH);
+    }
+
     private static Paint hatchPaint() {
         Bitmap tile = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(tile);
@@ -453,30 +400,6 @@ final class GlucoseWidgetTiles {
         return out;
     }
 
-    private static String coverageCaption(List<Seg> segs, long start, long end) {
-        long period = Math.max(1L, end - start);
-        long covered = 0;
-        long gapMs = 0;
-        int gapCount = 0;
-        for (Seg s : segs) {
-            long dt = Math.max(0L, s.to - s.from);
-            if (s.covered) covered += dt;
-            else {
-                gapMs += dt;
-                gapCount++;
-            }
-        }
-        float pct = Math.round(covered / (float) period * 1000f) / 10f;
-        String pctS = pct == (long) pct
-            ? String.format(Locale.US, "%.0f%%", pct)
-            : String.format(Locale.US, "%.1f%%", pct);
-        if (gapCount <= 0) return pctS;
-        int gapMin = Math.round(gapMs / 60000f);
-        int hh = Math.max(0, gapMin) / 60;
-        int mm = Math.max(0, gapMin) % 60;
-        return String.format(Locale.US, "%d gap · %02d:%02d · %s", gapCount, hh, mm, pctS);
-    }
-
     private static float[] computeYDomain(float[] points) {
         if (points.length == 0) return new float[] { 3.0f, 12.0f };
         float dMin = points[0];
@@ -513,12 +436,6 @@ final class GlucoseWidgetTiles {
     private static String fmtTick(float v) {
         if (Math.abs(v - Math.round(v)) < 0.05f) return String.valueOf(Math.round(v));
         return String.format(Locale.US, "%.1f", v);
-    }
-
-    private static String hhmm(long ms) {
-        Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(ms);
-        return String.format(Locale.UK, "%02d:%02d", c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE));
     }
 
     private static long localMidnight() {
