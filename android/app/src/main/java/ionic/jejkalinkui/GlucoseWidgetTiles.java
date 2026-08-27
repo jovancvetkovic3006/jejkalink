@@ -99,24 +99,24 @@ final class GlucoseWidgetTiles {
             plotEnd = Math.min(Math.max(prefs.getLong("sparkline_plot_end_ms", 0), dayStart + 60_000L), dayEnd);
         }
 
-        // 4×2 ~250×110. Same edge pad as a metrics cell; no title / coverage.
+        // Midnight → now, like the Day tile. No title / coverage.
         int w = 1000;
         int h = 440;
         float pad = metricsCellPad(w, h);
         float typeAxis = Math.max(12f, pad * (8.5f / 11f));
-        float lineW = Math.max(1.2f, 1.15f * (h / 110f));
-        float yLabelW = typeAxis * 3.4f;
-        float xTickH = typeAxis * 1.25f;
+        float lineW = Math.max(1.4f, 1.0f * (h / 110f));
+        float yLabelW = typeAxis * 3.6f;
+        float xTickH = typeAxis * 1.45f;
         float plotL = pad + yLabelW;
         float plotR = w - pad;
         float plotTop = pad;
         float plotBot = h - pad - xTickH;
-        float inner = Math.max(6f, 0.04f * (plotR - plotL));
-        float lineL = plotL + inner;
-        float lineR = plotR - inner;
+        float gutter = Math.max(8f, 0.035f * (plotR - plotL));
+        float lineL = plotL + gutter;
+        float lineR = plotR - gutter;
         float lineWpx = lineR - lineL;
-        float lineTop = plotTop + inner * 0.35f;
-        float lineBot = plotBot - inner * 0.25f;
+        float lineTop = plotTop + gutter * 0.4f;
+        float lineBot = plotBot - gutter * 0.2f;
 
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
@@ -132,7 +132,7 @@ final class GlucoseWidgetTiles {
         float[] domain = computeYDomain(mmol);
         float yMin = domain[0];
         float yMax = domain[1];
-        long span = Math.max(1L, dayEnd - dayStart);
+        long span = Math.max(1L, plotEnd - dayStart);
 
         Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
         band.setColor(COLOR_BAND);
@@ -151,7 +151,7 @@ final class GlucoseWidgetTiles {
         yLabel.setTextSize(typeAxis);
         yLabel.setTypeface(axisFace);
         yLabel.setTextAlign(Paint.Align.RIGHT);
-        float yLabelX = lineL - inner * 0.45f;
+        float yLabelX = lineL - gutter * 0.45f;
         canvas.drawText("3.9", yLabelX, bandBot + typeAxis * 0.35f, yLabel);
         canvas.drawText("10.0", yLabelX, bandTop + typeAxis * 0.35f, yLabel);
         if (Math.abs(yMax - HIGH) > 0.2f) {
@@ -211,7 +211,7 @@ final class GlucoseWidgetTiles {
             if (last != null) {
                 float lastX = mapX(last.t, dayStart, span, lineL, lineWpx);
                 float lastY = mapY(last.mmol, lineBot, lineTop, yMin, yMax);
-                float ringR = 2.4f * (h / 110f);
+                float ringR = 1.8f * (h / 110f);
                 Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
                 ring.setColor(0xFFFFFFFF);
                 canvas.drawCircle(lastX, lastY, ringR, ring);
@@ -225,16 +225,14 @@ final class GlucoseWidgetTiles {
         xPaint.setColor(COLOR_MUTED);
         xPaint.setTextSize(typeAxis);
         xPaint.setTypeface(axisFace);
-        float xTickY = plotBot + typeAxis * 1.05f;
-        int[] hours = { 0, 6, 12, 18, 24 };
-        for (int i = 0; i < hours.length; i++) {
-            int hr = hours[i];
-            long t = hr == 24 ? dayEnd : dayStart + hr * 3600_000L;
-            float x = mapX(t, dayStart, span, lineL, lineWpx);
+        float xTickY = plotBot + typeAxis * 1.15f;
+        long[] xTimes = { dayStart, dayStart + span / 2L, plotEnd };
+        for (int i = 0; i < xTimes.length; i++) {
+            float x = mapX(xTimes[i], dayStart, span, lineL, lineWpx);
             if (i == 0) xPaint.setTextAlign(Paint.Align.LEFT);
-            else if (i == hours.length - 1) xPaint.setTextAlign(Paint.Align.RIGHT);
+            else if (i == xTimes.length - 1) xPaint.setTextAlign(Paint.Align.RIGHT);
             else xPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText(String.format(Locale.UK, "%02d", hr), x, xTickY, xPaint);
+            canvas.drawText(hhmm(xTimes[i]), x, xTickY, xPaint);
         }
 
         return bmp;
@@ -350,10 +348,10 @@ final class GlucoseWidgetTiles {
     private static Paint hatchPaint() {
         Bitmap tile = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(tile);
-        c.drawColor(0x59DDE2E9);
+        c.drawColor(0x38DDE2E9);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setColor(0xB3C5CDD8);
-        p.setStrokeWidth(2.2f);
+        p.setColor(0x66C5CDD8);
+        p.setStrokeWidth(1.6f);
         c.drawLine(0, 8, 8, 0, p);
         Paint out = new Paint(Paint.ANTI_ALIAS_FLAG);
         out.setShader(new BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT));
@@ -436,6 +434,12 @@ final class GlucoseWidgetTiles {
     private static String fmtTick(float v) {
         if (Math.abs(v - Math.round(v)) < 0.05f) return String.valueOf(Math.round(v));
         return String.format(Locale.US, "%.1f", v);
+    }
+
+    private static String hhmm(long ms) {
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(ms);
+        return String.format(Locale.UK, "%02d:%02d", c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE));
     }
 
     private static long localMidnight() {
