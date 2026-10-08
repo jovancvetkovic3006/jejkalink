@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">jejkalinkui</string>
-    <string name="title_activity_main">jejkalinkui</string>
+    <string name="app_name">Jejka eLink</string>
+    <string name="title_activity_main">Jejka eLink</string>
     <string name="package_name">ionic.jejkalinkui</string>
     <string name="custom_url_scheme">ionic.jejkalinkui</string>
     <string name="widget_description">2×1 strip · glucose and trend</string>

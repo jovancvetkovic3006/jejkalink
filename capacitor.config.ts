@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'ionic.jejkalinkui',
-  appName: 'jejka-link-ui',
+  appName: 'Jejka eLink',
   webDir: 'www'
 };
 
