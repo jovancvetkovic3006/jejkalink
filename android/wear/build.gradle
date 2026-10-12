@@ -1,0 +1,30 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "ionic.jejkalinkui"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "ionic.jejkalinkui"
+        minSdk 30
+        targetSdk rootProject.ext.targetSdkVersion
+        versionCode 59
+        versionName "1.59"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+dependencies {
+    implementation "androidx.core:core:1.17.0"
+    implementation "com.google.android.gms:play-services-wearable:19.0.0"
+    implementation "androidx.wear.watchface:watchface-complications-data-source:1.2.1"
+    implementation "androidx.wear.watchface:watchface-complications-data:1.2.1"
+}
