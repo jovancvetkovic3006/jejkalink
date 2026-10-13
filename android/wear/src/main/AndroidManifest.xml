@@ -12,9 +12,20 @@
             android:name="com.google.android.wearable.standalone"
             android:value="false" />
 
+        <activity
+            android:name=".WatchHomeActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".GlucoseComplicationService"
             android:exported="true"
+            android:icon="@mipmap/ic_launcher"
             android:label="@string/complication_label"
             android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
             <intent-filter>

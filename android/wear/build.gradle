@@ -7,8 +7,8 @@ android {
         applicationId "ionic.jejkalinkui"
         minSdk 30
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 59
-        versionName "1.59"
+        versionCode 60
+        versionName "1.60"
     }
     buildTypes {
         release {
