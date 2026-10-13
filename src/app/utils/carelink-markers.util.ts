@@ -185,5 +185,56 @@ export function eventsFromCareLinkMarkers(
     }
   }
 
-  return out;
+  return collapseDuplicateBoluses(out);
+}
+
+/** CareLink often emits the same delivery twice, a second or two apart. */
+export const BOLUS_PAIR_MS = 90_000;
+
+export function collapseDuplicateBoluses<
+  T extends {
+    kind: string;
+    timestamp: string;
+    label: string;
+    detail?: string;
+    units?: number;
+  },
+>(events: T[]): T[] {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  const out: T[] = [];
+  for (const event of sorted) {
+    if (event.kind !== 'bolus') {
+      out.push(event);
+      continue;
+    }
+    const copy = { ...event };
+    const at = new Date(copy.timestamp).getTime();
+    const units = copy.units ?? unitsFromBolusLabel(copy.label);
+    const prior = out.find((prev) => {
+      if (prev.kind !== 'bolus') return false;
+      const dt = Math.abs(new Date(prev.timestamp).getTime() - at);
+      if (dt > BOLUS_PAIR_MS) return false;
+      const prevUnits = prev.units ?? unitsFromBolusLabel(prev.label);
+      if (units > 0 && prevUnits > 0) return Math.abs(prevUnits - units) < 0.05;
+      return prev.label === copy.label;
+    });
+    if (prior) {
+      if ((copy.detail?.length || 0) > (prior.detail?.length || 0)) {
+        prior.detail = copy.detail;
+      }
+      continue;
+    }
+    out.push(copy);
+  }
+  return out.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+}
+
+function unitsFromBolusLabel(label: string): number {
+  const match = /([\d.]+)\s*u/i.exec(label);
+  const n = match ? Number(match[1]) : 0;
+  return Number.isFinite(n) ? n : 0;
 }

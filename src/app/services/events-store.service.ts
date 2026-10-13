@@ -2,7 +2,11 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { SgReading } from './sgs-history.service';
 import { formatMinutesLong } from '../utils/duration-format.util';
-import { eventsFromCareLinkMarkers } from '../utils/carelink-markers.util';
+import {
+  BOLUS_PAIR_MS,
+  collapseDuplicateBoluses,
+  eventsFromCareLinkMarkers,
+} from '../utils/carelink-markers.util';
 import { eventsFromCareLinkAlerts } from '../utils/carelink-alerts.util';
 import {
   carelinkWallClock,
@@ -51,10 +55,8 @@ export class EventsStore {
         changed = true;
         return { ...e, timestamp: ts };
       });
-      const sorted = next.sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-      if (changed) this.persist(sorted);
+      const sorted = collapseDuplicateBoluses(next);
+      if (changed || sorted.length !== next.length) this.persist(sorted);
       return sorted;
     } catch {
       return [];
@@ -73,6 +75,30 @@ export class EventsStore {
     const list = this.load();
     const timestamp = restampCarelinkStoredIso(event.timestamp);
     const id = event.id || `${event.kind}-${timestamp}-${Math.random().toString(36).slice(2, 7)}`;
+    if (event.kind === 'bolus') {
+      const units = event.units ?? 0;
+      const at = new Date(timestamp).getTime();
+      const near = list.findIndex((e) => {
+        if (e.kind !== 'bolus' || !(units > 0) || !(e.units && e.units > 0)) return false;
+        return (
+          Math.abs(new Date(e.timestamp).getTime() - at) <= BOLUS_PAIR_MS &&
+          Math.abs(e.units - units) < 0.05
+        );
+      });
+      if (near >= 0 && list[near].id !== id) {
+        const prev = list[near];
+        const detail =
+          (event.detail?.length || 0) > (prev.detail?.length || 0)
+            ? event.detail
+            : prev.detail;
+        if (detail !== prev.detail) {
+          list[near] = { ...prev, detail };
+          this.persist(list);
+          this.events$.next([...list]);
+        }
+        return;
+      }
+    }
     const idx = list.findIndex((e) => e.id === id);
     if (idx >= 0) {
       const prev = list[idx];
@@ -261,12 +287,12 @@ export class EventsStore {
   }
 
   recent(limit = 20): AppEvent[] {
-    return this.events$.value.slice(0, limit);
+    return collapseDuplicateBoluses(this.events$.value).slice(0, limit);
   }
 
   /** Newest-first feed for Now — hides routine sync unless little else to show. */
   recentForDisplay(limit = 8): AppEvent[] {
-    const all = [...this.events$.value].sort(
+    const all = collapseDuplicateBoluses(this.events$.value).sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
     const notable = all.filter((e) => e.kind !== 'sync');
@@ -275,7 +301,7 @@ export class EventsStore {
   }
 
   eventsInRange(startMs: number, endMs: number): AppEvent[] {
-    return this.events$.value
+    return collapseDuplicateBoluses(this.events$.value)
       .filter((e) => {
         const t = new Date(e.timestamp).getTime();
         return t >= startMs && t <= endMs;
@@ -291,7 +317,7 @@ export class EventsStore {
   }
 
   bolusesInRange(startMs: number, endMs: number): AppEvent[] {
-    return this.events$.value.filter(
+    return collapseDuplicateBoluses(this.events$.value).filter(
       (e) =>
         e.kind === 'bolus' &&
         e.units &&

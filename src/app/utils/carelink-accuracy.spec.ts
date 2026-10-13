@@ -15,6 +15,7 @@ import {
   shiftPatientDeviceWallClocks,
 } from './carelink-time.util';
 import {
+  collapseDuplicateBoluses,
   eventsFromCareLinkMarkers,
   insulinAmountFromMarker,
 } from './carelink-markers.util';
@@ -282,6 +283,43 @@ describe('carelink-markers', () => {
     expect(events[0].id).toBe('bg-2026-08-25T08:10:00');
     expect(events[0].label).toContain('Finger BG');
     expect(events[0].label).toContain('mmol/L');
+  });
+
+  it('keeps one row when CareLink sends the same bolus twice a second apart', () => {
+    const events = eventsFromCareLinkMarkers([
+      {
+        type: 'INSULIN',
+        timestamp: '2026-08-26T09:12:01',
+        data: { dataValues: { deliveredFastAmount: 4.2, bolusType: 'FAST' } },
+      },
+      {
+        type: 'INSULIN',
+        timestamp: '2026-08-26T09:12:02',
+        data: { dataValues: { deliveredFastAmount: 4.2, bolusType: 'FAST' } },
+      },
+    ]);
+    expect(events.filter((e) => e.kind === 'bolus').length).toBe(1);
+    expect(events[0].units).toBe(4.2);
+  });
+
+  it('keeps two boluses of the same size when they are not a pair', () => {
+    const events = collapseDuplicateBoluses([
+      {
+        id: 'a',
+        kind: 'bolus',
+        timestamp: '2026-08-26T09:12:00',
+        label: 'Bolus 2.0 u',
+        units: 2,
+      },
+      {
+        id: 'b',
+        kind: 'bolus',
+        timestamp: '2026-08-26T09:20:00',
+        label: 'Bolus 2.0 u',
+        units: 2,
+      },
+    ]);
+    expect(events.length).toBe(2);
   });
 
   it('prefers timestamp over displayTime when they disagree by an hour', () => {
