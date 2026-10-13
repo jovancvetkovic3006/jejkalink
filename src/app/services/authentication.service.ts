@@ -1070,16 +1070,23 @@ export class AuthenticationService {
     await Browser.open({ url: authUrl });
   }
 
-  sendLogsViaEmail() {
+  /** Zip the debug log and open the share/email sheet with the attachment. */
+  async sendLogsViaEmail() {
     const logs = this.debugLog$.value.join('\n') || '(no logs)';
-    const subject = encodeURIComponent(
-      'JejkaLink Debug Logs - ' + new Date().toLocaleString()
-    );
-    const body = encodeURIComponent(logs);
-    window.open(
-      `mailto:jovanca.cvetkovic@gmail.com?subject=${subject}&body=${body}`,
-      '_system'
-    );
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    try {
+      await this.bckg.shareEmailZip({
+        text: logs,
+        subject: 'JejkaLink Debug Logs - ' + new Date().toLocaleString(),
+        email: 'jovanca.cvetkovic@gmail.com',
+        body: 'Debug logs are in the attached zip.',
+        fileName: `jejkalink-logs-${stamp}.zip`,
+        entryName: 'debug-log.txt',
+      });
+      this.addDebug('sendLogs: zip share opened (' + logs.length + ' chars)');
+    } catch (e) {
+      this.addDebug('sendLogs failed: ' + ((e as Error)?.message || String(e)));
+    }
   }
 
   clearDebugLogs() {
